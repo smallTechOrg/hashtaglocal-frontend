@@ -33,11 +33,11 @@ const IssueCard: React.FC<IssueCardProps> = ({
       {/* Top Overlay: Location & Coordinates */}
       <View className="absolute flex-row items-start bg-white opacity-60">
         <MaterialIcons name="location-on" color="black" size={20} />
-        <View className="ml-2 flex-1">
-          <CustomText className="text-xs font-regular" numberOfLines={1}>
+        <View className=" flex-1">
+          <CustomText className="text-[7px] font-regular" numberOfLines={1}>
             {location}
           </CustomText>
-          <CustomText className="text-xs shadow-sm opacity-90">
+          <CustomText className="text-[7px] shadow-sm opacity-90">
             {timestamp}
           </CustomText>
         </View>

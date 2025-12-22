@@ -10,7 +10,7 @@ const IssueDetailScreen = () => {
         <ScrollView className="px-2" >
             {/* Main Image Header */}
             <IssueCard
-                imageSource={require("../assets/plothole.png")}
+                imageSource={require("../assets/plothole.jpg")}
                 location="Iblur Lake Rd. Lat: 27.1751°N Long: 78.0421°E"
                 timestamp="2025-12-17 15:30:44 IST"
                 daysActive="17days"
@@ -41,8 +41,8 @@ const IssueDetailScreen = () => {
                     </View>
                 </View>
                 <View className="w-1/2 pl-2">
-                    <CustomText className="text-gray-700 text-sm leading-5 italic">
-                        &quot;From the looks of it, it looks like a beautiful aesthetic crater. Like it was destined to be part of this road...&quot;
+                    <CustomText className="text-gray-700 text-sm leading-5 text-center">
+                        From the looks of it, it looks like a beautiful aesthetic crater. Like it was destined to be part of this road...
                     </CustomText>
                 </View>
             </View>

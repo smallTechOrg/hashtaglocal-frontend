@@ -54,7 +54,7 @@ export default function RootLayout() {
       <Drawer.Screen
         name="issueDetail"
         options={({ navigation }) => ({
-          title: "Issue Detail",
+          title: "#Bangalore",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
