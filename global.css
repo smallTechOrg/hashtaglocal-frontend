@@ -18,3 +18,25 @@
 
   }
 }
+
+@layer components{
+  .h1{
+    @apply
+    font-[500]
+    text-[24px]
+    }
+    .h2 {
+      @apply font-[400]
+      text-[18px]
+    }
+
+    .h3{
+      @apply font-[300]
+      text-[16px]
+    }
+    .p {
+      @apply 
+      
+      font-[300]
+      text-[14px] 
+}}

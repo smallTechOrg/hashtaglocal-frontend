@@ -52,9 +52,9 @@ export default function RootLayout() {
         })}
       />
       <Drawer.Screen
-        name="issueDetail"
+        name="IssueDetail"
         options={({ navigation }) => ({
-          title: "#Bangalore",
+          title: "Issue Detail", // Will be dynamically updated by the screen component
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
