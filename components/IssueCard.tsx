@@ -34,10 +34,10 @@ const IssueCard: React.FC<IssueCardProps> = ({
       <View className="absolute flex-row items-start bg-white opacity-60">
         <MaterialIcons name="location-on" color="black" size={20} />
         <View className=" flex-1">
-          <CustomText className="text-[7px] font-regular" numberOfLines={1}>
+          <CustomText testID="issue-location" className="text-[7px] font-regular" numberOfLines={1}>
             {location}
           </CustomText>
-          <CustomText className="text-[7px] shadow-sm opacity-90">
+          <CustomText testID="issue-timestamp" className="text-[7px] shadow-sm opacity-90">
             {timestamp}
           </CustomText>
         </View>
@@ -49,7 +49,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
         {/* Bottom Left: Time Badge */}
         <View className="flex-row items-center rounded-full">
           <MaterialIcons name="access-time" color="white" size={20} />
-          <CustomText className="ml-1 text-white text-xs font-semibold">
+          <CustomText  testID="issue-days" className="ml-1 text-white text-xs font-semibold">
             {daysActive}
           </CustomText>
         </View>
