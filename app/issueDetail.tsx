@@ -31,13 +31,23 @@ const formatDate = (dateString: string): string => {
 
 // Helper function to calculate days active
 const calculateDaysActive = (dateString: string): string => {
-    const date = new Date(dateString);
+    if (!dateString) return "";
+  
+    const utcString = dateString.endsWith("Z")
+      ? dateString
+      : `${dateString}Z`;
+  
+    const date = new Date(utcString);
+    if (isNaN(date.getTime())) return "";
+  
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffTime = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return `${diffDays}days`;
-};
+  
+    return `${diffDays} days`;
+  };
 
+  
 const IssueDetailScreen = () => {
     const params = useLocalSearchParams<{ id?: string }>();
     const navigation = useNavigation();
@@ -111,9 +121,8 @@ const IssueDetailScreen = () => {
     const { issue } = issueData.data;
     
     // Get all image URLs from media
-    const imageUrls = issue.mediaUrls && issue.mediaUrls.length > 0
-        ? issue.mediaUrls
-            .map(media => media.url)
+    const imageUrls = issue.media_urls && issue.media_urls.length > 0
+        ?  issue.media_urls.map(media => media.url)
             .filter(url => url && url.trim() !== '')
             .map(url => {
               // If URL is relative, make it absolute (assuming it's from the backend)
@@ -127,7 +136,7 @@ const IssueDetailScreen = () => {
         : [];
     
     console.log('[IssueDetail] Image URLs:', imageUrls);
-    console.log('[IssueDetail] Media URLs count:', issue.mediaUrls?.length || 0);
+    console.log('[IssueDetail] Media URLs count:', issue.media_urls?.length || 0);
     
     // Fallback to default image if no images available
     const defaultImage = require("../assets/plothole.jpg");
@@ -138,8 +147,8 @@ const IssueDetailScreen = () => {
         ? `${issue.location.address || ''}${issue.location.colloquialName ? `, ${issue.location.colloquialName}` : ''} Lat: ${issue.location.lat || 'N/A'}°N Long: ${issue.location.lng || 'N/A'}°E`.trim()
         : undefined;
     
-    const formattedDate = formatDate(issue.createdAt);
-    const daysActive = calculateDaysActive(issue.createdAt);
+        const formattedDate = formatDate(issue.created_at);
+        const daysActive = calculateDaysActive(issue.created_at);
 
     // Share function to open native share sheet
     const handleShare = async () => {
@@ -186,7 +195,7 @@ const IssueDetailScreen = () => {
                 </CustomText>
                 <View className="flex-row items-center">
                     <View className="items-end mr-2">
-                        <CustomText className="h2 font-bold">{issue.voteCount}</CustomText>
+                        <CustomText className="h2 font-bold">{issue.vote_count}</CustomText>
                         <CustomText className=" h3">upvotes</CustomText>
                     </View>
                     <MaterialIcons name="star" size={36} color="#FFB800" />
@@ -206,7 +215,7 @@ const IssueDetailScreen = () => {
                     {/* Verified */}
                     <CustomText className="mt-3 p text-gray-700">
                         Verified by{" "}
-                        <CustomText className="font-bold text-black h2">{issue.verifyCount}</CustomText>{" "}
+                        <CustomText className="font-bold text-black h2">{issue.verify_count}</CustomText>{" "}
                         locals
                     </CustomText>
                 </View>

@@ -1,11 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React, { useState } from 'react';
-import { Dimensions, ImageSourcePropType, Image as RNImage, TouchableOpacity, View, ScrollView } from 'react-native';
+import { Dimensions, ImageSourcePropType, Image as RNImage, ScrollView, TouchableOpacity, View } from 'react-native';
 import "../global.css";
 import CustomText from './CustomText';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SLIDE_WIDTH = SCREEN_WIDTH - 16;
 
 interface IssueImageProps {
   imageSource?: ImageSourcePropType | string;
@@ -34,22 +35,26 @@ const IssueImage: React.FC<IssueImageProps> = ({
     : imageSource
       ? [imageSource]
       : [];
-  const handleScroll = (event: any) => {
-    const slideSize = event.nativeEvent.layoutMeasurement.width;
-    const index = event.nativeEvent.contentOffset.x / slideSize;
-    setCurrentIndex(Math.round(index));
-  };
+
+      const handleScroll = (event: any) => {
+        const slideSize = event.nativeEvent.layoutMeasurement.width;
+        const index = event.nativeEvent.contentOffset.x / slideSize;
+        setCurrentIndex(Math.round(index));
+      };
+      
   return (
     <View className={`w-full relative overflow-hidden rounded-xl ${className ?? ""}`}>
       {/* Images - Carousel */}
       {images.length > 0 ? (
-        <View className="w-full">
+        <View className="w-full" style={{ height: 256 }}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            style={{ width: '100%' }}
+            contentContainerStyle={{ width: SLIDE_WIDTH * images.length }}
           >
 
             {images.map((img, index) => {
@@ -61,15 +66,14 @@ const IssueImage: React.FC<IssueImageProps> = ({
               return (
                 <View
                   key={`image-${index}`}
-                  className=" relative"
-                  style={{ width: SCREEN_WIDTH, height: 256 }}
+                  className="relative"
+                  style={{ width: SLIDE_WIDTH, height: 256 }}
                 >
                   {imageErrors[index] ? (
                     // Fallback to React Native Image if expo-image fails
                     <RNImage
                       source={imageSource}
-                      className="w-full h-full"
-
+                      style={{ width: '100%', height: '100%' }}
                       resizeMode="cover"
                       onError={(error: any) => {
                         console.error(`[IssueImage] ❌ RN Image also failed for ${index}:`, error);
@@ -81,8 +85,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
                   ) : (
                     <Image
                       source={imageSource}
-                      className="w-full h-full"
-
+                      style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                       transition={200}
                       cachePolicy="memory-disk"
@@ -97,9 +100,12 @@ const IssueImage: React.FC<IssueImageProps> = ({
                   )}
 
 
-                  {/* Top Overlay: Location & Coordinates - Only on first image */}
+                  {/* Top Overlay: Location & Coordinates */}
                   {(location || timestamp) && (
-                    <View className="absolute top-0 left-0 right-0 flex-row items-start bg-white/60 px-2 py-1">
+                    <View
+                      className="absolute top-0 left-0 right-0 flex-row items-start bg-white/60 px-2 py-1"
+                      style={{ zIndex: 10 }}
+                    >
                       <MaterialIcons name="location-on" color="black" size={16} style={{ marginTop: 2 }} />
                       <View className="flex-1 ml-1">
                         {location && (
@@ -116,14 +122,21 @@ const IssueImage: React.FC<IssueImageProps> = ({
                     </View>
                   )}
 
-                  {/* Bottom overlay container - Only on first image */}
+                  {/* Bottom overlay container - Outside ScrollView for proper positioning */}
                   {(daysActive || onShare) && (
-                    <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between py-2 px-2 bg-black/30">
+                    <View
+                      className="absolute left-0 right-0 flex-row items-center justify-between px-6 "
+                      style={{
+                        bottom: 30,
+                        backgroundColor: 'rgba(35, 28, 28, 0.35)',
+                        
+                      }}
+                    >
                       {/* Bottom Left: Time Badge */}
                       {daysActive && (
-                        <View className="flex-row items-center rounded-full">
+                        <View className="flex-row">
                           <MaterialIcons name="access-time" color="white" size={20} />
-                          <CustomText className="ml-1 text-white text-xs font-semibold">
+                          <CustomText className="ml-1 text-white p">
                             {daysActive}
                           </CustomText>
                         </View>
@@ -133,20 +146,27 @@ const IssueImage: React.FC<IssueImageProps> = ({
                       {onShare && (
                         <TouchableOpacity
                           onPress={onShare}
-                          className=""
                         >
                           <MaterialIcons name="share" color="white" size={20} />
                         </TouchableOpacity>
                       )}
                     </View>
                   )}
+
                 </View>
               );
             })}
           </ScrollView>
+
           {/* Pagination Dots */}
           {images.length > 1 && (
-            <View className="absolute bottom-3 left-0 right-0 flex-row justify-center">
+            <View
+              className="absolute left-0 right-0 flex-row justify-center"
+              style={{
+                bottom: (daysActive || onShare) ? 56 : 12,
+                zIndex: 20
+              }}
+            >
               {images.map((_, index) => (
                 <View
                   key={index}

@@ -28,10 +28,10 @@ export interface Issue {
   location: Location;
   type: string;
   description: string;
-  createdAt: string;
-  mediaUrls: Media[];
-  voteCount: number;
-  verifyCount: number;
+  created_at: string;
+  media_urls: Media[];
+  vote_count: number;
+  verify_count: number;
   status: string;
   rank: number;
 }
