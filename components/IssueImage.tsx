@@ -109,12 +109,12 @@ const IssueImage: React.FC<IssueImageProps> = ({
                       <MaterialIcons name="location-on" color="black" size={16} style={{ marginTop: 2 }} />
                       <View className="flex-1 ml-1">
                         {location && (
-                          <CustomText className="text-[10px] font-regular" numberOfLines={1}>
+                          <CustomText testID={index === 0 ? "issue-location" : undefined} className="text-[10px] font-regular" numberOfLines={1}>
                             {location}
                           </CustomText>
                         )}
                         {timestamp && (
-                          <CustomText className="text-[9px] text-gray-700 mt-0.5">
+                          <CustomText testID={index === 0 ? "issue-timestamp" : undefined} className="text-[9px] text-gray-700 mt-0.5">
                             {timestamp}
                           </CustomText>
                         )}
@@ -136,7 +136,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
                       {daysActive && (
                         <View className="flex-row">
                           <MaterialIcons name="access-time" color="white" size={20} />
-                          <CustomText className="ml-1 text-white p">
+                          <CustomText testID={index === 0 ? "issue-days" : undefined} className="ml-1 text-white p">
                             {daysActive}
                           </CustomText>
                         </View>
