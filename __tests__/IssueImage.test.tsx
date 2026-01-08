@@ -1,6 +1,5 @@
-import React from "react";
+import IssueImage from "@/components/IssueImage/IssueImage";
 import { render } from "@testing-library/react-native";
-import IssueImage from "@/components/IssueImage";
 
 describe("IssueImage", () => {
   it("renders image carousel", () => {

@@ -1,5 +1,5 @@
 import { API_BASE_URL, API_ENDPOINTS } from '@/config/api';
-import { APIResponse } from '@/modals/IssueDetail';
+import { APIResponse } from '@/models/APIResponse';
 import { Platform } from 'react-native';
 
 /**
@@ -9,10 +9,6 @@ import { Platform } from 'react-native';
  */
 export async function fetchIssue(issueId: number): Promise<APIResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
-  
-  console.log(`[API] Fetching issue ${issueId} from: ${url}`);
-  console.log(`[API] Platform: ${Platform.OS}`);
-  console.log(`[API] API_BASE_URL: ${API_BASE_URL}`);
   
   try {
     const controller = new AbortController();

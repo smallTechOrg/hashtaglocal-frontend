@@ -1,51 +1,15 @@
 
 import { fetchIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
-import IssueImage from "@/components/IssueImage";
-import { APIResponse } from "@/modals/IssueDetail";
+import IssueImage from "@/components/IssueImage/IssueImage";
+import { APIResponse } from "@/models/APIResponse";
+import { calculateDaysActive, formatDate } from "@/utils/Date";
+import { formatLocationString, processImageUrls } from "@/utils/ImageProcessing";
+import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Share, TouchableOpacity, View } from 'react-native';
-
-// Helper function to format date
-const formatDate = (dateString: string): string => {
-    if (!dateString) return "";
-
-    // Fix: If the string doesn't end with 'Z', append it to force UTC interpretation
-    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-    const date = new Date(utcString);
-    console.log("Original:", dateString, "Converted:", date.toString())
-    return date.toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false, 
-        timeZoneName: 'short',
-    }).replace(/,/g, ''); 
-};
-
-
-// Helper function to calculate days active
-const calculateDaysActive = (dateString: string): string => {
-    if (!dateString) return "";
-  
-    const utcString = dateString.endsWith("Z")
-      ? dateString
-      : `${dateString}Z`;
-  
-    const date = new Date(utcString);
-    if (isNaN(date.getTime())) return "";
-  
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-    return `${diffDays} days`;
-  };
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native';
 
   
 const IssueDetailScreen = () => {
@@ -119,62 +83,13 @@ const IssueDetailScreen = () => {
     }
 
     const { issue } = issueData.data;
-    
-    // Get all image URLs from media
-    const imageUrls = issue.media_urls && issue.media_urls.length > 0
-        ?  issue.media_urls.map(media => media.url)
-            .filter(url => url && url.trim() !== '')
-            .map(url => {
-              // If URL is relative, make it absolute (assuming it's from the backend)
-              if (url.startsWith('http://') || url.startsWith('https://')) {
-                return url;
-              }
-              // If relative URL, you might need to prepend API base URL
-              // For now, return as-is and let the backend provide full URLs
-              return url;
-            })
-        : [];
-    
-    console.log('[IssueDetail] Image URLs:', imageUrls);
-    console.log('[IssueDetail] Media URLs count:', issue.media_urls?.length || 0);
-    
-    // Fallback to default image if no images available
-    const defaultImage = require("../assets/plothole.jpg");
-    const imageSources = imageUrls.length > 0 ? imageUrls : [defaultImage];
-    
-    // Format location string with correct field names
-    const locationString = issue.location 
-        ? `${issue.location.address || ''}${issue.location.colloquialName ? `, ${issue.location.colloquialName}` : ''} Lat: ${issue.location.lat || 'N/A'}°N Long: ${issue.location.lng || 'N/A'}°E`.trim()
-        : undefined;
-    
-        const formattedDate = formatDate(issue.created_at);
-        const daysActive = calculateDaysActive(issue.created_at);
 
-    // Share function to open native share sheet
-    const handleShare = async () => {
-        try {
-            const shareUrl = `https://smalltech.in`;
-            const shareMessage = `Check our website: ${shareUrl}`;
-            
-            const result = await Share.share({
-                message: shareMessage,
-                url: shareUrl, 
-                title: 'Share Issue', 
-            });
-
-            if (result.action === Share.sharedAction) {
-                if (result.activityType) {
-                    console.log('Shared with:', result.activityType);
-                } else {
-                    console.log('Shared successfully');
-                }
-            } else if (result.action === Share.dismissedAction) {
-                console.log('Share dismissed');
-            }
-        } catch (error) {
-            console.error('Error sharing:', error);
-        }
-    };
+    // Process images and location using utility functions
+    const defaultImage = require("../assets/pothole.jpg");
+    const imageSources = processImageUrls(issue.media_urls, defaultImage);
+    const locationString = formatLocationString(issue.location);
+    const formattedDate = formatDate(issue.created_at);
+    const daysActive = calculateDaysActive(issue.created_at);
 
     return (
         <ScrollView className="px-2" >
