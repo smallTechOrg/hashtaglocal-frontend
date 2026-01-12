@@ -52,7 +52,7 @@ export default function RootLayout() {
         })}
       />
       <Drawer.Screen
-        name="IssueDetail"
+        name="issueDetail"
         options={({ navigation }) => ({
           title: "Issue Detail", // Will be dynamically updated by the screen component
           headerTitleStyle: {

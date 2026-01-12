@@ -3,7 +3,7 @@ import { fetchIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
-import { calculateDaysActive, formatDate } from "@/utils/Date";
+import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString, processImageUrls } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";

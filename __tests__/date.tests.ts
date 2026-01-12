@@ -1,4 +1,4 @@
-import { calculateDaysActive } from "@/utils/Date";
+import { calculateDaysActive } from "@/utils/FormatDate";
 
 describe("calculateDaysActive", () => {
   it("returns days correctly", () => {
