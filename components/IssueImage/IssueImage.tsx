@@ -3,6 +3,7 @@ import { Dimensions, ImageSourcePropType, ScrollView, View } from 'react-native'
 import '../../global.css';
 import BottomOverlay from './BottomOverlay';
 import EmptyImagePlaceholder from './EmptyImagePlaceholder';
+import FullScreenImageViewer from './FullScreenImageViewer';
 import ImageCarouselItem from './ImageCarouselItem';
 import PaginationDots from './PaginationDots';
 import TopOverlay from './TopOverlay';
@@ -31,6 +32,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
 
   // Support both single image and multiple images
   const images = imageSources && imageSources.length > 0
@@ -49,57 +51,75 @@ const IssueImage: React.FC<IssueImageProps> = ({
     setImageErrors(prev => ({ ...prev, [index]: true }));
   };
 
+  const handleImagePress = () => {
+    setIsFullScreenVisible(true);
+  };
+
+  const handleCloseFullScreen = () => {
+    setIsFullScreenVisible(false);
+  };
+
   return (
-    <View className={`w-full relative overflow-hidden rounded-xl ${className ?? ""}`}>
-      {images.length > 0 ? (
-        <View className="w-full" style={{ height: 256 }}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            style={{ width: '100%' }}
-            contentContainerStyle={{ width: SLIDE_WIDTH * images.length }}
-          >
-            {images.map((img, index) => {
-              const imageSource = typeof img === 'string' ? { uri: img } : img;
+    <>
+      <View className={`w-full relative overflow-hidden rounded-xl ${className ?? ""}`}>
+        {images.length > 0 ? (
+          <View className="w-full" style={{ height: 256 }}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              style={{ width: '100%' }}
+              contentContainerStyle={{ width: SLIDE_WIDTH * images.length }}
+            >
+              {images.map((img, index) => {
+                const imageSource = typeof img === 'string' ? { uri: img } : img;
 
-              return (
-                <ImageCarouselItem
-                  key={`image-${index}`}
-                  imageSource={imageSource}
-                  index={index}
-                  width={SLIDE_WIDTH}
-                  height={256}
-                  hasError={imageErrors[index] || false}
-                  onError={handleImageError}
-                >
-                  <TopOverlay
-                    location={location}
-                    timestamp={timestamp}
+                return (
+                  <ImageCarouselItem
+                    key={`image-${index}`}
+                    imageSource={imageSource}
                     index={index}
-                  />
-                  <BottomOverlay
-                    daysActive={daysActive}
-                    onShare={onShare}
-                    index={index}
-                  />
-                </ImageCarouselItem>
-              );
-            })}
-          </ScrollView>
+                    width={SLIDE_WIDTH}
+                    height={256}
+                    hasError={imageErrors[index] || false}
+                    onError={handleImageError}
+                    onPress={handleImagePress}
+                  >
+                    <TopOverlay
+                      location={location}
+                      timestamp={timestamp}
+                      index={index}
+                    />
+                    <BottomOverlay
+                      daysActive={daysActive}
+                      onShare={onShare}
+                      index={index}
+                    />
+                  </ImageCarouselItem>
+                );
+              })}
+            </ScrollView>
 
-          <PaginationDots
-            totalImages={images.length}
-            currentIndex={currentIndex}
-            hasBottomOverlay={!!(daysActive || onShare)}
-          />
-        </View>
-      ) : (
-        <EmptyImagePlaceholder />
-      )}
-    </View>
+            <PaginationDots
+              totalImages={images.length}
+              currentIndex={currentIndex}
+              hasBottomOverlay={!!(daysActive || onShare)}
+            />
+          </View>
+        ) : (
+          <EmptyImagePlaceholder />
+        )}
+      </View>
+
+      <FullScreenImageViewer
+        visible={isFullScreenVisible}
+        onClose={handleCloseFullScreen}
+        imageSources={images}
+        initialIndex={currentIndex}
+      />
+    </>
   );
 };
 

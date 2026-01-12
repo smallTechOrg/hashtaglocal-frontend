@@ -109,40 +109,30 @@ const IssueDetailScreen = () => {
                     Rank <CustomText className="font-bold h2">#{issue.rank}</CustomText>
                 </CustomText>
                 <View className="flex-row items-center">
-                    <View className="items-end mr-2">
-                        <CustomText className="h2 font-bold">{issue.vote_count}</CustomText>
-                        <CustomText className=" h3">upvotes</CustomText>
+                    <View className="items-end">
+                        <CustomText className="h2 font-bold">{issue.vote_count} <CustomText className=" h3">upvotes</CustomText></CustomText>
+                       
                     </View>
-                    <MaterialIcons name="star" size={36} color="#FFB800" />
+                    <MaterialIcons name="star" size={40} color="#FFB800" />
                 </View>
             </View>
 
-            {/* Map + Description */}
-            <View className="flex-row py-4">
-                <View className="w-1/2 pr-2 items-center">
-                    {/* Map */}
-                    <View className="h-32 w-full">
-                        <Image
-                            source={require("../assets/map.png")}
-                            className="h-full w-full rounded-lg"
-                        />
-                    </View>
+
+            <View className="flex-row justify-between">
+            
+                   
                     {/* Verified */}
-                    <CustomText className="mt-3 p text-gray-700">
+                    <CustomText className=" p text-gray-700">
                         Verified by{" "}
                         <CustomText className="font-bold text-black h2">{issue.verify_count}</CustomText>{" "}
                         locals
                     </CustomText>
-                </View>
-                <View className="w-1/2 pl-2 items-center">
-                    {/* Description */}
-                    <CustomText className="text-gray-700 p leading-5 text-center">
-                        {issue.description}
-                    </CustomText>
-                    <TouchableOpacity className="mt-4 bg-[#82C458] px-2 py-2 rounded-xl active:opacity-80">
+             
+                 
+                    <TouchableOpacity className=" bg-[#82C458] px-2 py-2 rounded-xl active:opacity-80">
                         <CustomText className="text-white">Update Issue</CustomText>
                     </TouchableOpacity>
-                </View>
+                
             </View>
         </ScrollView>
     );
