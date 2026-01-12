@@ -116,24 +116,6 @@ const IssueDetailScreen = () => {
                     <MaterialIcons name="star" size={40} color="#FFB800" />
                 </View>
             </View>
-
-
-            <View className="flex-row justify-between">
-            
-                   
-                    {/* Verified */}
-                    <CustomText className=" p text-gray-700">
-                        Verified by{" "}
-                        <CustomText className="font-bold text-black h2">{issue.verify_count}</CustomText>{" "}
-                        locals
-                    </CustomText>
-             
-                 
-                    <TouchableOpacity className=" bg-[#82C458] px-2 py-2 rounded-xl active:opacity-80">
-                        <CustomText className="text-white">Update Issue</CustomText>
-                    </TouchableOpacity>
-                
-            </View>
         </ScrollView>
     );
 };
