@@ -51,6 +51,18 @@ export default function RootLayout() {
           ),
         })}
       />
+      <Drawer.Screen
+        name="issueDetail"
+        options={({ navigation }) => ({
+          title: "Issue Detail", // Will be dynamically updated by the screen component
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: (props) => (
+            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+          ),
+        })}
+      />
     </Drawer>
   );
 }
