@@ -156,15 +156,7 @@ export default function CameraCapture() {
         style={{ flex: 1 }}
         facing="back"
       >
-        {/* Top overlay with location info */}
-        <View className="absolute top-0 left-0 right-0 p-4 bg-black/50">
-          <View className="flex-row items-center">
-            <MaterialIcons name="location-on" size={20} color="white" />
-            <CustomText className="text-white ml-2 flex-1" numberOfLines={1}>
-              {address || "Fetching location..."}
-            </CustomText>
-          </View>
-        </View>
+       
 
         {/* Bottom capture button */}
         <View className="absolute bottom-0 left-0 right-0 pb-10 items-center bg-black/50">
