@@ -51,16 +51,50 @@ export default function RootLayout() {
           ),
         })}
       />
+      
       <Drawer.Screen
-        name="issueDetail"
+        name="CreateIssue"
         options={({ navigation }) => ({
-          title: "Issue Detail", // Will be dynamically updated by the screen component
+          title: "Create Page",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: (props) => (
             <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
           ),
+        })}
+      />
+      <Drawer.Screen
+        name="issueDetail"
+        options={({ navigation }) => ({
+          title: "Issue Detail",
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: (props) => (
+            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+          ),
+        })}
+      />
+      <Drawer.Screen
+        name="CameraCapture"
+        options={{
+          title: "Capture Issue",
+          headerShown: false,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="IssueForm"
+        options={({ navigation }) => ({
+          title: "Report Issue",
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: (props) => (
+            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+          ),
+          drawerItemStyle: { display: "none" },
         })}
       />
     </Drawer>

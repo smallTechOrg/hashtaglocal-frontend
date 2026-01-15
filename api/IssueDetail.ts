@@ -9,7 +9,29 @@ import { APIResponse } from '@/models/APIResponse';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL
 const API_ENDPOINTS = {
   ISSUE: (id: number) => `/api/v1/issue/${id}`,
+  CREATE_ISSUE: '/issue',
 } as const;
+
+export interface CreateIssuePayload {
+  issue: {
+    type: string;
+    location: {
+      lat: string;
+      lng: string;
+    };
+    media_urls: Array<{
+      location: Record<string, unknown>;
+      type: string;
+      url: string;
+    }>;
+  };
+}
+
+export interface CreateIssueResponse {
+  data: {
+    issue_id: number;
+  };
+}
 
 const TIME_OUT = 10000; // 10 second timeout
 export async function fetchIssue(issueId: number): Promise<APIResponse> {
@@ -65,3 +87,49 @@ export async function fetchIssue(issueId: number): Promise<APIResponse> {
   }
 }
 
+export async function createIssue(payload: CreateIssuePayload): Promise<CreateIssueResponse> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.CREATE_ISSUE}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API] HTTP error ${response.status}:`, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const data: CreateIssueResponse = await response.json();
+    console.log(`[API] Successfully created issue, ID: ${data.data.issue_id}`);
+    return data;
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('[API] Request timeout after 10 seconds');
+      throw new Error('Request timeout. Please check if the backend is running and accessible.');
+    }
+
+    if (error.message?.includes('Network request failed')) {
+      console.error('[API] Network request failed while creating issue');
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+        `Please ensure your backend is running and the URL is correct.`
+      );
+    }
+
+    console.error('[API] Error creating issue:', error);
+    throw error;
+  }
+}
