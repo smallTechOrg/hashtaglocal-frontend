@@ -156,8 +156,6 @@ export default function CameraCapture() {
         style={{ flex: 1 }}
         facing="back"
       >
-       
-
         {/* Bottom capture button */}
         <View className="absolute bottom-0 left-0 right-0 pb-10 items-center bg-black/50">
           <TouchableOpacity

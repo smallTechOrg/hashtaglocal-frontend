@@ -1,5 +1,8 @@
 import { createIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
+import TopOverlay from "@/components/IssueImage/TopOverlay";
+import { formatDate } from "@/utils/FormatDate";
+import { formatLocationString } from "@/utils/ImageProcessing";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,10 +19,8 @@ const ISSUE_TYPES = [
   { id: "pothole", label: "Pothole", icon: "warning" },
   { id: "garbage", label: "Garbage", icon: "delete" },
   { id: "sewer", label: "Sewer/Drainage", icon: "water-damage" },
-  { id: "streetlight", label: "Street Light", icon: "lightbulb" },
+
   { id: "road_damage", label: "Road Damage", icon: "trending-down" },
-  { id: "water_leak", label: "Water Leak", icon: "opacity" },
-  { id: "other", label: "Other", icon: "more-horiz" },
 ] as const;
 
 type IssueType = (typeof ISSUE_TYPES)[number]["id"];
@@ -39,23 +40,15 @@ export default function IssueForm() {
 
   const { imageUri, latitude, longitude, address, timestamp } = params;
 
-  const formattedDate = timestamp
-    ? new Date(timestamp).toLocaleDateString("en-US", {
-        weekday: "short",
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : "";
-
-  const formattedTime = timestamp
-    ? new Date(timestamp).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-
   const selectedTypeLabel = ISSUE_TYPES.find((t) => t.id === selectedType)?.label;
+
+  //  utility function for formatting
+  const locationString = formatLocationString({
+    address: address || "",
+    lat: latitude || "N/A",
+    lng: longitude || "N/A",
+  });
+  const timestampString = formatDate(timestamp || "");
 
   const handleSubmit = async () => {
     if (!selectedType) return;
@@ -98,51 +91,31 @@ export default function IssueForm() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white">
+    <ScrollView className="flex-1 bg-white px-2">
       {/* Image Preview Section */}
-      <View className="relative">
+      <View className="relative ">
         <Image
           source={{ uri: imageUri }}
           style={{ width: "100%", height: 300 }}
           contentFit="cover"
         />
-
-        {/* Location & Time Overlay */}
-        <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/60">
-          <View className="flex-row items-center mb-2">
-            <MaterialIcons name="location-on" size={18} color="white" />
-            <CustomText className="text-white ml-2 flex-1" numberOfLines={2}>
-              {address || "Location not available"}
-            </CustomText>
-          </View>
-          <View className="flex-row items-center">
-            <MaterialIcons name="access-time" size={18} color="white" />
-            <CustomText className="text-white ml-2">
-              {formattedDate} at {formattedTime}
-            </CustomText>
-          </View>
-        </View>
-      </View>
-
-      {/* Coordinates Display */}
-      <View className="px-4 py-3 bg-gray-100 flex-row items-center">
-        <MaterialIcons name="gps-fixed" size={18} color="#666" />
-        <CustomText className="text-gray-600 ml-2 text-sm">
-          {latitude ? `${parseFloat(latitude).toFixed(6)}` : "N/A"},{" "}
-          {longitude ? `${parseFloat(longitude).toFixed(6)}` : "N/A"}
-        </CustomText>
+        <TopOverlay
+          location={locationString}
+          timestamp={timestampString}
+          index={0}
+        />
       </View>
 
       {/* Form Section */}
-      <View className="p-4">
-        <CustomText className="h2 font-bold mb-4">Issue Details</CustomText>
+      <View>
+       
 
         {/* Issue Type Dropdown */}
-        <View className="mb-6">
-          <CustomText className="h3 mb-2 text-gray-700">Type of Issue *</CustomText>
+        <View className="my-4 flex-row justify-between   ">
+          <CustomText className="h3 item-center justify-center py-4">Type of Issue </CustomText>
           <TouchableOpacity
             onPress={() => setDropdownVisible(true)}
-            className="flex-row items-center justify-between border border-gray-300 rounded-lg p-4 bg-white"
+            className="flex-row items-center justify-between border border-gray-300 rounded-lg  "
           >
             <View className="flex-row items-center">
               {selectedType && (
@@ -167,7 +140,7 @@ export default function IssueForm() {
           onPress={handleSubmit}
           disabled={!selectedType || isSubmitting}
           className={`py-4 rounded-lg items-center ${
-            selectedType ? "bg-primary" : "bg-gray-300"
+            selectedType ? "bg-green-400" : "bg-gray-300"
           }`}
         >
           <View className="flex-row items-center">
