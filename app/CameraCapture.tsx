@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, TouchableOpacity, View } from "react-native";
 
 interface CapturedData {
   imageUri: string;
@@ -24,29 +24,40 @@ export default function CameraCapture() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === "granted");
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        setLocationPermission(status === "granted");
 
-      if (status === "granted") {
-        const currentLocation = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setLocation(currentLocation);
+        if (status === "granted") {
+        
+          const currentLocation = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+          setLocation(currentLocation);
 
-        // Get address from coordinates
-        const [addressResult] = await Location.reverseGeocodeAsync({
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-        });
+          // Get address from coordinates
+          try {
+            const [addressResult] = await Location.reverseGeocodeAsync({
+              latitude: currentLocation.coords.latitude,
+              longitude: currentLocation.coords.longitude,
+            });
 
-        if (addressResult) {
-          const addressParts = [
-            addressResult.street,
-            addressResult.city,
-            addressResult.region,
-          ].filter(Boolean);
-          setAddress(addressParts.join(", "));
+            if (addressResult) {
+              const addressParts = [
+                addressResult.street,
+                addressResult.city,
+                addressResult.region,
+              ].filter(Boolean);
+              setAddress(addressParts.join(", "));
+            }
+          } catch {
+            // Reverse geocoding failed, continue without address
+            console.log("Reverse geocoding failed");
+          }
         }
+      } catch (error) {
+        console.error("Location error:", error);
+        setLocationPermission(false);
       }
     })();
   }, []);
@@ -120,6 +131,40 @@ export default function CameraCapture() {
 
   // Location permission not granted
   if (!locationPermission) {
+    const handleLocationPermission = async () => {
+      // First check current permission status
+      const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
+
+      if (currentStatus === "denied") {
+        // Permission was denied before, need to open settings on iOS
+        Alert.alert(
+          "Location Permission Required",
+          "Location access was denied. Please enable it in Settings to continue.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      // Request permission (will show dialog if not yet asked)
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermission(status === "granted");
+
+      if (status === "granted") {
+        // Fetch location after permission granted
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          setLocation(currentLocation);
+        } catch (error) {
+          console.error("Error getting location:", error);
+        }
+      }
+    };
+
     return (
       <View className="flex-1 justify-center items-center bg-black px-6">
         <MaterialIcons name="location-off" size={64} color="#6200EE" />
@@ -127,10 +172,7 @@ export default function CameraCapture() {
           Location access is required to tag the issue location
         </CustomText>
         <TouchableOpacity
-          onPress={async () => {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            setLocationPermission(status === "granted");
-          }}
+          onPress={handleLocationPermission}
           className="mt-6 bg-primary px-8 py-3 rounded-lg"
         >
           <CustomText className="text-white font-semibold">Grant Permission</CustomText>
