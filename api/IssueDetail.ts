@@ -9,10 +9,10 @@ import { APIResponse } from '@/models/APIResponse';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL
 const API_ENDPOINTS = {
   ISSUE: (id: number) => `/api/v1/issue/${id}`,
-  CREATE_ISSUE: '/issue',
+  REPORT_ISSUE: '/issue',
 } as const;
 
-export interface CreateIssuePayload {
+export interface ReportIssuePayload {
   issue: {
     type: string;
     location: {
@@ -27,7 +27,7 @@ export interface CreateIssuePayload {
   };
 }
 
-export interface CreateIssueResponse {
+export interface ReportIssueResponse {
   data: {
     issue_id: number;
   };
@@ -87,8 +87,8 @@ export async function fetchIssue(issueId: number): Promise<APIResponse> {
   }
 }
 
-export async function createIssue(payload: CreateIssuePayload): Promise<CreateIssueResponse> {
-  const url = `${API_BASE_URL}${API_ENDPOINTS.CREATE_ISSUE}`;
+export async function reportIssue(payload: ReportIssuePayload): Promise<ReportIssueResponse> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.REPORT_ISSUE}`;
 
   try {
     const controller = new AbortController();
@@ -112,8 +112,8 @@ export async function createIssue(payload: CreateIssuePayload): Promise<CreateIs
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
-    const data: CreateIssueResponse = await response.json();
-    console.log(`[API] Successfully created issue, ID: ${data.data.issue_id}`);
+    const data: ReportIssueResponse = await response.json();
+    console.log(`[API] Successfully reported issue, ID: ${data.data.issue_id}`);
     return data;
   } catch (error: any) {
     if (error.name === 'AbortError') {

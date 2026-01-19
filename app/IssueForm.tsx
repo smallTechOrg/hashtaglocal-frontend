@@ -1,4 +1,4 @@
-import { createIssue } from "@/api/IssueDetail";
+import { reportIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import TopOverlay from "@/components/IssueImage/TopOverlay";
 import { formatDate } from "@/utils/FormatDate";
@@ -73,7 +73,7 @@ export default function IssueForm() {
         },
       };
 
-      const response = await createIssue(payload);
+      const response = await reportIssue(payload);
 
       // Navigate to issue detail with the returned issue_id
       router.push({
