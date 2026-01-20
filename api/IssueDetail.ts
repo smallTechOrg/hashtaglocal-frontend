@@ -10,13 +10,15 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL
 const API_ENDPOINTS = {
   ISSUE: (id: number) => `/api/v1/issue/${id}`,
   CREATE_ISSUE: '/issue',
-  SIGNED_URL: '/api/v1/media/signed-url',
+  UPLOAD_URL: '/api/v1/media/upload-url',
 } as const;
 
 export interface SignedUrlResponse {
   data: {
-    signedUrl: string;
-    path: string;
+    media_url: {
+      signed_url: string;
+      path: string;
+    };
   };
 }
 
@@ -148,7 +150,7 @@ export async function createIssue(payload: CreateIssuePayload): Promise<CreateIs
  * @returns Promise resolving to signed URL and GCS path
  */
 export async function getSignedUploadUrl(contentType: string): Promise<SignedUrlResponse> {
-  const url = `${API_BASE_URL}${API_ENDPOINTS.SIGNED_URL}?content_type=${encodeURIComponent(contentType)}`;
+  const url = `${API_BASE_URL}${API_ENDPOINTS.UPLOAD_URL}?content_type=${encodeURIComponent(contentType)}`;
 
   try {
     const controller = new AbortController();
@@ -255,8 +257,8 @@ export async function uploadImage(
   const { data } = await getSignedUploadUrl(contentType);
 
   // Step 2: Upload image to GCP using signed URL
-  await uploadImageToGCP(data.signedUrl, imageUri, contentType);
+  await uploadImageToGCP(data.media_url.signed_url, imageUri, contentType);
 
   // Step 3: Return the GCS path for storage
-  return data.path;
+  return data.media_url.path;
 }
