@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { View } from 'react-native';
 import CustomText from '../CustomText';
-
+import '../../global.css'
 interface TopOverlayProps {
   location?: string;
   timestamp?: string;
@@ -22,8 +22,8 @@ const TopOverlay: React.FC<TopOverlayProps> = ({ location, timestamp, index }) =
         {location && (
           <CustomText
             testID={index === 0 ? "issue-location" : undefined}
-            className="text-[10px] font-regular"
-            numberOfLines={1}
+            className="text-[10px] "
+            numberOfLines={2}
           >
             {location}
           </CustomText>
@@ -31,7 +31,7 @@ const TopOverlay: React.FC<TopOverlayProps> = ({ location, timestamp, index }) =
         {timestamp && (
           <CustomText
             testID={index === 0 ? "issue-timestamp" : undefined}
-            className="text-[9px] text-gray-700 mt-0.5"
+            className="text-[10px] mt-0.5"
           >
             {timestamp}
           </CustomText>
