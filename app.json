@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "frontend-boilerplate-mobile",
-    "slug": "frontend-boilerplate-mobile",
+    "name": "hashtaglocal-frontend",
+    "slug": "hashtaglocal-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontendboilerplatemobile",
+    "scheme": "hashtaglocalfrontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
