@@ -4,7 +4,7 @@ import { View } from "react-native";
 export default function About() {
   return (
     <View   >
-      <CustomText> About boilerplate</CustomText>
+      <CustomText> About #local</CustomText>
     </View>
   );
 }

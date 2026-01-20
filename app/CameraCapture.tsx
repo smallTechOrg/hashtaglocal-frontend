@@ -1,3 +1,4 @@
+import { uploadImage } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -74,6 +75,10 @@ export default function CameraCapture() {
       });
 
       if (photo && location) {
+        // Upload image to GCP
+        const gcsPath = await uploadImage(photo.uri, "image/jpeg");
+        console.log("Image uploaded to GCP:", gcsPath);
+
         const capturedData: CapturedData = {
           imageUri: photo.uri,
           latitude: location.coords.latitude,
@@ -82,11 +87,12 @@ export default function CameraCapture() {
           timestamp: new Date(),
         };
 
-        // Navigate to IssueForm with captured data
+        // Navigate to IssueForm with captured data and GCS path
         router.push({
           pathname: "/IssueForm",
           params: {
             imageUri: capturedData.imageUri,
+            gcsPath: gcsPath,
             latitude: capturedData.latitude.toString(),
             longitude: capturedData.longitude.toString(),
             address: capturedData.address,
@@ -95,7 +101,11 @@ export default function CameraCapture() {
         });
       }
     } catch (error) {
-      console.error("Error capturing photo:", error);
+      console.error("Error capturing/uploading photo:", error);
+      Alert.alert(
+        "Upload Failed",
+        "Failed to upload the image. Please try again."
+      );
     } finally {
       setIsCapturing(false);
     }
