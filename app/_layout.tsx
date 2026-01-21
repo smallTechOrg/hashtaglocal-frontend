@@ -2,14 +2,26 @@
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
 
+// Prevent auto-hiding splash screen
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     "Nunito-Regular": require("../assets/fonts/Nunito-Regular.ttf"),
   });
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      // Hide splash screen once fonts are loaded (or failed)
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Allow app to proceed even if fonts fail to load
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
