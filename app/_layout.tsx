@@ -1,4 +1,5 @@
 // app/_layout.tsx
+import "@/global.css";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";

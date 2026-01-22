@@ -123,6 +123,21 @@ export default function CameraCapture() {
 
   // Camera permission not granted
   if (!permission.granted) {
+    const handleCameraPermission = async () => {
+      if (permission.canAskAgain) {
+        await requestPermission();
+      } else {
+        Alert.alert(
+          "Camera Permission Required",
+          "Camera access was denied. Please enable it in Settings to continue.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
+      }
+    };
+
     return (
       <View className="flex-1 justify-center items-center bg-black px-6">
         <MaterialIcons name="camera-alt" size={64} color="#6200EE" />
@@ -130,7 +145,7 @@ export default function CameraCapture() {
           Camera access is required to report issues
         </CustomText>
         <TouchableOpacity
-          onPress={requestPermission}
+          onPress={handleCameraPermission}
           className="mt-6 bg-primary px-8 py-3 rounded-lg"
         >
           <CustomText className="text-white font-semibold">Grant Permission</CustomText>
