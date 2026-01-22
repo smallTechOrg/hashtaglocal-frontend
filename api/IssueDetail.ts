@@ -1,16 +1,15 @@
-import { APIResponse } from '@/models/APIResponse';
-
+import { APIResponse } from "@/models/APIResponse";
 
 /**
  * Fetches issue data from the backend API
  * @param issueId - The ID of the issue to fetch
  * @returns Promise resolving to the API response
  */
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const API_ENDPOINTS = {
   ISSUE: (id: number) => `/api/v1/issue/${id}`,
-  CREATE_ISSUE: '/issue',
-  UPLOAD_URL: '/api/v1/media/upload-url',
+  REPORT_ISSUE: "/api/v1/issue",
+  UPLOAD_URL: "/api/v1/media/upload-url",
 } as const;
 
 export interface SignedUrlResponse {
@@ -22,18 +21,39 @@ export interface SignedUrlResponse {
   };
 }
 
+export interface LocationMetaData {
+  city: string | null;
+  district: string | null;
+  street_number: string | null;
+  street: string | null;
+  region: string | null;
+  sub_region: string | null;
+  country: string | null;
+  postal_code: string | null;
+  name: string | null;
+  iso_country_code: string | null;
+  timezone: string | null;
+  formatted_address: string | null;
+}
+
 export interface ReportIssuePayload {
   issue: {
     type: string;
     location: {
       lat: string;
       lng: string;
+      meta_data: LocationMetaData;
     };
-    media_urls: Array<{
-      location: Record<string, unknown>;
+    media_urls: {
+      location: {
+        lat: string;
+        lng: string;
+        meta_data: LocationMetaData;
+      };
       type: string;
       url: string;
-    }>;
+    }[];
+    description: string;
   };
 }
 
@@ -46,16 +66,16 @@ export interface ReportIssueResponse {
 const TIME_OUT = 10000; // 10 second timeout
 export async function fetchIssue(issueId: number): Promise<APIResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
-  
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT); 
+    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
       signal: controller.signal,
     });
@@ -72,32 +92,36 @@ export async function fetchIssue(issueId: number): Promise<APIResponse> {
     console.log(`[API] Successfully fetched issue ${issueId}`);
     return data;
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error('[API] Request timeout after 10 seconds');
-      throw new Error('Request timeout. Please check if the backend is running and accessible.');
-    }
-    
-    if (error.message?.includes('Network request failed')) {
-      console.error('[API] Network request failed. Possible causes:');
-      console.error('  1. Backend server is not running');
-      console.error('  2. Incorrect API URL (check config/api.ts)');
-      console.error('  3. CORS issues (if testing on web)');
-      console.error('  4. Network connectivity issues');
-      console.error(`  Current URL: ${url}`);
-    
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout after 10 seconds");
       throw new Error(
-        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
-        `Please ensure your backend is running and the URL is correct. ` +
-        `Check the console for more details.`
+        "Request timeout. Please check if the backend is running and accessible.",
       );
     }
-    
-    console.error('[API] Error fetching issue:', error);
+
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed. Possible causes:");
+      console.error("  1. Backend server is not running");
+      console.error("  2. Incorrect API URL (check config/api.ts)");
+      console.error("  3. CORS issues (if testing on web)");
+      console.error("  4. Network connectivity issues");
+      console.error(`  Current URL: ${url}`);
+
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct. ` +
+          `Check the console for more details.`,
+      );
+    }
+
+    console.error("[API] Error fetching issue:", error);
     throw error;
   }
 }
 
-export async function reportIssue(payload: ReportIssuePayload): Promise<ReportIssueResponse> {
+export async function reportIssue(
+  payload: ReportIssuePayload,
+): Promise<ReportIssueResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.REPORT_ISSUE}`;
 
   try {
@@ -105,10 +129,10 @@ export async function reportIssue(payload: ReportIssuePayload): Promise<ReportIs
     const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -122,24 +146,34 @@ export async function reportIssue(payload: ReportIssuePayload): Promise<ReportIs
       throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
-    const data: ReportIssueResponse = await response.json();
+    const responseText = await response.text();
+
+    if (!responseText) {
+      console.error("[API] Empty response body from server");
+      throw new Error("Server returned an empty response");
+    }
+
+    const data: ReportIssueResponse = JSON.parse(responseText);
     console.log(`[API] Successfully reported issue, ID: ${data.data.issue_id}`);
     return data;
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error('[API] Request timeout after 10 seconds');
-      throw new Error('Request timeout. Please check if the backend is running and accessible.');
-    }
-
-    if (error.message?.includes('Network request failed')) {
-      console.error('[API] Network request failed while creating issue');
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout after 10 seconds");
       throw new Error(
-        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
-        `Please ensure your backend is running and the URL is correct.`
+        "Request timeout. Please check if the backend is running and accessible.",
       );
     }
 
-    console.error('[API] Error creating issue:', error);
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed while creating issue");
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct.`,
+      );
+    }
+
+    console.error("[API] Error creating issue:", error);
+    console.log(error.stack, "error stack");
     throw error;
   }
 }
@@ -149,7 +183,9 @@ export async function reportIssue(payload: ReportIssuePayload): Promise<ReportIs
  * @param contentType - MIME type of the file (e.g., 'image/jpeg', 'image/png')
  * @returns Promise resolving to signed URL and GCS path
  */
-export async function getSignedUploadUrl(contentType: string): Promise<SignedUrlResponse> {
+export async function getSignedUploadUrl(
+  contentType: string,
+): Promise<SignedUrlResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.UPLOAD_URL}?content_type=${encodeURIComponent(contentType)}`;
 
   try {
@@ -157,9 +193,9 @@ export async function getSignedUploadUrl(contentType: string): Promise<SignedUrl
     const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
+        Accept: "application/json",
       },
       signal: controller.signal,
     });
@@ -173,23 +209,25 @@ export async function getSignedUploadUrl(contentType: string): Promise<SignedUrl
     }
 
     const data: SignedUrlResponse = await response.json();
-    console.log('[API] Successfully obtained signed URL');
+    console.log("[API] Successfully obtained signed URL");
     return data;
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error('[API] Request timeout while getting signed URL');
-      throw new Error('Request timeout. Please check if the backend is running and accessible.');
-    }
-
-    if (error.message?.includes('Network request failed')) {
-      console.error('[API] Network request failed while getting signed URL');
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout while getting signed URL");
       throw new Error(
-        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
-        `Please ensure your backend is running and the URL is correct.`
+        "Request timeout. Please check if the backend is running and accessible.",
       );
     }
 
-    console.error('[API] Error getting signed URL:', error);
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed while getting signed URL");
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct.`,
+      );
+    }
+
+    console.error("[API] Error getting signed URL:", error);
     throw error;
   }
 }
@@ -204,7 +242,7 @@ export async function getSignedUploadUrl(contentType: string): Promise<SignedUrl
 export async function uploadImageToGCP(
   signedUrl: string,
   imageUri: string,
-  contentType: string
+  contentType: string,
 ): Promise<void> {
   try {
     // Fetch the image as a blob from local URI
@@ -215,9 +253,9 @@ export async function uploadImageToGCP(
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for uploads
 
     const response = await fetch(signedUrl, {
-      method: 'PUT',
+      method: "PUT",
       headers: {
-        'Content-Type': contentType,
+        "Content-Type": contentType,
       },
       body: blob,
       signal: controller.signal,
@@ -231,14 +269,16 @@ export async function uploadImageToGCP(
       throw new Error(`Upload failed! status: ${response.status}`);
     }
 
-    console.log('[GCP] Image uploaded successfully');
+    console.log("[GCP] Image uploaded successfully");
   } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.error('[GCP] Upload timeout after 60 seconds');
-      throw new Error('Upload timeout. Please try again with a stable connection.');
+    if (error.name === "AbortError") {
+      console.error("[GCP] Upload timeout after 60 seconds");
+      throw new Error(
+        "Upload timeout. Please try again with a stable connection.",
+      );
     }
 
-    console.error('[GCP] Error uploading image:', error);
+    console.error("[GCP] Error uploading image:", error);
     throw error;
   }
 }
@@ -251,7 +291,7 @@ export async function uploadImageToGCP(
  */
 export async function uploadImage(
   imageUri: string,
-  contentType: string = 'image/jpeg'
+  contentType: string = "image/jpeg",
 ): Promise<string> {
   // Step 1: Get signed URL from backend
   const { data } = await getSignedUploadUrl(contentType);
