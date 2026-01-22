@@ -16,10 +16,9 @@ import {
 } from "react-native";
 
 const ISSUE_TYPES = [
-  { id: "pothole", label: "Pothole", icon: "warning" },
-  { id: "garbage", label: "Garbage", icon: "delete" },
+  { id: "POTHOLE", label: "Pothole", icon: "warning" },
+  { id: "Garbage", label: "Garbage", icon: "delete" },
   { id: "sewer", label: "Sewer/Drainage", icon: "water-damage" },
-
   { id: "road_damage", label: "Road Damage", icon: "trending-down" },
 ] as const;
 
@@ -62,14 +61,46 @@ export default function IssueForm() {
           location: {
             lat: latitude || "0",
             lng: longitude || "0",
+            meta_data: {
+              city: null,
+              district: null,
+              street_number: null,
+              street: null,
+              region: null,
+              sub_region: null,
+              country: null,
+              postal_code: null,
+              name: null,
+              iso_country_code: null,
+              timezone: null,
+              formatted_address: null,
+            }
           },
           media_urls: [
             {
-              location: {},
-              type: "photo",
+              location: {
+                lat: latitude || "0",
+                lng: longitude || "0",
+                meta_data: {
+                  city: null,
+                  district: null,
+                  street_number: null,
+                  street: null,
+                  region: null,
+                  sub_region: null,
+                  country: null,
+                  postal_code: null,
+                  name: null,
+                  iso_country_code: null,
+                  timezone: null,
+                  formatted_address: null,
+                }
+              },
+              type: "PHOTO",
               url: imageUri || "",
             },
           ],
+          description: "",
         },
       };
 
