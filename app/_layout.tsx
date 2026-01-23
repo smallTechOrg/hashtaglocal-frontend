@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { Image } from "react-native";
 
 // Prevent auto-hiding splash screen
 SplashScreen.preventAutoHideAsync();
@@ -39,10 +40,17 @@ export default function RootLayout() {
       <Drawer.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "#local",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
+          headerRight: () => (
+            <Image
+              source={require("../assets/logo-green.png")}
+              style={{ width: 32, height: 40, marginRight: 16 }}
+              resizeMode="contain"
+            />
+          ),
         }}
       />
        <Drawer.Screen
@@ -62,6 +70,7 @@ export default function RootLayout() {
           headerLeft: (props) => (
             <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
           ),
+          drawerItemStyle: { display: "none" },
         })}
       />
       
@@ -87,6 +96,7 @@ export default function RootLayout() {
           headerLeft: (props) => (
             <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
           ),
+          drawerItemStyle: { display: "none" },
         })}
       />
       <Drawer.Screen

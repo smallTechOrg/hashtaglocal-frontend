@@ -103,19 +103,6 @@ const IssueDetailScreen = () => {
                 className="self-center mt-4 h-64"
             />
 
-            {/* Stats Bar */}
-            <View className="flex-row justify-between items-center py-2 ">
-                <CustomText className="h3 ">
-                    Rank <CustomText className="font-bold h2">#{issue.rank}</CustomText>
-                </CustomText>
-                <View className="flex-row items-center">
-                    <View className="items-end">
-                        <CustomText className="h2 font-bold">{issue.vote_count} <CustomText className=" h3">upvotes</CustomText></CustomText>
-                       
-                    </View>
-                    <MaterialIcons name="star" size={40} color="#FFB800" />
-                </View>
-            </View>
         </ScrollView>
     );
 };
