@@ -13,14 +13,14 @@ export default function Index() {
         <View className="flex-row items-start mb-3">
           <MaterialIcons name="check-circle" size={20} color="#256D1B" />
           <CustomText className="ml-3 flex-1 text-gray-700">
-            Issue image should be clear and visible
+            Please report only valid issues, like potholes, garbage dumps, or broken footpaths.
           </CustomText>
         </View>
 
         <View className="flex-row items-start mb-3">
           <MaterialIcons name="cancel" size={20} color="#ef4444" />
           <CustomText className="ml-3 flex-1 text-gray-700">
-            No inappropriate content allowed
+            Any inappropriate content or misuse of the app will lead to a permanent ban.
           </CustomText>
         </View>
       </View>
@@ -32,7 +32,7 @@ export default function Index() {
       >
         <MaterialIcons name="camera-alt" size={28} color="white" />
         <CustomText className="ml-3 text-white text-lg font-bold">
-          Create Issue
+          Report Issue
         </CustomText>
       </TouchableOpacity>
     </View>
