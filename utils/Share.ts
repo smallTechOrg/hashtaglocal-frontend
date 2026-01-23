@@ -3,7 +3,7 @@ import { Share } from 'react-native';
 
 export const handleShare = async () => {
     try {
-        const shareUrl = `https://smalltech.in`;
+        const shareUrl = `https://local.smalltech.in/`;
         const shareMessage = `Check our website: ${shareUrl}`;
 
         const result = await Share.share({

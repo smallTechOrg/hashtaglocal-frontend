@@ -40,7 +40,6 @@ export default function Index(): JSX.Element {
   return (
     <Tab.Navigator screenOptions={screenOptions}>
       {tabScreen("Home", HomeScreen, "home")}
-      {tabScreen("Components", ExploreScreen, "explore")}
     </Tab.Navigator>
   );
 }

@@ -106,13 +106,20 @@ export default function IssueForm() {
 
       const response = await reportIssue(payload);
 
-      // Navigate to issue detail with the returned issue_id
-      router.push({
-        pathname: "/issueDetail",
-        params: {
-          id: response.data.issue_id.toString(),
+      // Show success message and navigate to issue detail
+      Alert.alert("Success", "Successfully reported issue", [
+        {
+          text: "OK",
+          onPress: () => {
+            router.push({
+              pathname: "/issueDetail",
+              params: {
+                id: response.data.issue_id.toString(),
+              },
+            });
+          },
         },
-      });
+      ]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to report issue";
       Alert.alert("Error", errorMessage);
@@ -171,7 +178,7 @@ export default function IssueForm() {
           onPress={handleSubmit}
           disabled={!selectedType || isSubmitting}
           className={`py-4 rounded-lg items-center ${
-            selectedType ? "bg-green-400" : "bg-gray-300"
+            selectedType ? "bg-[#256D1B]" : "bg-gray-300"
           }`}
         >
           <View className="flex-row items-center">
