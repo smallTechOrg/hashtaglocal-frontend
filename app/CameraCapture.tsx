@@ -20,6 +20,7 @@ export default function CameraCapture() {
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string>("");
+  const [addressDetails, setAddressDetails] = useState<Location.LocationGeocodedAddress | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
@@ -44,6 +45,7 @@ export default function CameraCapture() {
             });
 
             if (addressResult) {
+              setAddressDetails(addressResult);
               const addressParts = [
                 addressResult.street,
                 addressResult.city,
@@ -97,6 +99,7 @@ export default function CameraCapture() {
             longitude: capturedData.longitude.toString(),
             address: capturedData.address,
             timestamp: capturedData.timestamp.toISOString(),
+            addressDetails: addressDetails ? JSON.stringify(addressDetails) : undefined,
           },
         });
       }
