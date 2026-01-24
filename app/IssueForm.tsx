@@ -28,6 +28,7 @@ type IssueType = (typeof ISSUE_TYPES)[number]["id"];
 export default function IssueForm() {
   const params = useLocalSearchParams<{
     imageUri: string;
+    gcsPath: string;
     latitude: string;
     longitude: string;
     address: string;
@@ -38,7 +39,7 @@ export default function IssueForm() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { imageUri, latitude, longitude, address, timestamp } = params;
+  const { imageUri, gcsPath, latitude, longitude, address, timestamp } = params;
 
   const selectedTypeLabel = ISSUE_TYPES.find((t) => t.id === selectedType)?.label;
 
@@ -98,7 +99,7 @@ export default function IssueForm() {
                 }
               },
               type: "PHOTO",
-              url: imageUri || "",
+              url: gcsPath || "",
             },
           ],
           description: "",
