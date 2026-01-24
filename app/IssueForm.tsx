@@ -21,6 +21,7 @@ const ISSUE_TYPES = [
   { id: "FOOTPATH", label: "Footpaths/Walkability", icon: "water-damage" },
   { id: "SAFETY", label: "Safety/Crime", icon: "delete" },
   { id: "POLLUTION", label: "Pollution", icon: "warning" },
+  { id: "OTHER", label: "Others/Not Sure", icon: "warning" },
 ] as const;
 
 type IssueType = (typeof ISSUE_TYPES)[number]["id"];
@@ -33,15 +34,35 @@ export default function IssueForm() {
     longitude: string;
     address: string;
     timestamp: string;
+    addressDetails?: string;
   }>();
 
   const [selectedType, setSelectedType] = useState<IssueType | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { imageUri, gcsPath, latitude, longitude, address, timestamp } = params;
+  const { imageUri, gcsPath, latitude, longitude, address, timestamp, addressDetails } = params;
 
   const selectedTypeLabel = ISSUE_TYPES.find((t) => t.id === selectedType)?.label;
+
+  // Parse address details
+  const parsedAddressDetails = addressDetails ? JSON.parse(addressDetails) : null;
+  
+  // Build meta_data object from parsed address details
+  const locationMetaData = {
+    city: parsedAddressDetails?.city || null,
+    district: parsedAddressDetails?.district || parsedAddressDetails?.subregion || null,
+    street_number: parsedAddressDetails?.streetNumber || null,
+    street: parsedAddressDetails?.street || null,
+    region: parsedAddressDetails?.region || null,
+    sub_region: parsedAddressDetails?.subregion || null,
+    country: parsedAddressDetails?.country || null,
+    postal_code: parsedAddressDetails?.postalCode || null,
+    name: parsedAddressDetails?.name || null,
+    iso_country_code: parsedAddressDetails?.isoCountryCode || null,
+    timezone: parsedAddressDetails?.timezone || null,
+    formatted_address: address || null,
+  };
 
   //  utility function for formatting
   const locationString = formatLocationString({
@@ -63,40 +84,14 @@ export default function IssueForm() {
           location: {
             lat: latitude || "0",
             lng: longitude || "0",
-            meta_data: {
-              city: null,
-              district: null,
-              street_number: null,
-              street: null,
-              region: null,
-              sub_region: null,
-              country: null,
-              postal_code: null,
-              name: null,
-              iso_country_code: null,
-              timezone: null,
-              formatted_address: null,
-            }
+            meta_data: locationMetaData,
           },
           media_urls: [
             {
               location: {
                 lat: latitude || "0",
                 lng: longitude || "0",
-                meta_data: {
-                  city: null,
-                  district: null,
-                  street_number: null,
-                  street: null,
-                  region: null,
-                  sub_region: null,
-                  country: null,
-                  postal_code: null,
-                  name: null,
-                  iso_country_code: null,
-                  timezone: null,
-                  formatted_address: null,
-                }
+                meta_data: locationMetaData,
               },
               type: "PHOTO",
               url: gcsPath || "",
