@@ -16,11 +16,12 @@ import {
 } from "react-native";
 
 const ISSUE_TYPES = [
-  { id: "POTHOLE", label: "Potholes", icon: "warning" },
-  { id: "HYGIENE", label: "Garbage/Hygiene/Waste", icon: "delete" },
+  { id: "POTHOLE", label: "Potholes / Road Damage", icon: "warning" },
+  { id: "WASTE", label: "Waste/Garbage", icon: "delete" },
   { id: "FOOTPATH", label: "Footpaths/Walkability", icon: "water-damage" },
+  { id: "POLLUTION", label: "Pollution Air/Noise", icon: "warning" },
+  { id: "HYGIENE", label: "Hygiene/Bad Smell", icon: "warning" },
   { id: "SAFETY", label: "Safety/Crime", icon: "delete" },
-  { id: "POLLUTION", label: "Pollution", icon: "warning" },
   { id: "OTHER", label: "Others/Not Sure", icon: "warning" },
 ] as const;
 
