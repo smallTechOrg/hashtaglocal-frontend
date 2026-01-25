@@ -29,3 +29,10 @@ Example:
 `EXPO_PUBLIC_API_BASE_URL=http://192.168.1.6:8080`
 
 Re-start the app after you've made this change.
+
+
+### Build Instructions
+
+Ton run expo start on your local
+do npx expo login first.
+

@@ -16,13 +16,13 @@ import {
 } from "react-native";
 
 const ISSUE_TYPES = [
-  { id: "POTHOLE", label: "Potholes / Road Damage", icon: "warning" },
-  { id: "WASTE", label: "Waste/Garbage", icon: "delete" },
-  { id: "FOOTPATH", label: "Footpaths/Walkability", icon: "water-damage" },
-  { id: "POLLUTION", label: "Pollution Air/Noise", icon: "warning" },
-  { id: "HYGIENE", label: "Hygiene/Bad Smell", icon: "warning" },
-  { id: "SAFETY", label: "Safety/Crime", icon: "delete" },
-  { id: "OTHER", label: "Others/Not Sure", icon: "warning" },
+  { id: "POTHOLE", label: "Road Damage & Potholes", icon: "construction" },
+  { id: "WASTE", label: "Waste & Garbage Disposal", icon: "delete-outline" },
+  { id: "FOOTPATH", label: "Footpath & Walkability Issues", icon: "directions-walk" },
+  { id: "POLLUTION", label: "Air & Noise Pollution", icon: "air" },
+  { id: "HYGIENE", label: "Hygiene & Sanitation", icon: "cleaning-services" },
+  { id: "SAFETY", label: "Safety & Street Lighting", icon: "lightbulb-outline" },
+  { id: "OTHER", label: "Other Community Issues", icon: "help-outline" },
 ] as const;
 
 type IssueType = (typeof ISSUE_TYPES)[number]["id"];
@@ -38,7 +38,7 @@ export default function IssueForm() {
     addressDetails?: string;
   }>();
 
-  const [selectedType, setSelectedType] = useState<IssueType | null>(null);
+  const [selectedType, setSelectedType] = useState<IssueType | null>("OTHER");
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -151,14 +151,14 @@ export default function IssueForm() {
           <CustomText className="h3 item-center justify-center py-4">Type of Issue </CustomText>
           <TouchableOpacity
             onPress={() => setDropdownVisible(true)}
-            className="flex-row items-center justify-between border border-gray-300 rounded-lg  "
+            className="flex-row items-center justify-between border border-gray-300 rounded-lg px-4 py-3"
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1">
               {selectedType && (
                 <MaterialIcons
                   name={ISSUE_TYPES.find((t) => t.id === selectedType)?.icon as any}
                   size={24}
-                  color="#6200EE"
+                  color="#256D1B"
                 />
               )}
               <CustomText
@@ -227,10 +227,10 @@ export default function IssueForm() {
                   <MaterialIcons
                     name={type.icon as any}
                     size={24}
-                    color={selectedType === type.id ? "#6200EE" : "#666"}
+                    color={selectedType === type.id ? "#256D1B" : "#666"}
                   />
                   <CustomText
-                    className={`ml-3 ${
+                    className={`flex-1 ml-3 text-base ${
                       selectedType === type.id
                         ? "text-primary font-semibold"
                         : "text-gray-700"
@@ -242,8 +242,7 @@ export default function IssueForm() {
                     <MaterialIcons
                       name="check"
                       size={24}
-                      color="#6200EE"
-                      style={{ marginLeft: "auto" }}
+                      color="#256D1B"
                     />
                   )}
                 </TouchableOpacity>
