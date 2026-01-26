@@ -76,16 +76,44 @@ export default function CameraCapture() {
         base64: false,
       });
 
-      if (photo && location) {
+      if (photo) {
+        // Get fresh location for this photo
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        
+        let currentAddress = "";
+        let currentAddressDetails = null;
+        
+        // Get fresh address from coordinates
+        try {
+          const [addressResult] = await Location.reverseGeocodeAsync({
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+          });
+
+          if (addressResult) {
+            currentAddressDetails = addressResult;
+            const addressParts = [
+              addressResult.street,
+              addressResult.city,
+              addressResult.region,
+            ].filter(Boolean);
+            currentAddress = addressParts.join(", ");
+          }
+        } catch {
+          console.log("Reverse geocoding failed");
+        }
+
         // Upload image to GCP
         const gcsPath = await uploadImage(photo.uri, "image/jpeg");
         console.log("Image uploaded to GCP:", gcsPath);
 
         const capturedData: CapturedData = {
           imageUri: photo.uri,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          address: address,
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+          address: currentAddress,
           timestamp: new Date(),
         };
 
@@ -99,7 +127,7 @@ export default function CameraCapture() {
             longitude: capturedData.longitude.toString(),
             address: capturedData.address,
             timestamp: capturedData.timestamp.toISOString(),
-            addressDetails: addressDetails ? JSON.stringify(addressDetails) : undefined,
+            addressDetails: currentAddressDetails ? JSON.stringify(currentAddressDetails) : undefined,
           },
         });
       }
