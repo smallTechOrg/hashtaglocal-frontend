@@ -31,8 +31,16 @@ Example:
 Re-start the app after you've made this change.
 
 
-### Build Instructions
+## Build Instructions
 
-Ton run expo start on your local
-do npx expo login first.
+### Development Build
 
+ Android:
+
+ ```eas build --platform android --profile development```
+
+###  Preview Build
+
+ Android:
+
+```eas build --platform android --profile preview```
