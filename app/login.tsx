@@ -2,14 +2,17 @@ import { View, Text, Pressable, Image, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { googleAuth } from "@/api/auth";
 import { saveTokens } from "@/utils/tokenStorage";
+import { useGoogleAuth } from "@/api/GoogleAuth";
 
 export default function LoginScreen() {
   const router = useRouter();
+const { signIn } = useGoogleAuth();
 
-  const handleGoogleSignUp = async () => {
-      Linking.openURL(
-    'https://accounts.google.com/o/oauth2/v2/auth?client_id=870371939888-g2iuioplthius8qs7c82uc8o652qb8es.apps.googleusercontent.com&redirect_uri=com.googleusercontent.apps.870371939888-g2iuioplthius8qs7c82uc8o652qb8es:/oauth2redirect&response_type=code&scope=openid%20email%20profile'
-  );
+  // const handleGoogleSignUp = async () => {
+  //     Linking.openURL(
+  //   'https://accounts.google.com/o/oauth2/v2/auth?client_id=870371939888-g2iuioplthius8qs7c82uc8o652qb8es.apps.googleusercontent.com&redirect_uri=com.googleusercontent.apps.870371939888-g2iuioplthius8qs7c82uc8o652qb8es:/oauth2redirect&response_type=code&scope=openid%20email%20profile&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256'
+
+  // );
     // try {
     //   const response = await googleAuth();
     //   const { access_token, refresh_token } = response.data;
@@ -25,7 +28,7 @@ export default function LoginScreen() {
     // } catch (error) {
     //   console.log("Google Sign Up error:", error);
     // }
-  };
+  
 
   return (
     <View className="flex-1 bg-white items-center justify-center px-6">
@@ -41,7 +44,10 @@ export default function LoginScreen() {
       </Text>
 
       <Pressable
-        onPress={handleGoogleSignUp}
+         onPress={() => {
+    signIn(); // call your async function safely
+  }}
+
         className="flex-row items-center bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm"
         style={{ elevation: 2 }}
       >
