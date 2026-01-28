@@ -1,7 +1,7 @@
 import * as AuthSession from "expo-auth-session";
+import Constants from 'expo-constants';
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
-import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -13,7 +13,7 @@ const slug = Constants.expoConfig?.slug;
 console.log(owner,slug,"owner")
 
 export function useGoogleAuth() {
-    const redirectUri = 'https://auth.expo.dev/@madhyamakist/hashtaglocal-frontend'
+    const redirectUri = 'https://staging.api.smalltech.in/local/auth-handler.html';
 
     console.log("Redirect URI:", redirectUri);
 
