@@ -15,10 +15,9 @@ export interface RefreshTokenResponse {
   data: AuthTokens;
 }
 
-export interface GoogleAuthStartResponse {
-  data: {
-    state: string;
-    oauth_url: string;
+export interface GoogleAuthResponse {
+  data: AuthTokens & {
+    is_new_user: boolean;
   };
 }
 
@@ -67,7 +66,7 @@ export async function refreshAuthToken(
 }
 
 // Start Google OAuth flow
-export async function startGoogleAuth(): Promise<GoogleAuthStartResponse> {
+export async function googleAuth(): Promise<GoogleAuthResponse> {
   const url = `${API_BASE_URL}/auth/google`;
 
   const controller = new AbortController();
