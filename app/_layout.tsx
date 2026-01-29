@@ -4,6 +4,7 @@ import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
+import * as Linking from "expo-linking";
 import { useEffect } from "react";
 import { Image } from "react-native";
 
@@ -20,6 +21,22 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Debug: Log all incoming deep links
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      console.log("Deep link received:", url);
+    });
+
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log("App opened with URL:", url);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   if (!fontsLoaded && !fontError) {
     return null;
@@ -130,6 +147,13 @@ export default function RootLayout() {
           ),
           drawerItemStyle: { display: "none" },
         })}
+      />
+      <Drawer.Screen
+        name="auth"
+        options={{
+          headerShown: false,
+          drawerItemStyle: { display: "none" },
+        }}
       />
     </Drawer>
   );
