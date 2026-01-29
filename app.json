@@ -2,6 +2,7 @@
   "expo": {
     "name": "hashtaglocal-frontend",
     "slug": "hashtaglocal-frontend",
+    "owner":"madhyamakist",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -9,7 +10,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.madhyamakist.hashtaglocalfrontend",
+      "associatedDomains": [
+        "applinks:hashtaglocal.app",
+        "applinks:www.hashtaglocal.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -18,13 +24,36 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.madhyamakist.hashtaglocalfrontend"
+      "package": "com.madhyamakist.hashtaglocalfrontend",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "hashtaglocal.app",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.hashtaglocal.app",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       "expo-router",
       [
         "expo-splash-screen",

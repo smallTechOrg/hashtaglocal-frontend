@@ -10,6 +10,11 @@ Mobile app for #local.
 ```bash
 npm install
 ```
+### Setup Instructions
+To run expo start on your local do expo login first.
+```bash
+npx expo login
+```
 
 ###  Start the app
 ```bash
@@ -31,8 +36,4 @@ Example:
 Re-start the app after you've made this change.
 
 
-### Build Instructions
-
-Ton run expo start on your local
-do npx expo login first.
 

@@ -1,0 +1,59 @@
+import { useEffect } from "react";
+import { View, Text, ActivityIndicator } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { saveTokens } from "@/utils/tokenStorage";
+
+export default function AuthCallbackScreen() {
+  console.log("AuthCallbackScreen mounted");
+  const router = useRouter();
+  const params = useLocalSearchParams<{
+    access_token?: string;
+    refresh_token?: string;
+    user_id?: string;
+    email?: string;
+    provider_id?: string;
+  }>();
+
+  console.log("Callback params:", params);
+
+  useEffect(() => {
+    async function handleAuthCallback() {
+      console.log("handleAuthCallback called");
+      const { access_token, refresh_token } = params;
+
+      if (!access_token || !refresh_token) {
+        console.error("Missing tokens in callback URL");
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        // Store tokens - using default expiry of 1 hour for access, 30 days for refresh
+        const accessTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
+        const refreshTokenExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+
+        await saveTokens(
+          access_token,
+          accessTokenExpiry,
+          refresh_token,
+          refreshTokenExpiry
+        );
+
+        console.log("Tokens saved successfully",access_token,refresh_token);
+        router.replace("/");
+      } catch (error) {
+        console.error("Failed to save tokens:", error);
+        router.replace("/login");
+      }
+    }
+
+    handleAuthCallback();
+  }, [params, router]);
+
+  return (
+    <View className="flex-1 bg-white items-center justify-center">
+      <ActivityIndicator size="large" color="#22c55e" />
+      <Text className="mt-4 text-gray-600">Signing you in...</Text>
+    </View>
+  );
+}

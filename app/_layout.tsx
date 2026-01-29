@@ -4,6 +4,7 @@ import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
+import * as Linking from "expo-linking";
 import { useEffect } from "react";
 import { Image } from "react-native";
 
@@ -17,12 +18,26 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      // Hide splash screen once fonts are loaded (or failed)
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 
-  // Allow app to proceed even if fonts fail to load
+  // Debug: Log all incoming deep links
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      console.log("Deep link received:", url);
+    });
+
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log("App opened with URL:", url);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -31,12 +46,25 @@ export default function RootLayout() {
     <Drawer
       initialRouteName="index"
       screenOptions={{
-        drawerActiveTintColor: 'blue',
+        drawerActiveTintColor: "blue",
         drawerLabelStyle: {
           fontFamily: "Nunito-Regular",
-        }, 
+        },
       }}
     >
+      <Drawer.Screen
+        name="login"
+        options={({ navigation }) => ({
+          title: "Login",
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          // drawerItemStyle: { display: "none" },
+          headerLeft: (props) => (
+            <HeaderBackButton {...props} onPress={() => navigation.navigate("index")} />
+          ),
+        })}
+      />
       <Drawer.Screen
         name="index"
         options={{
@@ -53,10 +81,10 @@ export default function RootLayout() {
           ),
         }}
       />
-       <Drawer.Screen
+      <Drawer.Screen
         name="(tabs)"
         options={{
-         drawerItemStyle: { display: "none" }  
+          drawerItemStyle: { display: "none" },
         }}
       />
 
@@ -73,7 +101,7 @@ export default function RootLayout() {
           drawerItemStyle: { display: "none" },
         })}
       />
-      
+
       <Drawer.Screen
         name="ReportIssue"
         options={({ navigation }) => ({
@@ -119,6 +147,13 @@ export default function RootLayout() {
           ),
           drawerItemStyle: { display: "none" },
         })}
+      />
+      <Drawer.Screen
+        name="auth"
+        options={{
+          headerShown: false,
+          drawerItemStyle: { display: "none" },
+        }}
       />
     </Drawer>
   );
