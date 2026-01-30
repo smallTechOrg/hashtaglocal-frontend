@@ -21,6 +21,19 @@ export async function getAccessToken(): Promise<string | null> {
   return AsyncStorage.getItem(KEYS.ACCESS_TOKEN);
 }
 
+// Get access token expiry timestamp
+export async function getAccessTokenExpiry(): Promise<number | null> {
+  const expiry = await AsyncStorage.getItem(KEYS.ACCESS_TOKEN_EXPIRY);
+  return expiry ? parseInt(expiry, 10) : null;
+}
+
+// Check if access token is expired
+export async function isAccessTokenExpired(): Promise<boolean> {
+  const expiry = await getAccessTokenExpiry();
+  if (!expiry) return true;
+  return Date.now() > expiry;
+}
+
 // Save both access and refresh tokens along with their expiry timestamps
 export async function saveTokens(
   accessToken: string,

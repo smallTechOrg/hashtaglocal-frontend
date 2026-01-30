@@ -9,7 +9,14 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Image, View, Text } from "react-native";
 import { UserProvider, useUser } from "@/utils/UserContext";
-import { getAccessToken } from "@/utils/tokenStorage";
+import {
+  getAccessToken,
+  getRefreshToken,
+  isAccessTokenExpired,
+  saveTokens,
+  clearTokens,
+} from "@/utils/tokenStorage";
+import { refreshAuthToken } from "@/api/auth";
 import {
   DrawerContentScrollView,
   DrawerItemList,
@@ -26,9 +33,48 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function loadUserProfile() {
-      const token = await getAccessToken();
+      console.log("=== AuthLoader: Starting loadUserProfile ===");
+
+      let token = await getAccessToken();
+      console.log("Access token exists:", !!token);
       if (!token) return;
 
+      // Check if access token is expired
+      const isExpired = await isAccessTokenExpired();
+      console.log("Access token expired:", isExpired);
+      if (isExpired) {
+        console.log("Access token expired, attempting refresh...");
+        const refreshToken = await getRefreshToken();
+
+        if (!refreshToken) {
+          console.log("No refresh token available");
+          await clearTokens();
+          setUser(null);
+          return;
+        }
+
+        try {
+          const refreshResponse = await refreshAuthToken(refreshToken);
+          const { access_token, refresh_token } = refreshResponse.data;
+
+          await saveTokens(
+            access_token.value,
+            access_token.expiry,
+            refresh_token.value,
+            refresh_token.expiry
+          );
+
+          token = access_token.value;
+          console.log("Token refreshed successfully");
+        } catch (error) {
+          console.error("Failed to refresh token:", error);
+          await clearTokens();
+          setUser(null);
+          return;
+        }
+      }
+
+      // Fetch user profile with valid token
       try {
         const response = await fetch(`${API_BASE_URL}/account/profile`, {
           method: "GET",
@@ -40,7 +86,10 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         if (response.ok) {
           const data = await response.json();
           const { username, picture } = data.data.user;
+          console.log("Profile loaded:", username);
           setUser({ username, picture });
+        } else {
+          console.log("Profile fetch failed with status:", response.status);
         }
       } catch (error) {
         console.error("Failed to load user profile:", error);
