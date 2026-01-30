@@ -9,14 +9,49 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Image, View, Text } from "react-native";
 import { UserProvider, useUser } from "@/utils/UserContext";
+import { getAccessToken } from "@/utils/tokenStorage";
 import {
   DrawerContentScrollView,
   DrawerItemList,
   DrawerContentComponentProps,
 } from "@react-navigation/drawer";
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
 // Prevent auto-hiding splash screen
 SplashScreen.preventAutoHideAsync();
+
+function AuthLoader({ children }: { children: React.ReactNode }) {
+  const { setUser } = useUser();
+
+  useEffect(() => {
+    async function loadUserProfile() {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/account/profile`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const { username, picture } = data.data.user;
+          setUser({ username, picture });
+        }
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+      }
+    }
+
+    loadUserProfile();
+  }, [setUser]);
+
+  return <>{children}</>;
+}
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user } = useUser();
@@ -75,8 +110,9 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
-      <StatusBar style="dark" />
-      <Drawer
+      <AuthLoader>
+        <StatusBar style="dark" />
+        <Drawer
         initialRouteName="index"
         drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{
@@ -190,6 +226,7 @@ export default function RootLayout() {
         }}
       />
     </Drawer>
+      </AuthLoader>
     </UserProvider>
   );
 }
