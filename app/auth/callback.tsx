@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { saveTokens } from "@/utils/tokenStorage";
+import { useUser } from "@/utils/UserContext";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export default function AuthCallbackScreen() {
-  console.log("AuthCallbackScreen mounted");
   const router = useRouter();
+  const { setUser } = useUser();
+  const hasProcessed = useRef(false);
   const params = useLocalSearchParams<{
     access_token?: string;
     refresh_token?: string;
@@ -16,11 +18,11 @@ export default function AuthCallbackScreen() {
     provider_id?: string;
   }>();
 
-  console.log("Callback params:", params);
-
   useEffect(() => {
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     async function handleAuthCallback() {
-      console.log("handleAuthCallback called");
       const { access_token, refresh_token } = params;
 
       if (!access_token || !refresh_token) {
@@ -41,7 +43,7 @@ export default function AuthCallbackScreen() {
           refreshTokenExpiry
         );
 
-        console.log("Tokens saved successfully", access_token, refresh_token);
+        console.log("Tokens saved successfully");
 
         // Fetch user profile
         const profileResponse = await fetch(
@@ -57,9 +59,8 @@ export default function AuthCallbackScreen() {
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
           const { username, picture } = profileData.data.user;
-          console.log("User profile fetched successfully:");
-          console.log("Username:", username);
-          console.log("Picture:", picture);
+          console.log("User profile:", username, picture);
+          setUser({ username, picture });
         } else {
           console.error("Failed to fetch profile:", profileResponse.status);
         }
@@ -72,7 +73,8 @@ export default function AuthCallbackScreen() {
     }
 
     handleAuthCallback();
-  }, [params, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View className="flex-1 bg-white items-center justify-center">
