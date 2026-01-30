@@ -5,11 +5,42 @@ import { useFonts } from "expo-font";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Image } from "react-native";
+import { Image, View, Text } from "react-native";
+import { UserProvider, useUser } from "@/utils/UserContext";
+import {
+  DrawerContentScrollView,
+  DrawerItemList,
+  DrawerContentComponentProps,
+} from "@react-navigation/drawer";
 
 // Prevent auto-hiding splash screen
 SplashScreen.preventAutoHideAsync();
+
+function CustomDrawerContent(props: DrawerContentComponentProps) {
+  const { user } = useUser();
+
+  return (
+    <DrawerContentScrollView {...props}>
+      <View className="flex-row items-center p-1 border-b border-gray-200 pb-2 ">
+        <Image
+          source={
+            user?.picture
+              ? { uri: user.picture }
+              : require("../assets/user.png")
+          }
+          style={{ width: 35, height: 35, borderRadius: 24 }}
+          resizeMode="cover"
+        />
+        <Text className="ml-3 font-nunito p">
+          {user?.username || "Guest"}
+        </Text>
+      </View>
+      <DrawerItemList {...props} />
+    </DrawerContentScrollView>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -43,15 +74,18 @@ export default function RootLayout() {
   }
 
   return (
-    <Drawer
-      initialRouteName="index"
-      screenOptions={{
-        drawerActiveTintColor: "blue",
-        drawerLabelStyle: {
-          fontFamily: "Nunito-Regular",
-        },
-      }}
-    >
+    <UserProvider>
+      <StatusBar style="dark" />
+      <Drawer
+        initialRouteName="index"
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={{
+          drawerActiveTintColor: "blue",
+          drawerLabelStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+        }}
+      >
       <Drawer.Screen
         name="login"
         options={({ navigation }) => ({
@@ -156,5 +190,6 @@ export default function RootLayout() {
         }}
       />
     </Drawer>
+    </UserProvider>
   );
 }
