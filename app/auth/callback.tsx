@@ -3,6 +3,8 @@ import { View, Text, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { saveTokens } from "@/utils/tokenStorage";
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
 export default function AuthCallbackScreen() {
   console.log("AuthCallbackScreen mounted");
   const router = useRouter();
@@ -39,7 +41,29 @@ export default function AuthCallbackScreen() {
           refreshTokenExpiry
         );
 
-        console.log("Tokens saved successfully",access_token,refresh_token);
+        console.log("Tokens saved successfully", access_token, refresh_token);
+
+        // Fetch user profile
+        const profileResponse = await fetch(
+          `${API_BASE_URL}/account/profile/${params.user_id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+            },
+          }
+        );
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          const { username, picture } = profileData.data.user;
+          console.log("User profile fetched successfully:");
+          console.log("Username:", username);
+          console.log("Picture:", picture);
+        } else {
+          console.error("Failed to fetch profile:", profileResponse.status);
+        }
+
         router.replace("/");
       } catch (error) {
         console.error("Failed to save tokens:", error);
