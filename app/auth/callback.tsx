@@ -45,7 +45,7 @@ export default function AuthCallbackScreen() {
 
         // Fetch user profile
         const profileResponse = await fetch(
-          `${API_BASE_URL}/account/profile/${params.user_id}`,
+          `${API_BASE_URL}/account/profile`,
           {
             method: "GET",
             headers: {
