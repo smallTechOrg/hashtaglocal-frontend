@@ -13,6 +13,7 @@ import {
   getAccessToken,
   getRefreshToken,
   isAccessTokenExpired,
+  isRefreshTokenExpired,
   saveTokens,
   clearTokens,
 } from "@/utils/tokenStorage";
@@ -43,7 +44,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       const isExpired = await isAccessTokenExpired();
       console.log("Access token expired:", isExpired);
       if (isExpired) {
-        console.log("Access token expired, attempting refresh...");
+        console.log("Access token expired, checking refresh token...");
         const refreshToken = await getRefreshToken();
 
         if (!refreshToken) {
@@ -53,6 +54,18 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Check if refresh token is also expired
+        const isRefreshExpired = await isRefreshTokenExpired();
+        console.log("Refresh token expired:", isRefreshExpired);
+
+        if (isRefreshExpired) {
+          console.log("Refresh token also expired - user must login again");
+          await clearTokens();
+          setUser(null);
+          return;
+        }
+
+        console.log("Refresh token valid, attempting to refresh access token...");
         try {
           const refreshResponse = await refreshAuthToken(refreshToken);
           const { access_token, refresh_token } = refreshResponse.data;

@@ -32,10 +32,11 @@ export default function AuthCallbackScreen() {
       }
 
       try {
-        // Store tokens - FOR TESTING: 10 seconds expiry (change back to 1 hour after testing)
+        // Store tokens - FOR TESTING (change back after testing)
         const accessTokenExpiry = Date.now() + 10 * 1000; // 10 seconds for testing
         // const accessTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour (original)
-        const refreshTokenExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+        const refreshTokenExpiry = Date.now() + 30 * 1000; // 30 seconds for testing
+        // const refreshTokenExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days (original)
 
         await saveTokens(
           access_token,
