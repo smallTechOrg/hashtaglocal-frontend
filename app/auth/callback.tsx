@@ -8,7 +8,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 export default function AuthCallbackScreen() {
   const router = useRouter();
-  const { setUser } = useUser();
+  const { setUser, setIsLoading } = useUser();
   const hasProcessed = useRef(false);
   const params = useLocalSearchParams<{
     access_token?: string;
@@ -34,6 +34,7 @@ export default function AuthCallbackScreen() {
 
       if (!access_token || !refresh_token) {
         console.error("Missing tokens in callback URL");
+        setIsLoading(false);
         router.replace("/login");
         return;
       }
@@ -68,13 +69,16 @@ export default function AuthCallbackScreen() {
           const { username, picture } = profileData.data.user;
           console.log("User profile:", username, picture);
           setUser({ username, picture });
+          setIsLoading(false);
         } else {
           console.error("Failed to fetch profile:", profileResponse.status);
+          setIsLoading(false);
         }
 
         router.replace("/");
       } catch (error) {
         console.error("Failed to save tokens:", error);
+        setIsLoading(false);
         router.replace("/login");
       }
     }

@@ -1,4 +1,3 @@
-// app/_layout.tsx
 import { refreshAuthToken } from "@/api/auth";
 import "@/global.css";
 import { UserProvider, useUser } from "@/utils/UserContext";
@@ -10,6 +9,7 @@ import {
   isRefreshTokenExpired,
   saveTokens,
 } from "@/utils/tokenStorage";
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -18,11 +18,12 @@ import {
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
+import { useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Image, Text, View } from "react-native";
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -30,7 +31,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 SplashScreen.preventAutoHideAsync();
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
-  const { setUser } = useUser();
+  const { setUser, setIsLoading } = useUser();
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -38,7 +39,12 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
       let token = await getAccessToken();
       console.log("Access token exists:", !!token);
-      if (!token) return;
+      
+      if (!token) {
+        console.log("No access token found");
+        setIsLoading(false);
+        return;
+      }
 
       // Check if access token is expired
       const isExpired = await isAccessTokenExpired();
@@ -51,6 +57,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("No refresh token available");
           await clearTokens();
           setUser(null);
+          setIsLoading(false);
           return;
         }
 
@@ -62,6 +69,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("Refresh token also expired - user must login again");
           await clearTokens();
           setUser(null);
+          setIsLoading(false);
           return;
         }
 
@@ -83,6 +91,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.error("Failed to refresh token:", error);
           await clearTokens();
           setUser(null);
+          setIsLoading(false);
           return;
         }
       }
@@ -103,20 +112,74 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           setUser({ username, picture });
         } else {
           console.log("Profile fetch failed with status:", response.status);
+          await clearTokens();
+          setUser(null);
         }
       } catch (error) {
         console.error("Failed to load user profile:", error);
+        await clearTokens();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
     }
 
     loadUserProfile();
-  }, [setUser]);
+  }, [setUser, setIsLoading]);
+
+  return <>{children}</>;
+}
+
+function useProtectedRoute() {
+  const { user, isLoading } = useUser();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "auth";
+    const inLoginScreen = segments[0] === "login";
+
+    console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen });
+
+    if (!user && !inAuthGroup && !inLoginScreen) {
+      // User is not authenticated and trying to access protected route
+      console.log("Redirecting to login - user not authenticated");
+      router.replace("/login");
+    } else if (user && inLoginScreen) {
+      // User is authenticated and on login screen
+      console.log("Redirecting to home - user authenticated");
+      router.replace("/");
+    }
+  }, [user, segments, isLoading, router]);
+}
+
+function NavigationContainer({ children }: { children: React.ReactNode }) {
+  useProtectedRoute();
+  const { isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator size="large" color="#256D1B" />
+        <Text className="mt-4 text-gray-600">Loading...</Text>
+      </View>
+    );
+  }
 
   return <>{children}</>;
 }
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { user } = useUser();
+  const { user, setUser } = useUser();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await clearTokens();
+    setUser(null);
+    router.replace("/login");
+  };
 
   return (
     <DrawerContentScrollView {...props}>
@@ -135,6 +198,15 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         </Text>
       </View>
       <DrawerItemList {...props} />
+      {user && (
+        <TouchableOpacity
+          onPress={handleLogout}
+          className="flex-row items-center px-4 py-3 mt-4 border-t border-gray-200"
+        >
+          <MaterialIcons name="logout" size={24} color="#ef4444" />
+          <Text className="ml-8 text-red-500 font-nunito">Logout</Text>
+        </TouchableOpacity>
+      )}
     </DrawerContentScrollView>
   );
 }
@@ -173,133 +245,135 @@ export default function RootLayout() {
   return (
     <UserProvider>
       <AuthLoader>
-        <StatusBar style="dark" />
-        <Drawer
-        initialRouteName="index"
-        drawerContent={(props) => <CustomDrawerContent {...props} />}
-        screenOptions={{
-          drawerActiveTintColor: "blue",
-          drawerLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-        }}
-      >
-      <Drawer.Screen
-        name="login"
-        options={({ navigation }) => ({
-          title: "Login",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          // drawerItemStyle: { display: "none" },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.navigate("index")} />
-          ),
-        })}
-      />
-      <Drawer.Screen
-        name="index"
-        options={{
-          title: "#local",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerRight: () => (
-            <Image
-              source={require("../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="(tabs)"
-        options={{
-          drawerItemStyle: { display: "none" },
-        }}
-      />
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <Drawer
+          initialRouteName="index"
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={{
+            drawerActiveTintColor: "blue",
+            drawerLabelStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+          }}
+        >
+        <Drawer.Screen
+          name="login"
+          options={({ navigation }) => ({
+            title: "Login",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            drawerItemStyle: { display: "none" },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.navigate("index")} />
+            ),
+          })}
+        />
+        <Drawer.Screen
+          name="index"
+          options={{
+            title: "#local",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerRight: () => (
+              <Image
+                source={require("../assets/logo-green.png")}
+                style={{ width: 32, height: 40, marginRight: 16 }}
+                resizeMode="contain"
+              />
+            ),
+          }}
+        />
+        <Drawer.Screen
+          name="(tabs)"
+          options={{
+            drawerItemStyle: { display: "none" },
+          }}
+        />
 
-      <Drawer.Screen
-        name="about"
-        options={({ navigation }) => ({
-          title: "About Page",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-          ),
-          drawerItemStyle: { display: "none" },
-        })}
-      />
+        <Drawer.Screen
+          name="about"
+          options={({ navigation }) => ({
+            title: "About Page",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+            drawerItemStyle: { display: "none" },
+          })}
+        />
 
-      <Drawer.Screen
-        name="ReportIssue"
-        options={({ navigation }) => ({
-          title: "Report Issue",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-          ),
-        })}
-      />
-      <Drawer.Screen
-        name="map"
-        options={({ navigation }) => ({
-          title: "Map",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-          ),
-        })}
-      />
-      <Drawer.Screen
-        name="issueDetail"
-        options={({ navigation }) => ({
-          title: "Issue Detail",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-          ),
-          drawerItemStyle: { display: "none" },
-        })}
-      />
-      <Drawer.Screen
-        name="CameraCapture"
-        options={{
-          title: "Capture Issue",
-          headerShown: false,
-          drawerItemStyle: { display: "none" },
-        }}
-      />
-      <Drawer.Screen
-        name="IssueForm"
-        options={({ navigation }) => ({
-          title: "Report Issue",
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: (props) => (
-            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-          ),
-          drawerItemStyle: { display: "none" },
-        })}
-      />
-      <Drawer.Screen
-        name="auth"
-        options={{
-          headerShown: false,
-          drawerItemStyle: { display: "none" },
-        }}
-      />
-    </Drawer>
+        <Drawer.Screen
+          name="ReportIssue"
+          options={({ navigation }) => ({
+            title: "Report Issue",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+          })}
+        />
+        <Drawer.Screen
+          name="map"
+          options={({ navigation }) => ({
+            title: "Map",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+          })}
+        />
+        <Drawer.Screen
+          name="issueDetail"
+          options={({ navigation }) => ({
+            title: "Issue Detail",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+            drawerItemStyle: { display: "none" },
+          })}
+        />
+        <Drawer.Screen
+          name="CameraCapture"
+          options={{
+            title: "Capture Issue",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+          }}
+        />
+        <Drawer.Screen
+          name="IssueForm"
+          options={({ navigation }) => ({
+            title: "Report Issue",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+            drawerItemStyle: { display: "none" },
+          })}
+        />
+        <Drawer.Screen
+          name="auth"
+          options={{
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+          }}
+        />
+      </Drawer>
+        </NavigationContainer>
       </AuthLoader>
     </UserProvider>
   );
