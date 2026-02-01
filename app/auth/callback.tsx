@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useRef } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -13,6 +13,8 @@ export default function AuthCallbackScreen() {
   const params = useLocalSearchParams<{
     access_token?: string;
     refresh_token?: string;
+    access_expiry?: string;
+    refresh_expiry?: string;
     user_id?: string;
     email?: string;
     provider_id?: string;
@@ -23,7 +25,12 @@ export default function AuthCallbackScreen() {
     hasProcessed.current = true;
 
     async function handleAuthCallback() {
-      const { access_token, refresh_token } = params;
+      const {
+        access_token,
+        refresh_token,
+        access_expiry,
+        refresh_expiry,
+      } = params;
 
       if (!access_token || !refresh_token) {
         console.error("Missing tokens in callback URL");
@@ -32,9 +39,9 @@ export default function AuthCallbackScreen() {
       }
 
       try {
-        // Store tokens - using default expiry of 1 hour for access, 30 days for refresh
-        const accessTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
-        const refreshTokenExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+        // Store tokens using expiry timestamps from callback
+        const accessTokenExpiry = parseInt(access_expiry || "0") * 1000;
+        const refreshTokenExpiry = parseInt(refresh_expiry || "0") * 1000;
 
         await saveTokens(
           access_token,
