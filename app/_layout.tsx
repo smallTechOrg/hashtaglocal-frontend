@@ -248,7 +248,7 @@ export default function RootLayout() {
         <NavigationContainer>
           <StatusBar style="dark" />
           <Drawer
-          initialRouteName="index"
+          initialRouteName="(tabs)"
           drawerContent={(props) => <CustomDrawerContent {...props} />}
           screenOptions={{
             drawerActiveTintColor: "blue",
@@ -284,6 +284,7 @@ export default function RootLayout() {
           name="(tabs)"
           options={{
             drawerItemStyle: { display: "none" },
+            headerShown: false,
           }}
         />
 
@@ -305,18 +306,6 @@ export default function RootLayout() {
           name="ReportIssue"
           options={({ navigation }) => ({
             title: "Report Issue",
-            headerTitleStyle: {
-              fontFamily: "Nunito-Regular",
-            },
-            headerLeft: (props) => (
-              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-            ),
-          })}
-        />
-        <Drawer.Screen
-          name="map"
-          options={({ navigation }) => ({
-            title: "Map",
             headerTitleStyle: {
               fontFamily: "Nunito-Regular",
             },
