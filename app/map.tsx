@@ -1,3 +1,4 @@
+import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
     getLocationWithPermission,
@@ -5,16 +6,30 @@ import {
     UserLocation,
 } from "@/utils/LocationService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 type LoadingState = "loading" | "success" | "error";
 
+interface IssueMarker {
+  id: number;
+  location: {
+    lat: number;
+    lng: number;
+  };
+  type: string;
+  description: string;
+}
+
 export default function MapScreen() {
+  const router = useRouter();
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [error, setError] = useState<LocationError | null>(null);
+  const [issues, setIssues] = useState<IssueMarker[]>([]);
+  const [issuesLoading, setIssuesLoading] = useState(false);
 
   useEffect(() => {
     loadUserLocation();
@@ -29,10 +44,28 @@ export default function MapScreen() {
     if (result.success) {
       setUserLocation(result.location);
       setLoadingState("success");
+      // Load issues for this location
+      loadNearbyIssues(result.location.latitude, result.location.longitude);
     } else {
       setError(result.error);
       setLoadingState("error");
     }
+  };
+
+  const loadNearbyIssues = async (lat: number, lng: number) => {
+    try {
+      setIssuesLoading(true);
+      const issuesData = await getIssuesByLocation(lat, lng);
+      setIssues(issuesData);
+    } catch (error) {
+      console.error("Failed to load nearby issues:", error);
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  const handleMarkerPress = (issueId: number) => {
+    router.push(`/issueDetail?id=${issueId}`);
   };
 
   const openSettings = () => {
@@ -109,6 +142,7 @@ export default function MapScreen() {
           showsCompass={true}
           showsScale={true}
         >
+          {/* User location marker */}
           <Marker
             coordinate={{
               latitude: userLocation.latitude,
@@ -118,6 +152,24 @@ export default function MapScreen() {
             description={`Accuracy: ${userLocation.accuracy?.toFixed(0)}m`}
             pinColor="#256D1B"
           />
+          
+          {/* Issue markers */}
+          {issues.map((issue) => (
+            <Marker
+              key={issue.id}
+              coordinate={{
+                latitude: issue.location.lat,
+                longitude: issue.location.lng,
+              }}
+              title={issue.type}
+              description={issue.description}
+              onPress={() => handleMarkerPress(issue.id)}
+            >
+              <View style={styles.issueMarker}>
+                <View style={styles.issueMarkerInner} />
+              </View>
+            </Marker>
+          ))}
         </MapView>
         <View style={styles.locationInfo}>
           <CustomText style={styles.locationText}>
@@ -126,6 +178,16 @@ export default function MapScreen() {
           {userLocation.accuracy && (
             <CustomText style={styles.accuracyText}>
               Accuracy: ±{userLocation.accuracy.toFixed(0)}m
+            </CustomText>
+          )}
+          {issuesLoading && (
+            <CustomText style={styles.accuracyText}>
+              Loading nearby issues...
+            </CustomText>
+          )}
+          {!issuesLoading && issues.length > 0 && (
+            <CustomText style={styles.accuracyText}>
+              {issues.length} issue{issues.length !== 1 ? 's' : ''} nearby
             </CustomText>
           )}
         </View>
@@ -224,4 +286,14 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 4,
   },
+  issueMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 20,
+    backgroundColor: "#ff6b6b",
+    borderWidth: 0,
+    borderColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
+  }
 });

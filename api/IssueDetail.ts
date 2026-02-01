@@ -10,6 +10,7 @@ const API_ENDPOINTS = {
   ISSUE: (id: number) => `/api/v1/issue/${id}`,
   REPORT_ISSUE: "/api/v1/issue",
   UPLOAD_URL: "/api/v1/media/upload-url",
+  ISSUES_BY_LOCATION: "/api/v2/issues",
 } as const;
 
 export interface SignedUrlResponse {
@@ -301,4 +302,28 @@ export async function uploadImage(
 
   // Step 3: Return the GCS path for storage
   return data.media_url.path;
+}
+
+/**
+ * Fetch issues near a specific location
+ * @param lat - Latitude
+ * @param lng - Longitude
+ * @returns Promise resolving to list of issues
+ */
+export async function getIssuesByLocation(lat: number, lng: number) {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUES_BY_LOCATION}?lat=${lat}&lng=${lng}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch issues: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.data.issues;
 }
