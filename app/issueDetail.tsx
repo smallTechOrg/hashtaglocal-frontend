@@ -9,11 +9,11 @@ import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, View } from 'react-native';
 
   
 const IssueDetailScreen = () => {
-    const params = useLocalSearchParams<{ id?: string }>();
+    const params = useLocalSearchParams<{ id?: string; issueId?: string }>();
     const navigation = useNavigation();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -24,8 +24,13 @@ const IssueDetailScreen = () => {
             try {
                 setLoading(true);
                 setError(null);
-                // Get issue ID from route params, default to 1 if not provided
-                const issueId = params.id ? parseInt(params.id, 10) : 1;
+                // Get issue ID from route params, check both 'id' and 'issueId'
+                const issueId = params.issueId 
+                    ? parseInt(params.issueId, 10) 
+                    : params.id 
+                    ? parseInt(params.id, 10) 
+                    : 1;
+                console.log('Loading issue with ID:', issueId);
                 const data = await fetchIssue(issueId);
                 setIssueData(data);
             } catch (err) {
@@ -38,7 +43,7 @@ const IssueDetailScreen = () => {
         };
 
         loadIssue();
-    }, [params.id]);
+    }, [params.id, params.issueId]);
 
     // Update header title dynamically based on locality hashtags
     useLayoutEffect(() => {
@@ -91,17 +96,90 @@ const IssueDetailScreen = () => {
     const formattedDate = formatDate(issue.created_at);
     const daysActive = calculateDaysActive(issue.created_at);
 
+    // Get issue ID for share functionality
+    const issueId = params.issueId 
+        ? parseInt(params.issueId, 10) 
+        : params.id 
+        ? parseInt(params.id, 10) 
+        : undefined;
+
     return (
-        <ScrollView className="px-2" >
+        <ScrollView className="bg-gray-50">
             {/* Main Image Header */}
-            <IssueImage
-                imageSources={imageSources}
-                location={locationString}
-                timestamp={formattedDate}
-                daysActive={daysActive}
-                onShare={handleShare}
-                className="self-center mt-4 h-64"
-            />
+            <View className="bg-white shadow-sm">
+                <IssueImage
+                    imageSources={imageSources}
+                    location={locationString}
+                    timestamp={formattedDate}
+                    daysActive={daysActive}
+                    onShare={() => handleShare(issueId, issue.type)}
+                    className="w-full"
+                />
+            </View>
+
+            {/* Issue Details Card */}
+            <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
+                {/* Issue Type */}
+                <View className="flex-row items-center mb-3">
+                    <MaterialIcons name="category" size={20} color="#256D1B" />
+                    <CustomText className="ml-2 text-lg font-bold capitalize">
+                        {issue.type}
+                    </CustomText>
+                </View>
+
+                {/* Description */}
+                {issue.description && (
+                    <View className="mb-3">
+                        <CustomText className="text-gray-700">
+                            {issue.description}
+                        </CustomText>
+                    </View>
+                )}
+
+                {/* User Info */}
+                <View className="flex-row items-center mb-3 pb-3 border-b border-gray-200">
+                    <Image
+                        source={{ uri: issue.user.profile_photo }}
+                        style={{ width: 32, height: 32, borderRadius: 16 }}
+                    />
+                    <CustomText className="ml-2 text-gray-600">
+                        Reported by <CustomText className="font-bold">{issue.user.username}</CustomText>
+                    </CustomText>
+                </View>
+
+                {/* Location Details */}
+                <View className="mb-3">
+                    <View className="flex-row items-center mb-2">
+                        <MaterialIcons name="location-on" size={20} color="#256D1B" />
+                        <CustomText className="ml-2 font-bold">Location</CustomText>
+                    </View>
+                    <CustomText className="text-gray-700 ml-7">
+                        {issue.location.colloquial_name || issue.location.address}
+                    </CustomText>
+                    <CustomText className="text-gray-500 text-sm ml-7">
+                        {issue.location.lat.toFixed(6)}, {issue.location.lng.toFixed(6)}
+                    </CustomText>
+                </View>
+
+                {/* Hashtags */}
+                {issue.location.locality?.hashtags && issue.location.locality.hashtags.length > 0 && (
+                    <View className="flex-row flex-wrap mb-3">
+                        {issue.location.locality.hashtags.map((tag, index) => (
+                            <View key={index} className="bg-green-100 px-3 py-1 rounded-full mr-2 mb-2">
+                                <CustomText className="text-green-700 font-bold">{tag}</CustomText>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Timestamp */}
+                <View className="flex-row items-center">
+                    <MaterialIcons name="access-time" size={20} color="#666" />
+                    <CustomText className="ml-2 text-gray-600 text-sm">
+                        {formattedDate} • {daysActive}
+                    </CustomText>
+                </View>
+            </View>
 
         </ScrollView>
     );

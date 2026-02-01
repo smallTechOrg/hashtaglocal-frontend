@@ -104,10 +104,11 @@ export default function IssueForm() {
 
       const response = await reportIssue(payload);
 
-      // Show success message and navigate to issue detail
-      Alert.alert("Success", "Successfully reported issue", [
+      setIsSubmitting(false);
+      setError(null);
+      Alert.alert("Success", "Issue reported successfully!", [
         {
-          text: "OK",
+          text: "View Issue",
           onPress: () => {
             router.push({
               pathname: "/issueDetail",
@@ -116,6 +117,15 @@ export default function IssueForm() {
               },
             });
           },
+        },
+        {
+          text: "Go Home",
+          onPress: () => {
+            // Clean navigation stack and go to home
+            router.dismissAll();
+            router.replace("/(tabs)");
+          },
+          style: "cancel",
         },
       ]);
     } catch (error) {

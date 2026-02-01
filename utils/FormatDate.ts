@@ -27,9 +27,11 @@ export const calculateDaysActive = (dateString: string): string => {
     if (isNaN(date.getTime())) return "";
 
     const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    return `${diffDays} days`;
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "1 day ago";
+    return `${diffDays} days ago`;
 };
   
