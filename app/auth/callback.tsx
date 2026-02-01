@@ -1,5 +1,6 @@
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
+import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -53,9 +54,20 @@ export default function AuthCallbackScreen() {
 
         console.log("Tokens saved successfully");
 
-        // Fetch user profile
+        // Fetch user profile with location
+        let profileUrl = `${API_BASE_URL}/account/profile`;
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          const { latitude, longitude } = location.coords;
+          profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+        } catch (locError) {
+          console.log("Location not available for profile API, using without location");
+        }
+
         const profileResponse = await fetch(
-          `${API_BASE_URL}/account/profile`,
+          profileUrl,
           {
             method: "GET",
             headers: {
@@ -66,9 +78,9 @@ export default function AuthCallbackScreen() {
 
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          const { username, picture } = profileData.data.user;
-          console.log("User profile:", username, picture);
-          setUser({ username, picture });
+          const { username, picture, hashtag } = profileData.data.user;
+          console.log("User profile:", username, picture, "hashtag:", hashtag);
+          setUser({ username, picture, hashtag });
           setIsLoading(false);
         } else {
           console.error("Failed to fetch profile:", profileResponse.status);
