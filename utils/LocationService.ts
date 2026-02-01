@@ -97,7 +97,7 @@ export async function getCurrentLocation(
 
     // Get current position with timeout
     const locationPromise = Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+      accuracy: Location.Accuracy.Highest
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
