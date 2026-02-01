@@ -6,12 +6,16 @@ import { formatLocationString } from "@/utils/ImageProcessing";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -44,8 +48,31 @@ export default function IssueForm() {
   const [isUploading, setIsUploading] = useState(true);
   const [gcsPath, setGcsPath] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
+  const descriptionInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const descriptionContainerRef = useRef<View>(null);
 
   const { imageUri, latitude, longitude, address, timestamp, addressDetails } = params;
+
+  // Handle keyboard showing and scroll input into view
+  useEffect(() => {
+    const keyboardShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      if (descriptionInputRef.current) {
+        descriptionInputRef.current.measure((x, y, width, height, pageX, pageY) => {
+          scrollViewRef.current?.scrollTo({
+            y: pageY - 150,
+            animated: true,
+          });
+        });
+      }
+    });
+
+    return () => {
+      keyboardShowListener.remove();
+    };
+  }, []);
+
   // Upload image on component mount
   useEffect(() => {
     const uploadImageToGCS = async () => {
@@ -135,7 +162,7 @@ export default function IssueForm() {
               url: gcsPath || "",
             },
           ],
-          description: "",
+          description: description,
         },
       };
 
@@ -173,20 +200,30 @@ export default function IssueForm() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      {/* Image Preview Section */}
-      <View className="bg-white shadow-sm">
-        <Image
-          source={{ uri: imageUri }}
-          style={{ width: "100%", height: 300 }}
-          contentFit="cover"
-        />
-        <TopOverlay
-          location={locationString}
-          timestamp={timestampString}
-          index={0}
-        />
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 0}
+      className="flex-1 bg-gray-50"
+    >
+      <ScrollView 
+        ref={scrollViewRef} 
+        className="flex-1 bg-gray-50" 
+        scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Image Preview Section */}
+        <View className="bg-white shadow-sm">
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: "100%", height: 200 }}
+            contentFit="cover"
+          />
+          <TopOverlay
+            location={locationString}
+            timestamp={timestampString}
+            index={0}
+          />
+        </View>
 
       {/* Upload Status Banner */}
       {isUploading && (
@@ -253,6 +290,35 @@ export default function IssueForm() {
           </TouchableOpacity>
         </View>
 
+        {/* Description Section */}
+        <View className="mb-4" ref={descriptionContainerRef}>
+          <View className="flex-row items-center mb-3">
+            <MaterialIcons name="description" size={20} color="#256D1B" />
+            <CustomText className="ml-2 font-bold text-base">Description (Optional)</CustomText>
+          </View>
+          
+          <TextInput
+            ref={descriptionInputRef}
+            placeholder="Add details about the issue..."
+            placeholderTextColor="#999"
+            value={description}
+            onChangeText={setDescription}
+
+            multiline
+            numberOfLines={3}
+            maxLength={500}
+            className="border-2 border-gray-200 rounded-xl px-4 py-3 bg-white text-gray-900 min-h-24"
+            style={{
+              textAlignVertical: "top",
+              fontFamily: "System",
+              borderColor: "#E5E7EB",
+            }}
+          />
+          <CustomText className="mt-1 text-xs text-gray-500">
+            {description.length}/500
+          </CustomText>
+        </View>
+
         {/* Submit Button */}
         <TouchableOpacity
           onPress={handleSubmit}
@@ -276,6 +342,9 @@ export default function IssueForm() {
           </CustomText>
         </TouchableOpacity>
       </View>
+
+      {/* Bottom spacer for keyboard scrolling */}
+      <View style={{ height: 300 }} />
 
       {/* Dropdown Modal */}
       <Modal
@@ -346,6 +415,7 @@ export default function IssueForm() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
