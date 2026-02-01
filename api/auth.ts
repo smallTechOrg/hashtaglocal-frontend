@@ -48,9 +48,7 @@ export async function refreshAuthToken(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      data: {
-        refresh_token: refreshToken,
-      },
+        refresh_token: refreshToken
     }),
     signal: controller.signal,
   });
@@ -59,6 +57,7 @@ export async function refreshAuthToken(
 
   if (!response.ok) {
     const errorData: AuthError = await response.json();
+    console.log("Error data:", errorData);
     throw new Error(errorData.error.message);
   }
 
