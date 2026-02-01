@@ -1,28 +1,28 @@
 // app/_layout.tsx
+import { refreshAuthToken } from "@/api/auth";
 import "@/global.css";
-import { HeaderBackButton } from "@react-navigation/elements";
-import { useFonts } from "expo-font";
-import { Drawer } from "expo-router/drawer";
-import * as SplashScreen from "expo-splash-screen";
-import * as Linking from "expo-linking";
-import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { Image, View, Text } from "react-native";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import {
+  clearTokens,
   getAccessToken,
   getRefreshToken,
   isAccessTokenExpired,
   isRefreshTokenExpired,
   saveTokens,
-  clearTokens,
 } from "@/utils/tokenStorage";
-import { refreshAuthToken } from "@/api/auth";
 import {
+  DrawerContentComponentProps,
   DrawerContentScrollView,
   DrawerItemList,
-  DrawerContentComponentProps,
 } from "@react-navigation/drawer";
+import { HeaderBackButton } from "@react-navigation/elements";
+import { useFonts } from "expo-font";
+import * as Linking from "expo-linking";
+import { Drawer } from "expo-router/drawer";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { Image, Text, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -238,6 +238,18 @@ export default function RootLayout() {
         name="ReportIssue"
         options={({ navigation }) => ({
           title: "Report Issue",
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: (props) => (
+            <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+          ),
+        })}
+      />
+      <Drawer.Screen
+        name="map"
+        options={({ navigation }) => ({
+          title: "Map",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
