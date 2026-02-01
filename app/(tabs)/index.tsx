@@ -8,9 +8,9 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import MapView, { Marker, Region } from "react-native-maps";
 
 type LoadingState = "loading" | "success" | "error";
 
@@ -47,14 +47,18 @@ interface IssueMarker {
   media_urls?: Array<{ url: string }>;
 }
 
+const ISSUE_TYPES = ["All", "Road", "Drainage", "Waste", "Lighting", "Other"];
+
 export default function MapScreen() {
   const router = useRouter();
+  const mapRef = useRef<MapView>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [error, setError] = useState<LocationError | null>(null);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string>("All");
 
   useEffect(() => {
     loadUserLocation();
@@ -103,6 +107,55 @@ export default function MapScreen() {
     }
   }, [selectedIssue, router]);
 
+  // Filter issues based on selected filter
+  const filteredIssues = useMemo(() => {
+    if (selectedFilter === "All") return issues;
+    return issues.filter(issue => 
+      issue.type.toLowerCase() === selectedFilter.toLowerCase()
+    );
+  }, [issues, selectedFilter]);
+
+  // Handle filter change and adjust map zoom
+  const handleFilterChange = useCallback((filter: string) => {
+    setSelectedFilter(filter);
+    setSelectedIssue(null); // Close any open issue card
+
+    if (mapRef.current && filteredIssues.length > 0) {
+      const issuesToShow = filter === "All" ? issues : issues.filter(issue => 
+        issue.type.toLowerCase() === filter.toLowerCase()
+      );
+
+      if (issuesToShow.length === 0) return;
+
+      // Calculate bounds for all filtered markers
+      let minLat = issuesToShow[0].location.lat;
+      let maxLat = issuesToShow[0].location.lat;
+      let minLng = issuesToShow[0].location.lng;
+      let maxLng = issuesToShow[0].location.lng;
+
+      issuesToShow.forEach(issue => {
+        minLat = Math.min(minLat, issue.location.lat);
+        maxLat = Math.max(maxLat, issue.location.lat);
+        minLng = Math.min(minLng, issue.location.lng);
+        maxLng = Math.max(maxLng, issue.location.lng);
+      });
+
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+      const latDelta = Math.max((maxLat - minLat) * 1.5, 0.005);
+      const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.005);
+
+      const region: Region = {
+        latitude: centerLat,
+        longitude: centerLng,
+        latitudeDelta: latDelta,
+        longitudeDelta: lngDelta,
+      };
+
+      mapRef.current.animateToRegion(region, 500);
+    }
+  }, [issues, filteredIssues]);
+
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
     latitude: userLocation?.latitude || 0,
@@ -149,15 +202,53 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Filter Chips */}
+      <View style={styles.filterContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          {ISSUE_TYPES.map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.filterChip,
+                selectedFilter === type && styles.filterChipActive
+              ]}
+              onPress={() => handleFilterChange(type)}
+            >
+              <CustomText 
+                className={selectedFilter === type ? "text-white font-semibold" : "text-gray-700"}
+              >
+                {type}
+              </CustomText>
+              {type !== "All" && (
+                <View style={styles.filterBadge}>
+                  <CustomText className="text-xs text-white font-bold">
+                    {issues.filter(i => i.type.toLowerCase() === type.toLowerCase()).length}
+                  </CustomText>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <MapView
+        ref={mapRef}
         style={styles.map}
         customMapStyle={customMapStyle}
         initialRegion={initialRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
+        toolbarEnabled={false}
+        showsCompass={true}
+        mapPadding={{ top: 0, right: 0, bottom: 100, left: 0 }}
+        liteMode={false}
       >
         {/* Issue Markers */}
-        {issues.map((issue) => {
+        {filteredIssues.map((issue) => {
           const isSelected = selectedIssue?.id === issue.id;
           return (
             <Marker
@@ -254,6 +345,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+  filterContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: "white",
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: "#256D1B",
+  },
+  filterBadge: {
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    alignItems: "center",
   },
   map: {
     width: "100%",
