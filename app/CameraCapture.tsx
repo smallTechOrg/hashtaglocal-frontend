@@ -33,7 +33,7 @@ export default function CameraCapture() {
         if (status === "granted") {
         
           const currentLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
+            accuracy: Location.Accuracy.Highest,
           });
           setLocation(currentLocation);
 
@@ -49,7 +49,6 @@ export default function CameraCapture() {
               const addressParts = [
                 addressResult.street,
                 addressResult.city,
-                addressResult.region,
               ].filter(Boolean);
               setAddress(addressParts.join(", "));
             }
@@ -79,7 +78,7 @@ export default function CameraCapture() {
       if (photo) {
         // Get fresh location for this photo
         const currentLocation = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Highest,
         });
         
         let currentAddress = "";
@@ -97,7 +96,6 @@ export default function CameraCapture() {
             const addressParts = [
               addressResult.street,
               addressResult.city,
-              addressResult.region,
             ].filter(Boolean);
             currentAddress = addressParts.join(", ");
           }
@@ -212,7 +210,7 @@ export default function CameraCapture() {
         // Fetch location after permission granted
         try {
           const currentLocation = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.Highest,
           });
           setLocation(currentLocation);
         } catch (error) {
