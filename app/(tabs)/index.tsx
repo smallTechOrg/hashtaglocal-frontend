@@ -8,7 +8,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
@@ -82,9 +82,6 @@ export default function MapScreen() {
       setIssuesLoading(true);
       const issuesData = await getIssuesByLocation(lat, lng);
       console.log("Issues loaded:", issuesData.length);
-      if (issuesData.length > 0) {
-        console.log("Sample issue:", JSON.stringify(issuesData[0], null, 2));
-      }
       setIssues(issuesData);
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
@@ -93,18 +90,26 @@ export default function MapScreen() {
     }
   };
 
-  const handleMarkerPress = (issue: IssueMarker) => {
+  const handleMarkerPress = useCallback((issue: IssueMarker) => {
     setSelectedIssue(issue);
-  };
+  }, []);
 
-  const handleViewDetails = () => {
+  const handleViewDetails = useCallback(() => {
     if (selectedIssue) {
       router.push({
         pathname: "/issueDetail",
         params: { issueId: selectedIssue.id },
       });
     }
-  };
+  }, [selectedIssue, router]);
+
+  // Memoize initial region to prevent re-renders
+  const initialRegion = useMemo(() => ({
+    latitude: userLocation?.latitude || 0,
+    longitude: userLocation?.longitude || 0,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
+  }), [userLocation?.latitude, userLocation?.longitude]);
 
   if (loadingState === "loading") {
     return (
@@ -147,37 +152,21 @@ export default function MapScreen() {
       <MapView
         style={styles.map}
         customMapStyle={customMapStyle}
-        initialRegion={{
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        }}
+        initialRegion={initialRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {/* User Location Marker */}
-        <Marker
-          coordinate={{
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-          }}
-          title="Your Location"
-          pinColor="#256D1B"
-        />
-
         {/* Issue Markers */}
         {issues.map((issue) => {
           const isSelected = selectedIssue?.id === issue.id;
           return (
             <Marker
-              key={issue.id}
+              key={`marker-${issue.id}`}
               coordinate={{
                 latitude: issue.location.lat,
                 longitude: issue.location.lng,
               }}
               onPress={() => handleMarkerPress(issue)}
-              anchor={{ x: 0.5, y: 0.5 }}
             >
               <View style={[styles.markerCircle, isSelected && styles.markerCircleSelected]}>
                 <View style={styles.markerInner} />
