@@ -1,4 +1,3 @@
-import { uploadImage } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -22,6 +21,9 @@ export default function CameraCapture() {
   const [address, setAddress] = useState<string>("");
   const [addressDetails, setAddressDetails] = useState<Location.LocationGeocodedAddress | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [facing, setFacing] = useState<"back" | "front">("back");
+  const [flash, setFlash] = useState<"off" | "on">("off");
+  const [zoom, setZoom] = useState(0);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
@@ -103,10 +105,6 @@ export default function CameraCapture() {
           console.log("Reverse geocoding failed");
         }
 
-        // Upload image to GCP
-        const gcsPath = await uploadImage(photo.uri, "image/jpeg");
-        console.log("Image uploaded to GCP:", gcsPath);
-
         const capturedData: CapturedData = {
           imageUri: photo.uri,
           latitude: currentLocation.coords.latitude,
@@ -115,12 +113,12 @@ export default function CameraCapture() {
           timestamp: new Date(),
         };
 
-        // Navigate to IssueForm with captured data and GCS path
+        // Navigate to IssueForm immediately with local image
+        // Upload will happen on the form page
         router.replace({
           pathname: "/IssueForm",
           params: {
             imageUri: capturedData.imageUri,
-            gcsPath: gcsPath,
             latitude: capturedData.latitude.toString(),
             longitude: capturedData.longitude.toString(),
             address: capturedData.address,
@@ -130,10 +128,10 @@ export default function CameraCapture() {
         });
       }
     } catch (error) {
-      console.error("Error capturing/uploading photo:", error);
+      console.error("Error capturing photo:", error);
       Alert.alert(
-        "Upload Failed",
-        "Failed to upload the image. Please try again."
+        "Capture Failed",
+        "Failed to capture the image. Please try again."
       );
     } finally {
       setIsCapturing(false);
@@ -250,22 +248,73 @@ export default function CameraCapture() {
       <CameraView
         ref={cameraRef}
         style={{ flex: 1 }}
-        facing="back"
+        facing={facing}
+        flash={flash}
+        zoom={zoom}
       >
-        {/* Bottom capture button */}
-        <View className="absolute bottom-0 left-0 right-0 pb-10 items-center bg-black/50">
-          <TouchableOpacity
-            onPress={handleCapture}
-            disabled={isCapturing}
-            className="w-20 h-20 rounded-full bg-white items-center justify-center border-4 border-gray-300"
-          >
-            {isCapturing ? (
-              <ActivityIndicator size="small" color="#6200EE" />
-            ) : (
-              <View className="w-16 h-16 rounded-full bg-white border-2 border-gray-400" />
-            )}
-          </TouchableOpacity>
-          <CustomText className="text-white mt-3">Tap to capture</CustomText>
+        {/* Top Controls */}
+        <View className="absolute top-0 left-0 right-0 pt-12 px-6">
+          <View className="flex-row justify-between items-center">
+            {/* Flash Toggle */}
+            <TouchableOpacity
+              onPress={() => setFlash(flash === "off" ? "on" : "off")}
+              className="bg-black/50 p-3 rounded-full"
+            >
+              <MaterialIcons
+                name={flash === "off" ? "flash-off" : "flash-on"}
+                size={28}
+                color="white"
+              />
+            </TouchableOpacity>
+
+            {/* Camera Flip */}
+            <TouchableOpacity
+              onPress={() => setFacing(facing === "back" ? "front" : "back")}
+              className="bg-black/50 p-3 rounded-full"
+            >
+              <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Bottom Controls */}
+        <View className="absolute bottom-0 left-0 right-0 pb-10 bg-black/50">
+          {/* Zoom Slider */}
+          <View className="px-6 pb-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <CustomText className="text-white text-sm">Zoom: {zoom.toFixed(1)}x</CustomText>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => setZoom(0)}
+                  className={`px-3 py-1 rounded ${zoom === 0 ? 'bg-white' : 'bg-white/30'}`}
+                >
+                  <CustomText className={zoom === 0 ? 'text-black' : 'text-white'}>1x</CustomText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setZoom(0.5)}
+                  className={`px-3 py-1 rounded ${zoom === 0.5 ? 'bg-white' : 'bg-white/30'}`}
+                >
+                  <CustomText className={zoom === 0.5 ? 'text-black' : 'text-white'}>2x</CustomText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Capture Button */}
+          <View className="items-center">
+            <TouchableOpacity
+              onPress={handleCapture}
+              disabled={isCapturing}
+              className="w-20 h-20 rounded-full bg-white items-center justify-center border-4 border-gray-300"
+            >
+              {isCapturing ? (
+                <ActivityIndicator size="small" color="#6200EE" />
+              ) : (
+                <View className="w-16 h-16 rounded-full bg-white border-2 border-gray-400" />
+              )}
+            </TouchableOpacity>
+            <CustomText className="text-white mt-3">Tap to capture</CustomText>
+          </View>
         </View>
       </CameraView>
     </View>
