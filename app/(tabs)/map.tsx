@@ -1,16 +1,16 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
-    getLocationWithPermission,
-    LocationError,
-    UserLocation,
+  getLocationWithPermission,
+  LocationError,
+  UserLocation,
 } from "@/utils/LocationService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 
 type LoadingState = "loading" | "success" | "error";
 
@@ -145,15 +145,16 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <MapView
-        provider={PROVIDER_GOOGLE}
-        customMapStyle={customMapStyle}
         style={styles.map}
+        customMapStyle={customMapStyle}
         initialRegion={{
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
         }}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
       >
         {/* User Location Marker */}
         <Marker
@@ -166,19 +167,24 @@ export default function MapScreen() {
         />
 
         {/* Issue Markers */}
-        {issues.map((issue) => (
-          <Marker
-            key={issue.id}
-            coordinate={{
-              latitude: issue.location.lat,
-              longitude: issue.location.lng,
-            }}
-            title={issue.type}
-            description={issue.description}
-            onPress={() => handleMarkerPress(issue)}
-            pinColor="#ef4444"
-          />
-        ))}
+        {issues.map((issue) => {
+          const isSelected = selectedIssue?.id === issue.id;
+          return (
+            <Marker
+              key={issue.id}
+              coordinate={{
+                latitude: issue.location.lat,
+                longitude: issue.location.lng,
+              }}
+              onPress={() => handleMarkerPress(issue)}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View style={[styles.markerCircle, isSelected && styles.markerCircleSelected]}>
+                <View style={styles.markerInner} />
+              </View>
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* Loading Indicator for Issues */}
@@ -191,55 +197,58 @@ export default function MapScreen() {
       {/* Selected Issue Card */}
       {selectedIssue && (
         <View style={styles.issueCard}>
-          <View style={styles.issueHeader}>
+          {/* Close Button */}
+          <TouchableOpacity 
+            onPress={() => setSelectedIssue(null)}
+            style={styles.closeButton}
+          >
+            <MaterialIcons name="close" size={24} color="#666" />
+          </TouchableOpacity>
+
+          {/* Header */}
+          <View style={styles.cardHeader}>
             <View style={styles.issueTypeTag}>
-              <CustomText className="text-white text-xs font-bold">
+              <CustomText className="text-white text-xs font-bold uppercase">
                 {selectedIssue.type}
               </CustomText>
             </View>
-            <TouchableOpacity onPress={() => setSelectedIssue(null)}>
-              <MaterialIcons name="close" size={20} color="#666" />
-            </TouchableOpacity>
           </View>
 
-          <CustomText className="font-bold mt-2">
-            {selectedIssue.description}
-          </CustomText>
-
+          {/* Full-width Image */}
           {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 && (
             <Image
               source={{ uri: selectedIssue.media_urls[0].url }}
-              style={styles.issueImage}
+              style={styles.cardImage}
               contentFit="cover"
             />
           )}
 
-          <View style={styles.issueDetails}>
-            <View style={styles.detailRow}>
-              <MaterialIcons name="thumb-up" size={16} color="#256D1B" />
-              <CustomText className="ml-2 text-sm">
-                {selectedIssue.voteCount || selectedIssue.vote_count || 0} votes
-              </CustomText>
-            </View>
+          {/* Description */}
+          {selectedIssue.description && (
+            <CustomText className="text-sm text-gray-700 mt-3" numberOfLines={2}>
+              {selectedIssue.description}
+            </CustomText>
+          )}
 
+          {/* Footer with View Details Button */}
+          <View style={styles.cardFooter}>
             {selectedIssue.status && (
-              <View style={styles.detailRow}>
-                <MaterialIcons name="info" size={16} color="#256D1B" />
-                <CustomText className="ml-2 text-sm capitalize">
-                  Status: {selectedIssue.status}
+              <View style={styles.statusBadge}>
+                <CustomText className="text-xs text-gray-600 uppercase">
+                  {selectedIssue.status}
                 </CustomText>
               </View>
             )}
+            <TouchableOpacity
+              onPress={handleViewDetails}
+              style={styles.viewDetailsButton}
+            >
+              <CustomText className="text-white font-semibold text-sm">
+                View Details
+              </CustomText>
+              <MaterialIcons name="arrow-forward" size={16} color="#fff" />
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            onPress={handleViewDetails}
-            style={styles.detailsButton}
-          >
-            <CustomText className="text-white font-bold">
-              View Details
-            </CustomText>
-          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -256,6 +265,28 @@ const styles = StyleSheet.create({
   map: {
     width: "100%",
     height: "100%",
+  },
+  markerCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  markerCircleSelected: {
+    backgroundColor: "#256D1B",
+  },
+  markerInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#fff",
   },
   loadingOverlay: {
     position: "absolute",
@@ -276,46 +307,79 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "white",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 16,
+    paddingTop: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    maxHeight: "50%",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 3,
   },
-  issueHeader: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   issueTypeTag: {
     backgroundColor: "#256D1B",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  issueImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginVertical: 12,
-  },
-  issueDetails: {
-    marginVertical: 8,
-    gap: 8,
-  },
-  detailRow: {
+  voteContainer: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  detailsButton: {
+  cardImage: {
+    width: "100%",
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: "#f3f4f6",
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    gap: 12,
+  },
+  statusBadge: {
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  viewDetailsButton: {
+    flex: 1,
     backgroundColor: "#256D1B",
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 12,
+    justifyContent: "center",
+    gap: 6,
   },
 });
