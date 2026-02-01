@@ -39,6 +39,13 @@ interface IssueMarker {
   location: {
     lat: number;
     lng: number;
+    meta_data?: {
+      city?: string;
+      district?: string;
+      street?: string;
+      name?: string;
+      formatted_address?: string;
+    };
   };
   type: string;
   description: string;
@@ -78,7 +85,7 @@ export default function MapScreen() {
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
 
   // Bottom sheet snap points
-  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
+  const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
 
   useEffect(() => {
     loadUserLocation();
@@ -87,9 +94,21 @@ export default function MapScreen() {
   // Open/close bottom sheet when issue is selected/deselected
   useEffect(() => {
     if (selectedIssue) {
-      bottomSheetRef.current?.snapToIndex(1);
+      // Use setTimeout to ensure the bottom sheet is ready for interaction
+      const timer = setTimeout(() => {
+        try {
+          bottomSheetRef.current?.snapToIndex(0);
+        } catch (error) {
+          console.error("Error opening bottom sheet:", error);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     } else {
-      bottomSheetRef.current?.close();
+      try {
+        bottomSheetRef.current?.close();
+      } catch (error) {
+        console.error("Error closing bottom sheet:", error);
+      }
     }
   }, [selectedIssue]);
 
@@ -353,38 +372,45 @@ export default function MapScreen() {
             {/* Header Section */}
             <View style={styles.previewHeader}>
               <View style={styles.previewTitleRow}>
-                <View style={[styles.issueTypeTag, { backgroundColor: getIssueColor(selectedIssue.type) }]}>
-                  <CustomText className="text-white text-xs font-bold uppercase">
-                    {selectedIssue.type}
-                  </CustomText>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={[styles.issueTypeTag, { backgroundColor: getIssueColor(selectedIssue.type) }]}>
+                    <CustomText className="text-white text-xs font-bold uppercase">
+                      {selectedIssue.type}
+                    </CustomText>
+                  </View>
+                  {selectedIssue.status && (
+                    <View style={styles.statusBadge}>
+                      <CustomText className="text-xs text-gray-600 uppercase font-semibold">
+                        {selectedIssue.status}
+                      </CustomText>
+                    </View>
+                  )}
                 </View>
-                {selectedIssue.status && (
-                  <View style={styles.statusBadge}>
-                    <CustomText className="text-xs text-gray-600 uppercase font-semibold">
-                      {selectedIssue.status}
+                {(selectedIssue.location.meta_data?.city || selectedIssue.location.meta_data?.district) && (
+                  <View style={styles.locationName}>
+                    <MaterialIcons name="place" size={14} color="#6b7280" />
+                    <CustomText className="text-xs text-gray-600 ml-1">
+                      {selectedIssue.location.meta_data?.city || selectedIssue.location.meta_data?.district}
                     </CustomText>
                   </View>
                 )}
               </View>
 
-              {/* Votes and Date Row */}
-              <View style={styles.metaRow}>
-                <View style={styles.voteContainer}>
-                  <MaterialIcons name="arrow-upward" size={16} color="#256D1B" />
-                  <CustomText className="text-sm font-semibold text-gray-700 ml-1">
-                    {selectedIssue.vote_count || selectedIssue.voteCount || 0}
-                  </CustomText>
-                </View>
-                {selectedIssue.createdAt && (
-                  <CustomText className="text-xs text-gray-500">
-                    {new Date(selectedIssue.createdAt).toLocaleDateString('en-US', {
+              {/* Created Date Row */}
+              {selectedIssue.createdAt && (
+                <View style={styles.dateRow}>
+                  <MaterialIcons name="schedule" size={16} color="#6b7280" />
+                  <CustomText className="text-xs text-gray-600 ml-2">
+                    Reported {new Date(selectedIssue.createdAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
-                      year: 'numeric'
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })}
                   </CustomText>
-                )}
-              </View>
+                </View>
+              )}
             </View>
 
             {/* Image Section */}
@@ -417,18 +443,22 @@ export default function MapScreen() {
             {/* Description Section */}
             {selectedIssue.description && (
               <View style={styles.descriptionSection}>
+                <CustomText className="text-xs text-gray-500 font-semibold mb-1">DESCRIPTION</CustomText>
                 <CustomText className="text-sm text-gray-700 leading-5">
                   {selectedIssue.description}
                 </CustomText>
               </View>
             )}
 
-            {/* Location Info */}
+            {/* Location Info with Coordinates */}
             <View style={styles.locationSection}>
-              <MaterialIcons name="location-on" size={18} color="#6b7280" />
-              <CustomText className="text-sm text-gray-600 ml-2 flex-1">
-                {selectedIssue.location.lat.toFixed(6)}, {selectedIssue.location.lng.toFixed(6)}
-              </CustomText>
+              <CustomText className="text-xs text-gray-500 font-semibold mb-1">LOCATION</CustomText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <MaterialIcons name="location-on" size={16} color="#6b7280" />
+                <CustomText className="text-sm text-gray-700 ml-2 flex-1">
+                  {selectedIssue.location.lat.toFixed(6)}, {selectedIssue.location.lng.toFixed(6)}
+                </CustomText>
+              </View>
             </View>
 
             {/* View Details Button */}
@@ -441,14 +471,6 @@ export default function MapScreen() {
               </CustomText>
               <MaterialIcons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
-
-            {/* Tap hint for first state */}
-            <View style={styles.hintContainer}>
-              <MaterialIcons name="swipe" size={16} color="#9ca3af" />
-              <CustomText className="text-xs text-gray-400 ml-1">
-                Swipe up for more details
-              </CustomText>
-            </View>
           </BottomSheetScrollView>
         )}
       </BottomSheet>
@@ -546,8 +568,16 @@ const styles = StyleSheet.create({
   previewTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
     marginBottom: 12,
+  },
+  locationName: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
   issueTypeTag: {
     paddingHorizontal: 14,
@@ -559,6 +589,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
   },
   metaRow: {
     flexDirection: "row",
@@ -596,12 +631,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   locationSection: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#f9fafb",
-    padding: 12,
+    padding: 14,
     borderRadius: 10,
     marginBottom: 20,
+    borderLeftWidth: 3,
+    borderLeftColor: "#256D1B",
   },
   viewDetailsButton: {
     backgroundColor: "#256D1B",
