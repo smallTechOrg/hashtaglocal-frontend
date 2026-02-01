@@ -6,13 +6,13 @@ import {
   UserLocation,
 } from "@/utils/LocationService";
 import { MaterialIcons } from "@expo/vector-icons";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Dimensions, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import MapView, { Marker, Region } from "react-native-maps";
 
 type LoadingState = "loading" | "success" | "error";
 

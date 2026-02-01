@@ -105,7 +105,6 @@ export default function IssueForm() {
       const response = await reportIssue(payload);
 
       setIsSubmitting(false);
-      setError(null);
       Alert.alert("Success", "Issue reported successfully!", [
         {
           text: "View Issue",
