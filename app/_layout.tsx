@@ -140,17 +140,23 @@ function useProtectedRoute() {
 
     const inAuthGroup = segments[0] === "auth";
     const inLoginScreen = segments[0] === "login";
+    const inTabsGroup = segments[0] === "(tabs)";
 
-    console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen });
+    console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
 
+    // Only protect routes, don't interfere with normal navigation
     if (!user && !inAuthGroup && !inLoginScreen) {
       // User is not authenticated and trying to access protected route
       console.log("Redirecting to login - user not authenticated");
       router.replace("/login");
     } else if (user && inLoginScreen) {
-      // User is authenticated and on login screen
-      console.log("Redirecting to home - user authenticated");
-      router.replace("/");
+      // User is authenticated and on login screen, redirect to tabs
+      console.log("Redirecting to tabs - user authenticated on login");
+      router.replace("/(tabs)");
+    } else if (user && segments.length === 0) {
+      // User is authenticated at root with no segments, ensure tabs are loaded
+      console.log("Loading tabs for authenticated user at root");
+      router.replace("/(tabs)");
     }
   }, [user, segments, isLoading, router]);
 }

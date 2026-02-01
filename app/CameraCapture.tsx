@@ -116,7 +116,7 @@ export default function CameraCapture() {
         };
 
         // Navigate to IssueForm with captured data and GCS path
-        router.push({
+        router.replace({
           pathname: "/IssueForm",
           params: {
             imageUri: capturedData.imageUri,
