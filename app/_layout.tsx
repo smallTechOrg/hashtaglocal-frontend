@@ -259,16 +259,10 @@ export default function RootLayout() {
         >
         <Drawer.Screen
           name="login"
-          options={({ navigation }) => ({
-            title: "Login",
-            headerTitleStyle: {
-              fontFamily: "Nunito-Regular",
-            },
+          options={{
+            headerShown: false,
             drawerItemStyle: { display: "none" },
-            headerLeft: (props) => (
-              <HeaderBackButton {...props} onPress={() => navigation.navigate("index")} />
-            ),
-          })}
+          }}
         />
         <Drawer.Screen
           name="index"
