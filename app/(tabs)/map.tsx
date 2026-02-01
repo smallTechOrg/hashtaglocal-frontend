@@ -220,6 +220,10 @@ export default function MapScreen() {
               source={{ uri: selectedIssue.media_urls[0].url }}
               style={styles.cardImage}
               contentFit="cover"
+              placeholder={{ blurhash: 'LGF5?xYk^6#M@-5c,1J5@[or[Q6.' }}
+              priority="high"
+              cachePolicy="memory-disk"
+              transition={200}
             />
           )}
 
