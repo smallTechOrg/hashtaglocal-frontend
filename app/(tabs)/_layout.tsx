@@ -17,33 +17,6 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: '#local',
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => (
-            <Image
-              source={require("../../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
-          tabBarLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'home' : 'home'} 
-              color={color} 
-              size={24} 
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{
           title: 'Map',
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
@@ -56,6 +29,34 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons 
               name={focused ? 'map' : 'map'} 
+              color={color} 
+              size={24} 
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="report"
+        options={{
+          title: 'Report Issue',
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: () => <DrawerToggleButton />,
+          headerRight: () => (
+            <Image
+              source={require("../../assets/logo-green.png")}
+              style={{ width: 32, height: 40, marginRight: 16 }}
+              resizeMode="contain"
+            />
+          ),
+          tabBarLabel: 'Report Issue',
+          tabBarLabelStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons 
+              name={focused ? 'add-circle' : 'add-circle-outline'} 
               color={color} 
               size={24} 
             />
