@@ -14,9 +14,9 @@ const BottomOverlay: React.FC<BottomOverlayProps> = ({ daysActive, onShare, inde
 
   return (
     <View
-      className="absolute left-0 right-0 flex-row items-center justify-between px-2"
+      className="absolute left-0 right-0 flex-row items-center justify-between px-2 py-2"
       style={{
-        bottom: 30,
+        bottom: 0,
         backgroundColor: 'rgba(35, 28, 28, 0.35)',
       }}
     >

@@ -1,7 +1,7 @@
 export default {
   expo: {
-    name: "hashtaglocal-frontend",
-    slug: "hashtaglocal-frontend",
+    name: "#local",
+    slug: "#local",
     owner: "madhyamakist",
     version: "1.0.0",
     orientation: "portrait",

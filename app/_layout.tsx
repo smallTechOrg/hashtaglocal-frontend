@@ -1,6 +1,5 @@
 import { refreshAuthToken } from "@/api/auth";
 import "@/global.css";
-import { UserProvider, useUser } from "@/utils/UserContext";
 import {
   clearTokens,
   getAccessToken,
@@ -9,6 +8,7 @@ import {
   isRefreshTokenExpired,
   saveTokens,
 } from "@/utils/tokenStorage";
+import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   DrawerContentComponentProps,
@@ -18,6 +18,7 @@ import {
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
+import * as Location from "expo-location";
 import { useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
@@ -98,7 +99,19 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
       // Fetch user profile with valid token
       try {
-        const response = await fetch(`${API_BASE_URL}/account/profile`, {
+        // Get user location for profile API
+        let profileUrl = `${API_BASE_URL}/account/profile`;
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          const { latitude, longitude } = location.coords;
+          profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+        } catch (locError) {
+          console.log("Location not available for profile API, using without location");
+        }
+
+        const response = await fetch(profileUrl, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -107,9 +120,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-          const { username, picture } = data.data.user;
-          console.log("Profile loaded:", username);
-          setUser({ username, picture });
+          const { username, picture, hashtag } = data.data.user;
+          console.log("Profile loaded:", username, "hashtag:", hashtag);
+          setUser({ username, picture, hashtag });
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();

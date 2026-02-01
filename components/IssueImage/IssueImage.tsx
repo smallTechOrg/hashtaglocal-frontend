@@ -9,7 +9,7 @@ import PaginationDots from './PaginationDots';
 import TopOverlay from './TopOverlay';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLIDE_WIDTH = SCREEN_WIDTH - 16;
+const SLIDE_WIDTH = SCREEN_WIDTH;
 
 interface IssueImageProps {
   imageSource?: ImageSourcePropType | string;
@@ -61,9 +61,9 @@ const IssueImage: React.FC<IssueImageProps> = ({
 
   return (
     <>
-      <View className={`w-full relative overflow-hidden rounded-xl ${className ?? ""}`}>
+      <View className={`w-full relative overflow-hidden ${className ?? ""}`}>
         {images.length > 0 ? (
-          <View className="w-full" style={{ height: 256 }}>
+          <View className="w-full" style={{ height: 450 }}>
             <ScrollView
               horizontal
               pagingEnabled
@@ -82,7 +82,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
                     imageSource={imageSource}
                     index={index}
                     width={SLIDE_WIDTH}
-                    height={256}
+                    height={450}
                     hasError={imageErrors[index] || false}
                     onError={handleImageError}
                     onPress={handleImagePress}

@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext, useState } from "react";
 export interface UserProfile {
   username: string;
   picture: string;
+  hashtag?: string;
 }
 
 interface UserContextType {

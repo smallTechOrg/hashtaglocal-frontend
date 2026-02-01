@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import React from 'react';
-import { ImageSourcePropType, Image as RNImage, Pressable, View } from 'react-native';
+import { ImageSourcePropType, Pressable, Image as RNImage, View } from 'react-native';
 
 interface ImageCarouselItemProps {
   imageSource: ImageSourcePropType | { uri: string };

@@ -1,10 +1,34 @@
 // app/(tabs)/_layout.tsx
+import { useUser } from '@/utils/UserContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DrawerToggleButton } from '@react-navigation/drawer';
 import { Tabs } from 'expo-router';
+import { useMemo } from 'react';
 import { Image } from 'react-native';
 
 export default function TabsLayout() {
+  const { user } = useUser();
+  
+  // Memoize options to prevent unnecessary re-renders
+  const indexOptions = useMemo(() => ({
+    title: user?.hashtag || 'Map',
+    headerTitleStyle: {
+      fontFamily: "Nunito-Regular",
+    },
+    headerLeft: () => <DrawerToggleButton />,
+    tabBarLabel: 'Map',
+    tabBarLabelStyle: {
+      fontFamily: "Nunito-Regular",
+    },
+    tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
+      <MaterialIcons 
+        name={focused ? 'map' : 'map'} 
+        color={color} 
+        size={24} 
+      />
+    ),
+  }), [user?.hashtag]);
+
   return (
     <Tabs
       screenOptions={{
@@ -16,24 +40,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Map',
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: () => <DrawerToggleButton />,
-          tabBarLabel: 'Map',
-          tabBarLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'map' : 'map'} 
-              color={color} 
-              size={24} 
-            />
-          ),
-        }}
+        options={indexOptions}
       />
       <Tabs.Screen
         name="report"
