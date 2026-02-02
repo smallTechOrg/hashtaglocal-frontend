@@ -1,13 +1,6 @@
-import { refreshAuthToken } from "@/api/auth";
 import "@/global.css";
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  isAccessTokenExpired,
-  isRefreshTokenExpired,
-  saveTokens,
-} from "@/utils/tokenStorage";
+import { getValidAccessToken } from "@/utils/apiClient";
+import { clearTokens } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
@@ -24,7 +17,7 @@ import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -38,68 +31,14 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     async function loadUserProfile() {
       console.log("=== AuthLoader: Starting loadUserProfile ===");
 
-      let token = await getAccessToken();
-      console.log("Access token exists:", !!token);
-      
+      // getValidAccessToken handles expiry check and auto-refresh
+      const token = await getValidAccessToken();
+      console.log("Valid access token exists:", !!token);
+
       if (!token) {
-        console.log("No access token found");
+        console.log("No valid access token available");
         setIsLoading(false);
         return;
-      }
-
-      // Check if access token is expired
-      const isExpired = await isAccessTokenExpired();
-      console.log("Access token expired:", isExpired);
-      if (isExpired) {
-        console.log("Access token expired, checking refresh token...");
-        const refreshToken = await getRefreshToken();
-
-        if (!refreshToken) {
-          console.log("No refresh token available");
-          await clearTokens();
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
-        // Check if refresh token is also expired
-        const isRefreshExpired = await isRefreshTokenExpired();
-        console.log("Refresh token expired:", isRefreshExpired);
-
-        if (isRefreshExpired) {
-          console.log("Refresh token also expired - user must login again");
-          await clearTokens();
-          setUser(null);
-          setIsLoading(false);
-          Alert.alert(
-            "Session Expired",
-            "Your session has expired. Please log in again.",
-            [{ text: "OK" }]
-          );
-          return;
-        }
-
-        console.log("Refresh token valid, attempting to refresh access token...");
-        try {
-          const refreshResponse = await refreshAuthToken(refreshToken);
-          const { access_token, refresh_token } = refreshResponse.data;
-
-          await saveTokens(
-            access_token.value,
-            access_token.expiry,
-            refresh_token.value,
-            refresh_token.expiry
-          );
-
-          token = access_token.value;
-          console.log("Token refreshed successfully");
-        } catch (error) {
-          console.error("Failed to refresh token:", error);
-          await clearTokens();
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
       }
 
       // Fetch user profile with valid token
@@ -160,7 +99,7 @@ function useProtectedRoute() {
     const inLoginScreen = segments[0] === "login";
     const inTabsGroup = segments[0] === "(tabs)";
 
-    console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
+    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
 
     // Only protect routes, don't interfere with normal navigation
     if (!user && !inAuthGroup && !inLoginScreen) {
