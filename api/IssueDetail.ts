@@ -1,4 +1,5 @@
 import { APIResponse } from "@/models/APIResponse";
+import { getAccessToken } from "@/utils/tokenStorage";
 
 /**
  * Fetches issue data from the backend API
@@ -129,11 +130,13 @@ export async function reportIssue(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
+    const token = await getAccessToken();
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -193,10 +196,12 @@ export async function getSignedUploadUrl(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
+    const token = await getAccessToken();
     const response = await fetch(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
+        Authorization: `Bearer ${token}`,
       },
       signal: controller.signal,
     });

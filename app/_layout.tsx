@@ -24,7 +24,7 @@ import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { ActivityIndicator, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -71,6 +71,11 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           await clearTokens();
           setUser(null);
           setIsLoading(false);
+          Alert.alert(
+            "Session Expired",
+            "Your session has expired. Please log in again.",
+            [{ text: "OK" }]
+          );
           return;
         }
 
