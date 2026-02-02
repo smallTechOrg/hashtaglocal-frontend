@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { authEvents } from "./authEvents";
 
 export interface UserProfile {
   username: string;
@@ -18,6 +19,15 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Listen for session expired events from apiClient
+  useEffect(() => {
+    const unsubscribe = authEvents.onSessionExpired(() => {
+      console.log("[UserContext] Session expired event received, clearing user");
+      setUser(null);
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <UserContext.Provider value={{ user, setUser, isLoading, setIsLoading }}>

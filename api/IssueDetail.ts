@@ -1,4 +1,5 @@
 import { APIResponse } from "@/models/APIResponse";
+import { apiGet, apiPost } from "@/utils/apiClient";
 
 /**
  * Fetches issue data from the backend API
@@ -126,20 +127,7 @@ export async function reportIssue(
   const url = `${API_BASE_URL}${API_ENDPOINTS.REPORT_ISSUE}`;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const response = await apiPost(url, payload, { timeout: TIME_OUT });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -190,18 +178,7 @@ export async function getSignedUploadUrl(
   const url = `${API_BASE_URL}${API_ENDPOINTS.UPLOAD_URL}?content_type=${encodeURIComponent(contentType)}`;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const response = await apiGet(url, { timeout: TIME_OUT });
 
     if (!response.ok) {
       const errorText = await response.text();
