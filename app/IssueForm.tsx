@@ -184,8 +184,6 @@ export default function IssueForm() {
         {
           text: "Go Home",
           onPress: () => {
-            // Clean navigation stack and go to home
-            router.dismissAll();
             router.replace("/(tabs)");
           },
           style: "cancel",
