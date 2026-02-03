@@ -77,6 +77,13 @@ async function refreshAccessToken(): Promise<string | null> {
     } catch (error) {
       console.error("[ApiClient] Failed to refresh token:", error);
       await clearTokens();
+      authEvents.emitSessionExpired();
+      Alert.alert(
+        "Session Expired",
+        "Your session has expired. Please log in again.",
+        [{ text: "OK" }]
+      );
+      router.replace("/login");
       return null;
     } finally {
       isRefreshing = false;
@@ -138,6 +145,17 @@ export async function apiRequest(
       const token = await getValidAccessToken();
       if (token) {
         headers.Authorization = `Bearer ${token}`;
+      } else {
+        // No valid token available - redirect to login
+        console.log("[ApiClient] No valid token available, redirecting to login");
+        authEvents.emitSessionExpired();
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please log in again.",
+          [{ text: "OK" }]
+        );
+        router.replace("/login");
+        throw new Error("Authentication required. Please log in.");
       }
     }
 
@@ -160,6 +178,19 @@ export async function apiRequest(
           headers,
           signal: controller.signal,
         });
+
+        // If still 401 after retry, redirect to login
+        if (response.status === 401) {
+          console.log("[ApiClient] Still 401 after token refresh, redirecting to login");
+          await clearTokens();
+          authEvents.emitSessionExpired();
+          Alert.alert(
+            "Session Expired",
+            "Your session has expired. Please log in again.",
+            [{ text: "OK" }]
+          );
+          router.replace("/login");
+        }
       }
     }
 
