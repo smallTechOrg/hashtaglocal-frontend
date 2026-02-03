@@ -85,6 +85,12 @@ export default function IssueForm() {
       } catch (error) {
         console.error("Error uploading image:", error);
         const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
+
+        // Don't show upload failed alert if it's an auth error - apiClient already handles redirect
+        if (errorMessage.includes("Authentication required")) {
+          return;
+        }
+
         setUploadError(errorMessage);
         Alert.alert(
           "Upload Failed",
@@ -191,7 +197,10 @@ export default function IssueForm() {
       ]);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to report issue";
-      Alert.alert("Error", errorMessage);
+      // Don't show error alert if it's an auth error - apiClient already handles redirect
+      if (!errorMessage.includes("Authentication required")) {
+        Alert.alert("Error", errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }

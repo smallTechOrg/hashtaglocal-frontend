@@ -1,6 +1,6 @@
 import "@/global.css";
-import { getValidAccessToken } from "@/utils/apiClient";
-import { clearTokens } from "@/utils/tokenStorage";
+import { apiGet } from "@/utils/apiClient";
+import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
@@ -17,7 +17,7 @@ import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -31,18 +31,16 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     async function loadUserProfile() {
       console.log("=== AuthLoader: Starting loadUserProfile ===");
 
-      // getValidAccessToken handles expiry check and auto-refresh
-      const token = await getValidAccessToken();
-      console.log("Valid access token exists:", !!token);
-
-      if (!token) {
-        console.log("No valid access token available");
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch user profile with valid token
       try {
+        // First check if we have any tokens - if not, user is not logged in
+        const token = await getAccessToken();
+        if (!token) {
+          console.log("No token available, user not logged in");
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
         // Get user location for profile API
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
@@ -55,12 +53,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("Location not available for profile API, using without location");
         }
 
-        const response = await fetch(profileUrl, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // apiGet handles token validation, refresh, and 401 retry automatically
+        const response = await apiGet(profileUrl);
 
         if (response.ok) {
           const data = await response.json();
@@ -71,17 +65,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();
           setUser(null);
-          if (response.status === 401) {
-            Alert.alert(
-              "Session Expired",
-              "Your session has expired. Please log in again.",
-              [{ text: "OK" }]
-            );
-          }
         }
-      } catch (error) {
-        console.error("Failed to load user profile:", error);
-        await clearTokens();
+      } catch (error: any) {
+        // apiGet throws "Authentication required" if no valid token
+        if (error.message?.includes("Authentication required")) {
+          console.log("No valid token available");
+        } else {
+          console.error("Failed to load user profile:", error);
+          await clearTokens();
+        }
         setUser(null);
       } finally {
         setIsLoading(false);
