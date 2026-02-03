@@ -56,15 +56,17 @@ interface IssueMarker {
   media_urls?: Array<{ url: string }>;
 }
 
-const ISSUE_TYPES = ["All", "Road", "Drainage", "Waste", "Lighting", "Other"];
+const ISSUE_TYPES = ["All", "Pothole", "Waste", "Footpath", "Pollution", "Hygiene", "Safety", "Other"];
 
-// Color mapping for issue types
+// Color mapping for issue types 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
-  road: "#ef4444",      // Red
-  drainage: "#3b82f6",  // Blue
-  waste: "#22c55e",     // Green
-  lighting: "#f59e0b",  // Orange
-  other: "#6b7280",     // Gray
+  pothole: "#ef4444",    // Red
+  waste: "#22c55e",      // Green
+  footpath: "#3b82f6",   // Blue
+  pollution: "#8b5cf6",  // Purple
+  hygiene: "#06b6d4",    // Cyan
+  safety: "#f59e0b",     // Orange
+  other: "#fce916",      // Gray
 };
 
 const getIssueColor = (type: string): string => {
@@ -428,11 +430,13 @@ export default function MapScreen() {
               </View>
             ) : (
               <View style={[styles.imagePlaceholder, { backgroundColor: getIssueColor(selectedIssue.type) + '20' }]}>
-                <MaterialIcons 
-                  name={selectedIssue.type.toLowerCase() === 'road' ? 'construction' : 
-                        selectedIssue.type.toLowerCase() === 'drainage' ? 'water-damage' :
+                <MaterialIcons
+                  name={selectedIssue.type.toLowerCase() === 'pothole' ? 'construction' :
                         selectedIssue.type.toLowerCase() === 'waste' ? 'delete' :
-                        selectedIssue.type.toLowerCase() === 'lighting' ? 'lightbulb' : 'report-problem'} 
+                        selectedIssue.type.toLowerCase() === 'footpath' ? 'directions-walk' :
+                        selectedIssue.type.toLowerCase() === 'pollution' ? 'cloud' :
+                        selectedIssue.type.toLowerCase() === 'hygiene' ? 'sanitizer' :
+                        selectedIssue.type.toLowerCase() === 'safety' ? 'warning' : 'report-problem'} 
                   size={64} 
                   color={getIssueColor(selectedIssue.type)} 
                 />
