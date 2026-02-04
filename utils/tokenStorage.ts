@@ -31,7 +31,9 @@ export async function getAccessTokenExpiry(): Promise<number | null> {
 export async function isAccessTokenExpired(): Promise<boolean> {
   const expiry = await getAccessTokenExpiry();
   if (!expiry) return true;
-  return Date.now() > expiry;
+  // Convert seconds to milliseconds if expiry is in seconds (< year 2100 in ms)
+  const expiryMs = expiry < 4102444800000 ? expiry * 1000 : expiry;
+  return Date.now() > expiryMs;
 }
 
 // Get refresh token expiry timestamp
@@ -44,7 +46,9 @@ export async function getRefreshTokenExpiry(): Promise<number | null> {
 export async function isRefreshTokenExpired(): Promise<boolean> {
   const expiry = await getRefreshTokenExpiry();
   if (!expiry) return true;
-  return Date.now() > expiry;
+  // Convert seconds to milliseconds if expiry is in seconds (< year 2100 in ms)
+  const expiryMs = expiry < 4102444800000 ? expiry * 1000 : expiry;
+  return Date.now() > expiryMs;
 }
 
 // Save both access and refresh tokens along with their expiry timestamps
