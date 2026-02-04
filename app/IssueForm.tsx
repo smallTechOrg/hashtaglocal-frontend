@@ -38,10 +38,22 @@ export default function IssueForm() {
   const params = useLocalSearchParams<{
     imageUri: string;
     timestamp: string;
+    mode?: string;
+    issueType?: string;
+    issueId?: string;
   }>();
+
+  const isVerifyMode = params.mode === "verify";
 
   const [selectedType, setSelectedType] = useState<IssueType | null>("OTHER");
   const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  // Sync issue type from verify flow params (params may arrive after first render)
+  useEffect(() => {
+    if (isVerifyMode && params.issueType) {
+      setSelectedType(params.issueType as IssueType);
+    }
+  }, [isVerifyMode, params.issueType]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(true);
   const [gcsPath, setGcsPath] = useState<string | null>(null);
@@ -250,26 +262,30 @@ export default function IssueForm() {
       const response = await reportIssue(payload);
 
       setIsSubmitting(false);
-      Alert.alert("Success", "Issue reported successfully!", [
-        {
-          text: "View Issue",
-          onPress: () => {
-            router.push({
-              pathname: "/issueDetail",
-              params: {
-                id: response.data.issue_id.toString(),
-              },
-            });
+      Alert.alert(
+        "Success",
+        isVerifyMode ? "Issue verified successfully!" : "Issue reported successfully!",
+        [
+          {
+            text: "View Issue",
+            onPress: () => {
+              router.push({
+                pathname: "/issueDetail",
+                params: {
+                  id: response.data.issue_id.toString(),
+                },
+              });
+            },
           },
-        },
-        {
-          text: "Go Home",
-          onPress: () => {
-            router.replace("/(tabs)");
+          {
+            text: "Go Home",
+            onPress: () => {
+              router.replace("/(tabs)");
+            },
+            style: "cancel",
           },
-          style: "cancel",
-        },
-      ]);
+        ]
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to report issue";
       // Don't show error alert if it's an auth error - apiClient already handles redirect
@@ -367,8 +383,10 @@ export default function IssueForm() {
         <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
           {/* Header */}
           <View className="flex-row items-center mb-4">
-            <MaterialIcons name="report-problem" size={24} color="#256D1B" />
-            <CustomText className="ml-2 text-xl font-bold">Report Issue</CustomText>
+            <MaterialIcons name={isVerifyMode ? "verified" : "report-problem"} size={24} color="#256D1B" />
+            <CustomText className="ml-2 text-xl font-bold">
+              {isVerifyMode ? "Verify Issue" : "Report Issue"}
+            </CustomText>
           </View>
 
           {/* Issue Type Section */}
@@ -379,15 +397,16 @@ export default function IssueForm() {
             </View>
 
             <TouchableOpacity
-              onPress={() => setDropdownVisible(true)}
-              className="flex-row items-center justify-between border-2 border-gray-200 rounded-xl px-4 py-4 bg-gray-50"
+              onPress={() => !isVerifyMode && setDropdownVisible(true)}
+              disabled={isVerifyMode}
+              className={`flex-row items-center justify-between border-2 border-gray-200 rounded-xl px-4 py-4 ${isVerifyMode ? "bg-gray-100" : "bg-gray-50"}`}
             >
               <View className="flex-row items-center flex-1">
                 {selectedType && (
                   <MaterialIcons
                     name={ISSUE_TYPES.find((t) => t.id === selectedType)?.icon as any}
                     size={24}
-                    color="#256D1B"
+                    color={isVerifyMode ? "#6b7280" : "#256D1B"}
                   />
                 )}
                 <CustomText
@@ -396,7 +415,8 @@ export default function IssueForm() {
                   {selectedTypeLabel || "Select issue type"}
                 </CustomText>
               </View>
-              <MaterialIcons name="arrow-drop-down" size={28} color="#256D1B" />
+              {!isVerifyMode && <MaterialIcons name="arrow-drop-down" size={28} color="#256D1B" />}
+              {isVerifyMode && <MaterialIcons name="lock" size={20} color="#9ca3af" />}
             </TouchableOpacity>
           </View>
 
@@ -448,7 +468,7 @@ export default function IssueForm() {
                 selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
               }`}
             >
-              {isLoadingLocation ? "Getting Location..." : isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Report"}
+              {isLoadingLocation ? "Getting Location..." : isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : isVerifyMode ? "Verify Issue" : "Submit Report"}
             </CustomText>
           </TouchableOpacity>
         </View>
