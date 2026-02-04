@@ -326,15 +326,15 @@ export default function IssueForm() {
               },
             });
           },
-        },
-        {
-          text: "Go Home",
-          onPress: () => {
-            router.replace("/(tabs)");
+          {
+            text: "Go Home",
+            onPress: () => {
+              router.replace("/(tabs)");
+            },
+            style: "cancel",
           },
-          style: "cancel",
-        },
-      ]);
+        ]
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to update issue";
       // Don't show error alert if it's an auth error - apiClient already handles redirect
