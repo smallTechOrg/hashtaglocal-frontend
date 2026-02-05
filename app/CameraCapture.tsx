@@ -36,7 +36,7 @@ export default function CameraCapture() {
           params: {
             imageUri: photo.uri,
             timestamp: new Date().toISOString(),
-            ...(mode === "verify" && { mode: "verify", issueType, issueId }),
+            ...(mode === "update" && { mode: "update", issueType, issueId }),
           },
         });
       }

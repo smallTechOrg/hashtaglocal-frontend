@@ -162,13 +162,13 @@ export default function MapScreen() {
     }
   }, [selectedIssue, router]);
 
-  const handleVerifyIssue = useCallback(() => {
+  const handleUpdateIssue = useCallback(() => {
     if (selectedIssue) {
       bottomSheetRef.current?.close();
       router.push({
         pathname: "/CameraCapture",
         params: {
-          mode: "verify",
+          mode: "update",
           issueType: selectedIssue.type.toUpperCase(),
           issueId: selectedIssue.id,
         },
@@ -492,12 +492,12 @@ export default function MapScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleVerifyIssue}
+                onPress={handleUpdateIssue}
                 style={styles.verifyButton}
               >
                 <MaterialIcons name="verified" size={20} color="#fff" />
                 <CustomText className="text-white font-semibold text-base">
-                  Verify
+                  Update
                 </CustomText>
               </TouchableOpacity>
             </View>

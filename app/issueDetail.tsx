@@ -116,7 +116,7 @@ const IssueDetailScreen = () => {
                     className="w-full"
                 />
             </View>
-
+         
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
                 {/* Issue Type */}

@@ -81,6 +81,21 @@ export interface VerifyIssuePayload {
   };
 }
 
+export interface ResolveIssuePayload {
+  issue_action: {
+    action: "RESOLVED";
+    media_urls: {
+      location: {
+        lat: string;
+        lng: string;
+        meta_data: LocationMetaData;
+      };
+      type: string;
+      url: string;
+    }[];
+  };
+}
+
 const TIME_OUT = 10000; // 10 second timeout
 export async function fetchIssue(issueId: number): Promise<APIResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
@@ -225,6 +240,52 @@ export async function verifyIssue(
     }
 
     console.error("[API] Error verifying issue:", error);
+    throw error;
+  }
+}
+
+export async function resolveIssue(
+  issueId: number,
+  payload: ResolveIssuePayload,
+): Promise<ReportIssueResponse> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
+
+  try {
+    const response = await apiPut(url, payload, { timeout: TIME_OUT });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API] HTTP error ${response.status}:`, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const responseText = await response.text();
+
+    if (!responseText) {
+      console.error("[API] Empty response body from server");
+      throw new Error("Server returned an empty response");
+    }
+
+    const data: ReportIssueResponse = JSON.parse(responseText);
+    console.log(`[API] Successfully resolved issue ${issueId}`);
+    return data;
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout after 10 seconds");
+      throw new Error(
+        "Request timeout. Please check if the backend is running and accessible.",
+      );
+    }
+
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed while resolving issue");
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct.`,
+      );
+    }
+
+    console.error("[API] Error resolving issue:", error);
     throw error;
   }
 }
