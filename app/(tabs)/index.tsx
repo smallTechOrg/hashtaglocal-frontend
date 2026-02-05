@@ -495,8 +495,8 @@ export default function MapScreen() {
                 onPress={handleUpdateIssue}
                 style={styles.verifyButton}
               >
-                <MaterialIcons name="verified" size={20} color="#fff" />
-                <CustomText className="text-white font-semibold text-base">
+                <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                <CustomText className="text-white font-semibold p">
                   Update
                 </CustomText>
               </TouchableOpacity>

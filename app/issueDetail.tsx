@@ -7,14 +7,15 @@ import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString, processImageUrls } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native';
 
   
 const IssueDetailScreen = () => {
     const params = useLocalSearchParams<{ id?: string; issueId?: string }>();
     const navigation = useNavigation();
+    const router = useRouter();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -116,7 +117,28 @@ const IssueDetailScreen = () => {
                     className="w-full"
                 />
             </View>
-         
+
+            {/* Update Button */}
+            <TouchableOpacity
+                onPress={() => {
+                    router.push({
+                        pathname: "/CameraCapture",
+                        params: {
+                            mode: "update",
+                            issueType: issue.type.toUpperCase(),
+                            issueId: issueId,
+                        },
+                    });
+                }}
+                className="flex-row items-center justify-center gap-2 bg-[#2563EB] mx-3 mt-3 py-3 rounded-xl"
+                style={{ elevation: 2 }}
+            >
+                <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                <CustomText className="text-white font-semibold p">
+                    Update
+                </CustomText>
+            </TouchableOpacity>
+
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
                 {/* Issue Type */}
