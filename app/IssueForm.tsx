@@ -1,4 +1,4 @@
-import { reportIssue, uploadImage } from "@/api/IssueDetail";
+import { reportIssue, verifyIssue, uploadImage } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import TopOverlay from "@/components/IssueImage/TopOverlay";
 import { formatDate } from "@/utils/FormatDate";
@@ -236,30 +236,54 @@ export default function IssueForm() {
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        issue: {
-          type: selectedType.toUpperCase(),
-          location: {
-            lat: latitude,
-            lng: longitude,
-            meta_data: locationMetaData,
-          },
-          media_urls: [
-            {
-              location: {
-                lat: latitude,
-                lng: longitude,
-                meta_data: locationMetaData,
-              },
-              type: "PHOTO",
-              url: gcsPath || "",
-            },
-          ],
-          description: description,
-        },
-      };
+      let response;
 
-      const response = await reportIssue(payload);
+      if (isVerifyMode && params.issueId) {
+        const verifyPayload = {
+          issue_action: {
+            action: "VERIFY" as const,
+            media_urls: [
+              {
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  meta_data: locationMetaData,
+                },
+                type: "PHOTO",
+                url: gcsPath || "",
+                description: description,
+              },
+            ],
+          },
+        };
+
+        response = await verifyIssue(parseInt(params.issueId, 10), verifyPayload);
+      } else {
+        const payload = {
+          issue: {
+            type: selectedType.toUpperCase(),
+            location: {
+              lat: latitude,
+              lng: longitude,
+              meta_data: locationMetaData,
+            },
+            media_urls: [
+              {
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  meta_data: locationMetaData,
+                },
+                type: "PHOTO",
+                url: gcsPath || "",
+              },
+            ],
+            description: description,
+          },
+        };
+
+        response = await reportIssue(payload);
+      }
 
       setIsSubmitting(false);
       Alert.alert(
