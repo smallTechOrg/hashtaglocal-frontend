@@ -9,7 +9,11 @@ import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
+<<<<<<< HEAD
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
+=======
+import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native';
+>>>>>>> ca2d235 (Issue detail update button)
 
   
 const IssueDetailScreen = () => {
