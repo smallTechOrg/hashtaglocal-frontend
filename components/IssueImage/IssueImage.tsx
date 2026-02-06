@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Dimensions, ImageSourcePropType, ScrollView, View } from 'react-native';
+import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
 import '../../global.css';
+import CustomText from '../CustomText';
 import BottomOverlay from './BottomOverlay';
 import EmptyImagePlaceholder from './EmptyImagePlaceholder';
 import FullScreenImageViewer from './FullScreenImageViewer';
@@ -11,9 +12,18 @@ import TopOverlay from './TopOverlay';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDE_WIDTH = SCREEN_WIDTH;
 
+export interface MediaItem {
+  url: string;
+  description?: string;
+  username?: string;
+  profile_photo?: string;
+  created_at?: string;
+}
+
 interface IssueImageProps {
   imageSource?: ImageSourcePropType | string;
   imageSources?: (ImageSourcePropType | string)[];
+  mediaItems?: MediaItem[];
   location?: string;
   timestamp?: string;
   daysActive?: string;
@@ -24,6 +34,7 @@ interface IssueImageProps {
 const IssueImage: React.FC<IssueImageProps> = ({
   imageSource,
   imageSources,
+  mediaItems,
   location,
   timestamp,
   daysActive,
@@ -34,12 +45,14 @@ const IssueImage: React.FC<IssueImageProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
 
-  // Support both single image and multiple images
-  const images = imageSources && imageSources.length > 0
-    ? imageSources
-    : imageSource
-      ? [imageSource]
-      : [];
+  // Support mediaItems, imageSources, or single imageSource
+  const images = mediaItems && mediaItems.length > 0
+    ? mediaItems.map(m => m.url)
+    : imageSources && imageSources.length > 0
+      ? imageSources
+      : imageSource
+        ? [imageSource]
+        : [];
 
   const handleScroll = (event: any) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -59,6 +72,9 @@ const IssueImage: React.FC<IssueImageProps> = ({
     setIsFullScreenVisible(false);
   };
 
+  // Get current media item for the card section
+  const currentMediaItem = mediaItems?.[currentIndex];
+
   return (
     <>
       <View className={`w-full relative overflow-hidden ${className ?? ""}`}>
@@ -75,6 +91,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
             >
               {images.map((img, index) => {
                 const imageSource = typeof img === 'string' ? { uri: img } : img;
+                const mediaItem = mediaItems?.[index];
 
                 return (
                   <ImageCarouselItem
@@ -89,7 +106,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
                   >
                     <TopOverlay
                       location={location}
-                      timestamp={timestamp}
+                      timestamp={mediaItem?.created_at || timestamp}
                       index={index}
                     />
                     <BottomOverlay
@@ -110,6 +127,31 @@ const IssueImage: React.FC<IssueImageProps> = ({
           </View>
         ) : (
           <EmptyImagePlaceholder />
+        )}
+
+        {/* Media Info Card - updates with slideshow */}
+        {mediaItems && mediaItems.length > 0 && (currentMediaItem?.description || currentMediaItem?.username) && (
+          <View className="p-4 bg-white">
+            {currentMediaItem?.description && (
+              <CustomText className="text-gray-700 mb-3">
+                {currentMediaItem.description}
+              </CustomText>
+            )}
+            {currentMediaItem?.username && (
+              <View className="flex-row items-center">
+                {currentMediaItem?.profile_photo && (
+                  <Image
+                    source={{ uri: currentMediaItem.profile_photo }}
+                    style={{ width: 28, height: 28, borderRadius: 14 }}
+                  />
+                )}
+                <CustomText className={`text-gray-600 text-sm ${currentMediaItem?.profile_photo ? 'ml-2' : ''}`}>
+                  {currentIndex === 0 ? 'Reported by ' : 'Updated by '}
+                  <CustomText className="font-bold">{currentMediaItem.username}</CustomText>
+                </CustomText>
+              </View>
+            )}
+          </View>
         )}
       </View>
 

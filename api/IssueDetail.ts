@@ -83,7 +83,7 @@ export interface VerifyIssuePayload {
 
 export interface ResolveIssuePayload {
   issue_action: {
-    action: "RESOLVED";
+    action: "RESOLVE";
     media_urls: {
       location: {
         lat: string;

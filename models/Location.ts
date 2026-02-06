@@ -1,9 +1,10 @@
 import { Locality } from "./Locality";
 
 export interface Location {
-  lat: string;
-  lng: string;
+  lat: number;
+  lng: number;
   locality: Locality;
-  address: string;
-  colloquialName: string;
+  address?: string;
+  address_text?: string;
+  colloquial_name?: string;
 }

@@ -46,7 +46,7 @@ export default function IssueForm() {
   const isUpdateMode = params.mode === "update";
 
   const [selectedType, setSelectedType] = useState<IssueType | null>("OTHER");
-  const [selectedAction, setSelectedAction] = useState<"VERIFY" | "RESOLVED" | null>(null);
+  const [selectedAction, setSelectedAction] = useState<"VERIFY" | "RESOLVE" | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
   // Sync issue type from update flow params (params may arrive after first render)
@@ -221,7 +221,7 @@ export default function IssueForm() {
       });
   const timestampString = formatDate(timestamp || "");
 
-  const handleSubmit = async (action?: "VERIFY" | "RESOLVED") => {
+  const handleSubmit = async (action?: "VERIFY" | "RESOLVE") => {
     if (!selectedType || !gcsPath) return;
 
     // Check if location is available
@@ -262,10 +262,10 @@ export default function IssueForm() {
         };
 
         response = await verifyIssue(parseInt(params.issueId, 10), verifyPayload);
-      } else if (isUpdateMode && params.issueId && action === "RESOLVED") {
+      } else if (isUpdateMode && params.issueId && action === "RESOLVE") {
         const resolvePayload = {
           issue_action: {
-            action: "RESOLVED" as const,
+            action: "RESOLVE" as const,
             media_urls: [
               {
                 location: {
@@ -309,19 +309,20 @@ export default function IssueForm() {
       }
 
       const successMessage =
-        action === "VERIFY" ? "Issue verified successfully!" :
-        action === "RESOLVED" ? "Issue resolved successfully!" :
-        "Issue reported successfully!";
+        action === "VERIFY" ? "Issue verified successfully!\n\nThe resolution is pending approval. Once approved, the issue will be closed." :
+        action === "RESOLVE" ? "Issue resolved successfully!\n\nThe issue is now open and visible to others. Updates and resolutions can now be added." :
+        "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
 
       setIsSubmitting(false);
       Alert.alert("Success", successMessage, [
         {
           text: "View Issue",
           onPress: () => {
-            router.push({
+            router.replace({
               pathname: "/issueDetail",
               params: {
                 id: response.data.issue_id.toString(),
+                refresh: Date.now().toString(),
               },
             });
           },
@@ -524,7 +525,7 @@ export default function IssueForm() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => handleSubmit("RESOLVED")}
+                onPress={() => handleSubmit("RESOLVE")}
                 disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
                 className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
                   selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
@@ -541,7 +542,7 @@ export default function IssueForm() {
                     selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
                   }`}
                 >
-                  {isSubmitting && selectedAction === "RESOLVED" ? "Resolving..." : "Resolve Issue"}
+                  {isSubmitting && selectedAction === "RESOLVE" ? "Resolving..." : "Resolve Issue"}
                 </CustomText>
               </TouchableOpacity>
             </View>
