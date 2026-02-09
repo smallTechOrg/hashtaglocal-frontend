@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
+import { Image, ImageSourcePropType, ScrollView, View } from 'react-native';
 import '../../global.css';
 import CustomText from '../CustomText';
 import BottomOverlay from './BottomOverlay';
@@ -9,9 +9,6 @@ import FullScreenImageViewer from './FullScreenImageViewer';
 import ImageCarouselItem from './ImageCarouselItem';
 import PaginationDots from './PaginationDots';
 import TopOverlay from './TopOverlay';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLIDE_WIDTH = SCREEN_WIDTH;
 
 export interface MediaItem {
   url: string;
@@ -42,6 +39,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Support mediaItems, imageSources, or single imageSource
   const images = mediaItems && mediaItems.length > 0
@@ -77,35 +75,40 @@ const IssueImage: React.FC<IssueImageProps> = ({
     <>
       <View className={`w-full relative overflow-hidden ${className ?? ""}`}>
         {images.length > 0 ? (
-          <View className="w-full" style={{ height: 450 }}>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              style={{ width: '100%' }}
-              contentContainerStyle={{ width: SLIDE_WIDTH * images.length }}
-            >
-              {images.map((img, index) => {
-                const imageSource = typeof img === 'string' ? { uri: img } : img;
-                const mediaItem = mediaItems?.[index];
+          <View
+            className="w-full"
+            style={{ height: 450, overflow: 'hidden' }}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            {containerWidth > 0 && (
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                style={{ width: containerWidth }}
+                contentContainerStyle={{ width: containerWidth * images.length }}
+              >
+                {images.map((img, index) => {
+                  const imageSource = typeof img === 'string' ? { uri: img } : img;
 
-                return (
-                  <ImageCarouselItem
-                    key={`image-${index}`}
-                    imageSource={imageSource}
-                    index={index}
-                    width={SLIDE_WIDTH}
-                    height={450}
-                    hasError={imageErrors[index] || false}
-                    onError={handleImageError}
-                    onPress={handleImagePress}
-                  >
-                  </ImageCarouselItem>
-                );
-              })}
-            </ScrollView>
+                  return (
+                    <ImageCarouselItem
+                      key={`image-${index}`}
+                      imageSource={imageSource}
+                      index={index}
+                      width={containerWidth}
+                      height={450}
+                      hasError={imageErrors[index] || false}
+                      onError={handleImageError}
+                      onPress={handleImagePress}
+                    >
+                    </ImageCarouselItem>
+                  );
+                })}
+              </ScrollView>
+            )}
 
             <PaginationDots
               totalImages={images.length}
