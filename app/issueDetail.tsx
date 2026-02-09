@@ -93,8 +93,14 @@ const IssueDetailScreen = () => {
 
     const { issue } = issueData.data;
 
+    // Sort media by created_at ascending (oldest first) so the original report is at index 0
+    const sortedMedia = [...issue.media_urls].sort((a, b) => {
+        if (!a.created_at || !b.created_at) return 0;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
     // Process media items for the slideshow (with username, description, timestamp, profile_photo per image)
-    const mediaItems = issue.media_urls.map((media, index) => ({
+    const mediaItems = sortedMedia.map((media, index) => ({
         url: media.url,
         description: media.description || (index === 0 ? issue.description : undefined),
         username: media.username || (index === 0 ? issue.user.username : undefined),
