@@ -1,8 +1,9 @@
 import CustomText from "@/components/CustomText";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
 
 export default function CameraCapture() {
@@ -19,6 +20,17 @@ export default function CameraCapture() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+
+  // Reset all state when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setCapturedPhoto(null);
+      setCapturedTimestamp(null);
+      setIsCapturing(false);
+      setZoom(0);
+      setFlash("off");
+    }, [])
+  );
 
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) return;
