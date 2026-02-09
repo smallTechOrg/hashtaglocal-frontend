@@ -481,15 +481,7 @@ export default function MapScreen() {
 
             {/* Action Buttons */}
             <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                onPress={handleViewDetails}
-                style={styles.viewDetailsButton}
-              >
-                <CustomText className="text-white font-semibold text-base">
-                  View Full Details
-                </CustomText>
-                <MaterialIcons name="arrow-forward" size={20} color="#fff" />
-              </TouchableOpacity>
+             
 
               <TouchableOpacity
                 onPress={handleUpdateIssue}
@@ -497,8 +489,17 @@ export default function MapScreen() {
               >
                 <MaterialIcons name="camera-alt" size={20} color="#fff" />
                 <CustomText className="text-white font-semibold p">
-                  Update
+                  Update Issue
                 </CustomText>
+              </TouchableOpacity>
+               <TouchableOpacity
+                onPress={handleViewDetails}
+                style={styles.viewDetailsButton}
+              >
+                <CustomText className="text-white font-semibold text-base">
+                  View Full Details
+                </CustomText>
+                <MaterialIcons name="arrow-forward" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           </BottomSheetScrollView>
@@ -670,7 +671,7 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 2,
   },
   viewDetailsButton: {
     flex: 1,
@@ -681,7 +682,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 2,
     shadowColor: "#256D1B",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -696,7 +697,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 2,
     shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

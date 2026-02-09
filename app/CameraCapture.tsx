@@ -3,7 +3,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
 
 export default function CameraCapture() {
   const { mode, issueType, issueId } = useLocalSearchParams<{
@@ -16,6 +16,8 @@ export default function CameraCapture() {
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [flash, setFlash] = useState<"off" | "on">("off");
   const [zoom, setZoom] = useState(0);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
 
   const handleCapture = async () => {
@@ -30,15 +32,8 @@ export default function CameraCapture() {
       });
 
       if (photo) {
-        // Navigate immediately - location will be fetched on IssueForm
-        router.replace({
-          pathname: "/IssueForm",
-          params: {
-            imageUri: photo.uri,
-            timestamp: new Date().toISOString(),
-            ...(mode === "update" && { mode: "update", issueType, issueId }),
-          },
-        });
+        setCapturedPhoto(photo.uri);
+        setCapturedTimestamp(new Date().toISOString());
       }
     } catch (error) {
       console.error("Error capturing photo:", error);
@@ -49,6 +44,23 @@ export default function CameraCapture() {
     } finally {
       setIsCapturing(false);
     }
+  };
+
+  const handleRetake = () => {
+    setCapturedPhoto(null);
+    setCapturedTimestamp(null);
+  };
+
+  const handleProceed = () => {
+    if (!capturedPhoto || !capturedTimestamp) return;
+    router.replace({
+      pathname: "/IssueForm",
+      params: {
+        imageUri: capturedPhoto,
+        timestamp: capturedTimestamp,
+        ...(mode === "update" && { mode: "update", issueType, issueId }),
+      },
+    });
   };
 
   // Loading state while checking permissions
@@ -89,6 +101,37 @@ export default function CameraCapture() {
         >
           <CustomText className="text-white font-semibold">Grant Permission</CustomText>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Photo preview screen with retake/proceed options
+  if (capturedPhoto) {
+    return (
+      <View className="flex-1 bg-black">
+        <Image
+          source={{ uri: capturedPhoto }}
+          style={{ flex: 1 }}
+          resizeMode="contain"
+        />
+        <View className="absolute bottom-0 left-0 right-0 pb-10 pt-6 bg-black/60">
+          <View className="flex-row justify-evenly items-center">
+            <TouchableOpacity
+              onPress={handleRetake}
+              className="bg-white/20 px-8 py-4 rounded-full flex-row items-center gap-2"
+            >
+              <MaterialIcons name="replay" size={22} color="white" />
+              <CustomText className="text-white font-semibold text-base">Retake</CustomText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleProceed}
+              className="bg-primary px-8 py-4 rounded-full flex-row items-center gap-2"
+            >
+              <CustomText className="text-white font-semibold text-base">Use Photo</CustomText>
+              <MaterialIcons name="arrow-forward" size={22} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   }

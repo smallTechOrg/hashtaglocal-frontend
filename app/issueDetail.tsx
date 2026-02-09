@@ -143,18 +143,26 @@ const IssueDetailScreen = () => {
             >
                 <MaterialIcons name="camera-alt" size={20} color="#fff" />
                 <CustomText className="text-white font-semibold p">
-                    Update
+                    Update Issue
                 </CustomText>
             </TouchableOpacity>
 
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
                 {/* Issue Type */}
-                <View className="flex-row items-center mb-3">
-                    <MaterialIcons name="category" size={20} color="#256D1B" />
-                    <CustomText className="ml-2 text-lg font-bold capitalize">
-                        {issue.type}
-                    </CustomText>
+                <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center">
+                        <MaterialIcons name="category" size={20} color="#256D1B" />
+                        <CustomText className="ml-2 text-lg font-bold capitalize">
+                            {issue.type}
+                        </CustomText>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => handleShare(issueId, issue.type)}
+                        className="p-2"
+                    >
+                        <MaterialIcons name="share" size={26} color="#256D1B" />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Location Details */}
@@ -182,20 +190,12 @@ const IssueDetailScreen = () => {
                     </View>
                 )}
 
-                {/* Timestamp + Share */}
-                <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                        <MaterialIcons name="access-time" size={20} color="#666" />
-                        <CustomText className="ml-2 text-gray-600 text-sm">
-                            {formattedDate} • {daysActive}
-                        </CustomText>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => handleShare(issueId, issue.type)}
-                        className="flex-row items-center gap-1 px-3 py-2 rounded-lg"
-                    >
-                        <MaterialIcons name="share" size={18} color="#256D1B" />
-                          </TouchableOpacity>
+                {/* Timestamp */}
+                <View className="flex-row items-center">
+                    <MaterialIcons name="access-time" size={20} color="#666" />
+                    <CustomText className="ml-2 text-gray-600 text-sm">
+                        {formattedDate} • {daysActive}
+                    </CustomText>
                 </View>
             </View>
 
