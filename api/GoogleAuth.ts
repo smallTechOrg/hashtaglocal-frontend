@@ -13,9 +13,9 @@ const slug = Constants.expoConfig?.slug;
 console.log(owner,slug,"owner")
 
 export function useGoogleAuth() {
-    const redirectUri = 'https://staging.api.smalltech.in/local/auth-handler.html';
+    const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI!;
 
-    // console.log("Redirect URI:", redirectUri);
+    console.log("Redirect URI:", redirectUri);
 
     const [request, response, promptAsync] =
         AuthSession.useAuthRequest(

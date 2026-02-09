@@ -74,6 +74,16 @@ export default function IssueForm() {
 
   const { imageUri, timestamp } = params;
 
+  // Reset form state when navigating with a new image
+  useEffect(() => {
+    setDescription("");
+    setGcsPath(null);
+    setUploadError(null);
+    if (!isUpdateMode) {
+      setSelectedType("OTHER");
+    }
+  }, [imageUri, isUpdateMode]);
+
   // Fetch location in background
   useEffect(() => {
     const fetchLocation = async () => {
@@ -502,6 +512,27 @@ export default function IssueForm() {
           {/* Submit Button(s) */}
           {isUpdateMode ? (
             <View className="mt-2 flex-row gap-3">
+               <TouchableOpacity
+                onPress={() => handleSubmit("RESOLVE")}
+                disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
+                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
+                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
+                }`}
+                style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
+              >
+                <MaterialIcons
+                  name="check-circle"
+                  size={22}
+                  color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
+                />
+                <CustomText
+                  className={`ml-2 font-bold text-base ${
+                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                  }`}
+                >
+                  {isSubmitting && selectedAction === "RESOLVE" ? "Resolving..." : "Resolve Issue"}
+                </CustomText>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleSubmit("VERIFY")}
                 disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
@@ -524,27 +555,7 @@ export default function IssueForm() {
                 </CustomText>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => handleSubmit("RESOLVE")}
-                disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
-                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
-                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
-                }`}
-                style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
-              >
-                <MaterialIcons
-                  name="check-circle"
-                  size={22}
-                  color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
-                />
-                <CustomText
-                  className={`ml-2 font-bold text-base ${
-                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
-                  }`}
-                >
-                  {isSubmitting && selectedAction === "RESOLVE" ? "Resolving..." : "Resolve Issue"}
-                </CustomText>
-              </TouchableOpacity>
+             
             </View>
           ) : (
             <TouchableOpacity

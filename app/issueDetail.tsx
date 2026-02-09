@@ -9,7 +9,10 @@ import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
+
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
+
+
 
   
 const IssueDetailScreen = () => {
@@ -90,13 +93,20 @@ const IssueDetailScreen = () => {
 
     const { issue } = issueData.data;
 
+    // Sort media by created_at ascending (oldest first) so the original report is at index 0
+    const sortedMedia = [...issue.media_urls].sort((a, b) => {
+        if (!a.created_at || !b.created_at) return 0;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
     // Process media items for the slideshow (with username, description, timestamp, profile_photo per image)
-    const mediaItems = issue.media_urls.map((media, index) => ({
+    const mediaItems = sortedMedia.map((media, index) => ({
         url: media.url,
         description: media.description || (index === 0 ? issue.description : undefined),
         username: media.username || (index === 0 ? issue.user.username : undefined),
         profile_photo: media.profile_photo || (index === 0 ? issue.user.profilePictureUrl : undefined),
         created_at: media.created_at ? formatDate(media.created_at) : undefined,
+        days_active: media.created_at ? calculateDaysActive(media.created_at) : undefined,
     }));
 
     const locationString = formatLocationString(issue.location);
@@ -118,7 +128,6 @@ const IssueDetailScreen = () => {
                     mediaItems={mediaItems}
                     location={locationString}
                     timestamp={formattedDate}
-                    daysActive={daysActive}
                     className="w-full"
                 />
             </View>
@@ -140,18 +149,26 @@ const IssueDetailScreen = () => {
             >
                 <MaterialIcons name="camera-alt" size={20} color="#fff" />
                 <CustomText className="text-white font-semibold p">
-                    Update
+                    Update Issue
                 </CustomText>
             </TouchableOpacity>
 
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
                 {/* Issue Type */}
-                <View className="flex-row items-center mb-3">
-                    <MaterialIcons name="category" size={20} color="#256D1B" />
-                    <CustomText className="ml-2 text-lg font-bold capitalize">
-                        {issue.type}
-                    </CustomText>
+                <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center">
+                        <MaterialIcons name="category" size={20} color="#256D1B" />
+                        <CustomText className="ml-2 text-lg font-bold capitalize">
+                            {issue.type}
+                        </CustomText>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => handleShare(issueId, issue.type)}
+                        className="p-2"
+                    >
+                        <MaterialIcons name="share" size={26} color="#256D1B" />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Location Details */}
@@ -179,20 +196,12 @@ const IssueDetailScreen = () => {
                     </View>
                 )}
 
-                {/* Timestamp + Share */}
-                <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                        <MaterialIcons name="access-time" size={20} color="#666" />
-                        <CustomText className="ml-2 text-gray-600 text-sm">
-                            {formattedDate} • {daysActive}
-                        </CustomText>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => handleShare(issueId, issue.type)}
-                        className="flex-row items-center gap-1 px-3 py-2 rounded-lg"
-                    >
-                        <MaterialIcons name="share" size={18} color="#256D1B" />
-                          </TouchableOpacity>
+                {/* Timestamp */}
+                <View className="flex-row items-center">
+                    <MaterialIcons name="access-time" size={20} color="#666" />
+                    <CustomText className="ml-2 text-gray-600 text-sm">
+                        {formattedDate} • {daysActive}
+                    </CustomText>
                 </View>
             </View>
 

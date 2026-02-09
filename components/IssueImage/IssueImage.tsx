@@ -1,5 +1,6 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
+import { Image, ImageSourcePropType, ScrollView, View } from 'react-native';
 import '../../global.css';
 import CustomText from '../CustomText';
 import BottomOverlay from './BottomOverlay';
@@ -9,15 +10,13 @@ import ImageCarouselItem from './ImageCarouselItem';
 import PaginationDots from './PaginationDots';
 import TopOverlay from './TopOverlay';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLIDE_WIDTH = SCREEN_WIDTH;
-
 export interface MediaItem {
   url: string;
   description?: string;
   username?: string;
   profile_photo?: string;
   created_at?: string;
+  days_active?: string;
 }
 
 interface IssueImageProps {
@@ -26,9 +25,7 @@ interface IssueImageProps {
   mediaItems?: MediaItem[];
   location?: string;
   timestamp?: string;
-  daysActive?: string;
   className?: string;
-  onShare?: () => void;
 }
 
 const IssueImage: React.FC<IssueImageProps> = ({
@@ -37,13 +34,12 @@ const IssueImage: React.FC<IssueImageProps> = ({
   mediaItems,
   location,
   timestamp,
-  daysActive,
   className,
-  onShare
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Support mediaItems, imageSources, or single imageSource
   const images = mediaItems && mediaItems.length > 0
@@ -79,50 +75,45 @@ const IssueImage: React.FC<IssueImageProps> = ({
     <>
       <View className={`w-full relative overflow-hidden ${className ?? ""}`}>
         {images.length > 0 ? (
-          <View className="w-full" style={{ height: 450 }}>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              style={{ width: '100%' }}
-              contentContainerStyle={{ width: SLIDE_WIDTH * images.length }}
-            >
-              {images.map((img, index) => {
-                const imageSource = typeof img === 'string' ? { uri: img } : img;
-                const mediaItem = mediaItems?.[index];
+          <View
+            className="w-full"
+            style={{ height: 450, overflow: 'hidden' }}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            {containerWidth > 0 && (
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                style={{ width: containerWidth }}
+                contentContainerStyle={{ width: containerWidth * images.length }}
+              >
+                {images.map((img, index) => {
+                  const imageSource = typeof img === 'string' ? { uri: img } : img;
 
-                return (
-                  <ImageCarouselItem
-                    key={`image-${index}`}
-                    imageSource={imageSource}
-                    index={index}
-                    width={SLIDE_WIDTH}
-                    height={450}
-                    hasError={imageErrors[index] || false}
-                    onError={handleImageError}
-                    onPress={handleImagePress}
-                  >
-                    <TopOverlay
-                      location={location}
-                      timestamp={mediaItem?.created_at || timestamp}
+                  return (
+                    <ImageCarouselItem
+                      key={`image-${index}`}
+                      imageSource={imageSource}
                       index={index}
-                    />
-                    <BottomOverlay
-                      daysActive={daysActive}
-                      onShare={onShare}
-                      index={index}
-                    />
-                  </ImageCarouselItem>
-                );
-              })}
-            </ScrollView>
+                      width={containerWidth}
+                      height={450}
+                      hasError={imageErrors[index] || false}
+                      onError={handleImageError}
+                      onPress={handleImagePress}
+                    >
+                    </ImageCarouselItem>
+                  );
+                })}
+              </ScrollView>
+            )}
 
             <PaginationDots
               totalImages={images.length}
               currentIndex={currentIndex}
-              hasBottomOverlay={!!(daysActive || onShare)}
+              hasBottomOverlay={false}
             />
           </View>
         ) : (
@@ -132,6 +123,14 @@ const IssueImage: React.FC<IssueImageProps> = ({
         {/* Media Info Card - updates with slideshow */}
         {mediaItems && mediaItems.length > 0 && (currentMediaItem?.description || currentMediaItem?.username) && (
           <View className="p-4 bg-white">
+            {currentMediaItem?.days_active && (
+              <View className="flex-row items-center mb-2">
+                <MaterialIcons name="access-time" size={16} color="#666" />
+                <CustomText className="ml-1 text-gray-500 text-sm">
+                  {currentMediaItem.days_active}
+                </CustomText>
+              </View>
+            )}
             {currentMediaItem?.description && (
               <CustomText className="text-gray-700 mb-3">
                 {currentMediaItem.description}
@@ -146,7 +145,6 @@ const IssueImage: React.FC<IssueImageProps> = ({
                   />
                 )}
                 <CustomText className={`text-gray-600 text-sm ${currentMediaItem?.profile_photo ? 'ml-2' : ''}`}>
-                  {currentIndex === 0 ? 'Reported by ' : 'Updated by '}
                   <CustomText className="font-bold">{currentMediaItem.username}</CustomText>
                 </CustomText>
               </View>
