@@ -1,4 +1,4 @@
-import { reportIssue, uploadImage } from "@/api/IssueDetail";
+import { reportIssue, verifyIssue, resolveIssue, uploadImage } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import TopOverlay from "@/components/IssueImage/TopOverlay";
 import { formatDate } from "@/utils/FormatDate";
@@ -38,10 +38,23 @@ export default function IssueForm() {
   const params = useLocalSearchParams<{
     imageUri: string;
     timestamp: string;
+    mode?: string;
+    issueType?: string;
+    issueId?: string;
   }>();
 
+  const isUpdateMode = params.mode === "update";
+
   const [selectedType, setSelectedType] = useState<IssueType | null>("OTHER");
+  const [selectedAction, setSelectedAction] = useState<"VERIFY" | "RESOLVE" | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  // Sync issue type from update flow params (params may arrive after first render)
+  useEffect(() => {
+    if (isUpdateMode && params.issueType) {
+      setSelectedType(params.issueType as IssueType);
+    }
+  }, [isUpdateMode, params.issueType]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(true);
   const [gcsPath, setGcsPath] = useState<string | null>(null);
@@ -208,7 +221,7 @@ export default function IssueForm() {
       });
   const timestampString = formatDate(timestamp || "");
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action?: "VERIFY" | "RESOLVE") => {
     if (!selectedType || !gcsPath) return;
 
     // Check if location is available
@@ -221,43 +234,95 @@ export default function IssueForm() {
       return;
     }
 
+    if (isUpdateMode) {
+      setSelectedAction(action || null);
+    }
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        issue: {
-          type: selectedType.toUpperCase(),
-          location: {
-            lat: latitude,
-            lng: longitude,
-            meta_data: locationMetaData,
-          },
-          media_urls: [
-            {
-              location: {
-                lat: latitude,
-                lng: longitude,
-                meta_data: locationMetaData,
-              },
-              type: "PHOTO",
-              url: gcsPath || "",
-            },
-          ],
-          description: description,
-        },
-      };
+      let response;
 
-      const response = await reportIssue(payload);
+      if (isUpdateMode && params.issueId && action === "VERIFY") {
+        const verifyPayload = {
+          issue_action: {
+            action: "VERIFY" as const,
+            media_urls: [
+              {
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  meta_data: locationMetaData,
+                },
+                type: "PHOTO",
+                url: gcsPath || "",
+                description: description,
+              },
+            ],
+          },
+        };
+
+        response = await verifyIssue(parseInt(params.issueId, 10), verifyPayload);
+      } else if (isUpdateMode && params.issueId && action === "RESOLVE") {
+        const resolvePayload = {
+          issue_action: {
+            action: "RESOLVE" as const,
+            media_urls: [
+              {
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  meta_data: locationMetaData,
+                },
+                type: "PHOTO",
+                url: gcsPath || "",
+              },
+            ],
+          },
+        };
+
+        response = await resolveIssue(parseInt(params.issueId, 10), resolvePayload);
+      } else {
+        const payload = {
+          issue: {
+            type: selectedType.toUpperCase(),
+            location: {
+              lat: latitude,
+              lng: longitude,
+              meta_data: locationMetaData,
+            },
+            media_urls: [
+              {
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  meta_data: locationMetaData,
+                },
+                type: "PHOTO",
+                url: gcsPath || "",
+              },
+            ],
+            description: description,
+          },
+        };
+
+        response = await reportIssue(payload);
+      }
+
+      const successMessage =
+        action === "VERIFY" ? "Issue verified successfully!\n\nThe resolution is pending approval. Once approved, the issue will be closed." :
+        action === "RESOLVE" ? "Issue resolved successfully!\n\nThe issue is now open and visible to others. Updates and resolutions can now be added." :
+        "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
 
       setIsSubmitting(false);
-      Alert.alert("Success", "Issue reported successfully!", [
+      Alert.alert("Success", successMessage, [
         {
           text: "View Issue",
           onPress: () => {
-            router.push({
+            router.replace({
               pathname: "/issueDetail",
               params: {
                 id: response.data.issue_id.toString(),
+                refresh: Date.now().toString(),
               },
             });
           },
@@ -271,13 +336,14 @@ export default function IssueForm() {
         },
       ]);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to report issue";
+      const errorMessage = error instanceof Error ? error.message : "Failed to update issue";
       // Don't show error alert if it's an auth error - apiClient already handles redirect
       if (!errorMessage.includes("Authentication required")) {
         Alert.alert("Error", errorMessage);
       }
     } finally {
       setIsSubmitting(false);
+      setSelectedAction(null);
     }
   };
 
@@ -367,8 +433,10 @@ export default function IssueForm() {
         <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
           {/* Header */}
           <View className="flex-row items-center mb-4">
-            <MaterialIcons name="report-problem" size={24} color="#256D1B" />
-            <CustomText className="ml-2 text-xl font-bold">Report Issue</CustomText>
+            <MaterialIcons name={isUpdateMode ? "verified" : "report-problem"} size={24} color="#256D1B" />
+            <CustomText className="ml-2 text-xl font-bold">
+              {isUpdateMode ? "Verify Issue" : "Report Issue"}
+            </CustomText>
           </View>
 
           {/* Issue Type Section */}
@@ -379,15 +447,16 @@ export default function IssueForm() {
             </View>
 
             <TouchableOpacity
-              onPress={() => setDropdownVisible(true)}
-              className="flex-row items-center justify-between border-2 border-gray-200 rounded-xl px-4 py-4 bg-gray-50"
+              onPress={() => !isUpdateMode && setDropdownVisible(true)}
+              disabled={isUpdateMode}
+              className={`flex-row items-center justify-between border-2 border-gray-200 rounded-xl px-4 py-4 ${isUpdateMode ? "bg-gray-100" : "bg-gray-50"}`}
             >
               <View className="flex-row items-center flex-1">
                 {selectedType && (
                   <MaterialIcons
                     name={ISSUE_TYPES.find((t) => t.id === selectedType)?.icon as any}
                     size={24}
-                    color="#256D1B"
+                    color={isUpdateMode ? "#6b7280" : "#256D1B"}
                   />
                 )}
                 <CustomText
@@ -396,7 +465,8 @@ export default function IssueForm() {
                   {selectedTypeLabel || "Select issue type"}
                 </CustomText>
               </View>
-              <MaterialIcons name="arrow-drop-down" size={28} color="#256D1B" />
+              {!isUpdateMode && <MaterialIcons name="arrow-drop-down" size={28} color="#256D1B" />}
+              {isUpdateMode && <MaterialIcons name="lock" size={20} color="#9ca3af" />}
             </TouchableOpacity>
           </View>
 
@@ -429,28 +499,76 @@ export default function IssueForm() {
             </CustomText>
           </View>
 
-          {/* Submit Button */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
-            className={`mt-2 py-4 rounded-xl items-center flex-row justify-center ${
-              selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
-            }`}
-            style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
-          >
-            <MaterialIcons
-              name="check-circle"
-              size={24}
-              color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
-            />
-            <CustomText
-              className={`ml-2 font-bold text-lg ${
-                selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+          {/* Submit Button(s) */}
+          {isUpdateMode ? (
+            <View className="mt-2 flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => handleSubmit("VERIFY")}
+                disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
+                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
+                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#2563EB]" : "bg-gray-300"
+                }`}
+                style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
+              >
+                <MaterialIcons
+                  name="verified"
+                  size={22}
+                  color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
+                />
+                <CustomText
+                  className={`ml-2 font-bold text-base ${
+                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                  }`}
+                >
+                  {isSubmitting && selectedAction === "VERIFY" ? "Verifying..." : "Verify Issue"}
+                </CustomText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleSubmit("RESOLVE")}
+                disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
+                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
+                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
+                }`}
+                style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
+              >
+                <MaterialIcons
+                  name="check-circle"
+                  size={22}
+                  color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
+                />
+                <CustomText
+                  className={`ml-2 font-bold text-base ${
+                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                  }`}
+                >
+                  {isSubmitting && selectedAction === "RESOLVE" ? "Resolving..." : "Resolve Issue"}
+                </CustomText>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => handleSubmit()}
+              disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
+              className={`mt-2 py-4 rounded-xl items-center flex-row justify-center ${
+                selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
               }`}
+              style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
             >
-              {isLoadingLocation ? "Getting Location..." : isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Report"}
-            </CustomText>
-          </TouchableOpacity>
+              <MaterialIcons
+                name="check-circle"
+                size={24}
+                color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
+              />
+              <CustomText
+                className={`ml-2 font-bold text-lg ${
+                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                }`}
+              >
+                {isLoadingLocation ? "Getting Location..." : isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Report"}
+              </CustomText>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Bottom spacer for keyboard scrolling */}

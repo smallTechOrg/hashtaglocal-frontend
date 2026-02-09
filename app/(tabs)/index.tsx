@@ -162,6 +162,20 @@ export default function MapScreen() {
     }
   }, [selectedIssue, router]);
 
+  const handleUpdateIssue = useCallback(() => {
+    if (selectedIssue) {
+      bottomSheetRef.current?.close();
+      router.push({
+        pathname: "/CameraCapture",
+        params: {
+          mode: "update",
+          issueType: selectedIssue.type.toUpperCase(),
+          issueId: selectedIssue.id,
+        },
+      });
+    }
+  }, [selectedIssue, router]);
+
   // Filter issues based on selected filter
   const filteredIssues = useMemo(() => {
     if (selectedFilter === "All") return issues;
@@ -465,16 +479,28 @@ export default function MapScreen() {
               </View>
             </View>
 
-            {/* View Details Button */}
-            <TouchableOpacity
-              onPress={handleViewDetails}
-              style={styles.viewDetailsButton}
-            >
-              <CustomText className="text-white font-semibold text-base">
-                View Full Details
-              </CustomText>
-              <MaterialIcons name="arrow-forward" size={20} color="#fff" />
-            </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity
+                onPress={handleViewDetails}
+                style={styles.viewDetailsButton}
+              >
+                <CustomText className="text-white font-semibold text-base">
+                  View Full Details
+                </CustomText>
+                <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleUpdateIssue}
+                style={styles.verifyButton}
+              >
+                <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                <CustomText className="text-white font-semibold p">
+                  Update
+                </CustomText>
+              </TouchableOpacity>
+            </View>
           </BottomSheetScrollView>
         )}
       </BottomSheet>
@@ -642,16 +668,36 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: "#256D1B",
   },
+  actionButtonsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   viewDetailsButton: {
+    flex: 1,
     backgroundColor: "#256D1B",
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     shadowColor: "#256D1B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  verifyButton: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

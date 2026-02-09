@@ -4,17 +4,18 @@ import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
-import { formatLocationString, processImageUrls } from "@/utils/ImageProcessing";
+import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 
   
 const IssueDetailScreen = () => {
-    const params = useLocalSearchParams<{ id?: string; issueId?: string }>();
+    const params = useLocalSearchParams<{ id?: string; issueId?: string; refresh?: string }>();
     const navigation = useNavigation();
+    const router = useRouter();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -25,10 +26,10 @@ const IssueDetailScreen = () => {
                 setLoading(true);
                 setError(null);
                 // Get issue ID from route params, check both 'id' and 'issueId'
-                const issueId = params.issueId 
-                    ? parseInt(params.issueId, 10) 
-                    : params.id 
-                    ? parseInt(params.id, 10) 
+                const issueId = params.issueId
+                    ? parseInt(params.issueId, 10)
+                    : params.id
+                    ? parseInt(params.id, 10)
                     : 1;
                 console.log('Loading issue with ID:', issueId);
                 const data = await fetchIssue(issueId);
@@ -43,7 +44,7 @@ const IssueDetailScreen = () => {
         };
 
         loadIssue();
-    }, [params.id, params.issueId]);
+    }, [params.id, params.issueId, params.refresh]);
 
     // Update header title dynamically based on locality hashtags
     useLayoutEffect(() => {
@@ -89,9 +90,15 @@ const IssueDetailScreen = () => {
 
     const { issue } = issueData.data;
 
-    // Process images and location using utility functions
-    const defaultImage = require("../assets/pothole.jpg");
-    const imageSources = processImageUrls(issue.media_urls, defaultImage);
+    // Process media items for the slideshow (with username, description, timestamp, profile_photo per image)
+    const mediaItems = issue.media_urls.map((media, index) => ({
+        url: media.url,
+        description: media.description || (index === 0 ? issue.description : undefined),
+        username: media.username || (index === 0 ? issue.user.username : undefined),
+        profile_photo: media.profile_photo || (index === 0 ? issue.user.profilePictureUrl : undefined),
+        created_at: media.created_at ? formatDate(media.created_at) : undefined,
+    }));
+
     const locationString = formatLocationString(issue.location);
     const formattedDate = formatDate(issue.created_at);
     const daysActive = calculateDaysActive(issue.created_at);
@@ -105,17 +112,37 @@ const IssueDetailScreen = () => {
 
     return (
         <ScrollView className="bg-gray-50">
-            {/* Main Image Header */}
-            <View className="bg-white shadow-sm">
+            {/* Image Card — image + description + reported/updated by (updates with slideshow) */}
+            <View className="bg-white mx-3 mt-3 rounded-xl shadow-md overflow-hidden" style={{ elevation: 3 }}>
                 <IssueImage
-                    imageSources={imageSources}
+                    mediaItems={mediaItems}
                     location={locationString}
                     timestamp={formattedDate}
                     daysActive={daysActive}
-                    onShare={() => handleShare(issueId, issue.type)}
                     className="w-full"
                 />
             </View>
+
+            {/* Update Button */}
+            <TouchableOpacity
+                onPress={() => {
+                    router.push({
+                        pathname: "/CameraCapture",
+                        params: {
+                            mode: "update",
+                            issueType: issue.type.toUpperCase(),
+                            issueId: issueId,
+                        },
+                    });
+                }}
+                className="flex-row items-center justify-center gap-2 bg-[#2563EB] mx-3 mt-3 py-3 rounded-xl"
+                style={{ elevation: 2 }}
+            >
+                <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                <CustomText className="text-white font-semibold p">
+                    Update
+                </CustomText>
+            </TouchableOpacity>
 
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
@@ -124,26 +151,6 @@ const IssueDetailScreen = () => {
                     <MaterialIcons name="category" size={20} color="#256D1B" />
                     <CustomText className="ml-2 text-lg font-bold capitalize">
                         {issue.type}
-                    </CustomText>
-                </View>
-
-                {/* Description */}
-                {issue.description && (
-                    <View className="mb-3">
-                        <CustomText className="text-gray-700">
-                            {issue.description}
-                        </CustomText>
-                    </View>
-                )}
-
-                {/* User Info */}
-                <View className="flex-row items-center mb-3 pb-3 border-b border-gray-200">
-                    <Image
-                        source={{ uri: issue.user.profile_photo }}
-                        style={{ width: 32, height: 32, borderRadius: 16 }}
-                    />
-                    <CustomText className="ml-2 text-gray-600">
-                        Reported by <CustomText className="font-bold">{issue.user.username}</CustomText>
                     </CustomText>
                 </View>
 
@@ -164,7 +171,7 @@ const IssueDetailScreen = () => {
                 {/* Hashtags */}
                 {issue.location.locality?.hashtags && issue.location.locality.hashtags.length > 0 && (
                     <View className="flex-row flex-wrap mb-3">
-                        {issue.location.locality.hashtags.map((tag, index) => (
+                        {issue.location.locality.hashtags.map((tag: string, index: number) => (
                             <View key={index} className="bg-green-100 px-3 py-1 rounded-full mr-2 mb-2">
                                 <CustomText className="text-green-700 font-bold">{tag}</CustomText>
                             </View>
@@ -172,12 +179,20 @@ const IssueDetailScreen = () => {
                     </View>
                 )}
 
-                {/* Timestamp */}
-                <View className="flex-row items-center">
-                    <MaterialIcons name="access-time" size={20} color="#666" />
-                    <CustomText className="ml-2 text-gray-600 text-sm">
-                        {formattedDate} • {daysActive}
-                    </CustomText>
+                {/* Timestamp + Share */}
+                <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                        <MaterialIcons name="access-time" size={20} color="#666" />
+                        <CustomText className="ml-2 text-gray-600 text-sm">
+                            {formattedDate} • {daysActive}
+                        </CustomText>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => handleShare(issueId, issue.type)}
+                        className="flex-row items-center gap-1 px-3 py-2 rounded-lg"
+                    >
+                        <MaterialIcons name="share" size={18} color="#256D1B" />
+                          </TouchableOpacity>
                 </View>
             </View>
 

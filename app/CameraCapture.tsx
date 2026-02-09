@@ -1,11 +1,16 @@
 import CustomText from "@/components/CustomText";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, TouchableOpacity, View } from "react-native";
 
 export default function CameraCapture() {
+  const { mode, issueType, issueId } = useLocalSearchParams<{
+    mode?: string;
+    issueType?: string;
+    issueId?: string;
+  }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCapturing, setIsCapturing] = useState(false);
   const [facing, setFacing] = useState<"back" | "front">("back");
@@ -31,6 +36,7 @@ export default function CameraCapture() {
           params: {
             imageUri: photo.uri,
             timestamp: new Date().toISOString(),
+            ...(mode === "update" && { mode: "update", issueType, issueId }),
           },
         });
       }

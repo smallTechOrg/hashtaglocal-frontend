@@ -1,5 +1,5 @@
 import { APIResponse } from "@/models/APIResponse";
-import { apiGet, apiPost } from "@/utils/apiClient";
+import { apiGet, apiPost, apiPut } from "@/utils/apiClient";
 
 /**
  * Fetches issue data from the backend API
@@ -62,6 +62,37 @@ export interface ReportIssuePayload {
 export interface ReportIssueResponse {
   data: {
     issue_id: number;
+  };
+}
+
+export interface VerifyIssuePayload {
+  issue_action: {
+    action: "VERIFY";
+    media_urls: {
+      location: {
+        lat: string;
+        lng: string;
+        meta_data: LocationMetaData;
+      };
+      type: string;
+      url: string;
+      description: string;
+    }[];
+  };
+}
+
+export interface ResolveIssuePayload {
+  issue_action: {
+    action: "RESOLVE";
+    media_urls: {
+      location: {
+        lat: string;
+        lng: string;
+        meta_data: LocationMetaData;
+      };
+      type: string;
+      url: string;
+    }[];
   };
 }
 
@@ -163,6 +194,98 @@ export async function reportIssue(
 
     console.error("[API] Error creating issue:", error);
     console.log(error.stack, "error stack");
+    throw error;
+  }
+}
+
+export async function verifyIssue(
+  issueId: number,
+  payload: VerifyIssuePayload,
+): Promise<ReportIssueResponse> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
+
+  try {
+    const response = await apiPut(url, payload, { timeout: TIME_OUT });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API] HTTP error ${response.status}:`, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const responseText = await response.text();
+
+    if (!responseText) {
+      console.error("[API] Empty response body from server");
+      throw new Error("Server returned an empty response");
+    }
+
+    const data: ReportIssueResponse = JSON.parse(responseText);
+    console.log(`[API] Successfully verified issue ${issueId}`);
+    return data;
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout after 10 seconds");
+      throw new Error(
+        "Request timeout. Please check if the backend is running and accessible.",
+      );
+    }
+
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed while verifying issue");
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct.`,
+      );
+    }
+
+    console.error("[API] Error verifying issue:", error);
+    throw error;
+  }
+}
+
+export async function resolveIssue(
+  issueId: number,
+  payload: ResolveIssuePayload,
+): Promise<ReportIssueResponse> {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
+
+  try {
+    const response = await apiPut(url, payload, { timeout: TIME_OUT });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API] HTTP error ${response.status}:`, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    }
+
+    const responseText = await response.text();
+
+    if (!responseText) {
+      console.error("[API] Empty response body from server");
+      throw new Error("Server returned an empty response");
+    }
+
+    const data: ReportIssueResponse = JSON.parse(responseText);
+    console.log(`[API] Successfully resolved issue ${issueId}`);
+    return data;
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("[API] Request timeout after 10 seconds");
+      throw new Error(
+        "Request timeout. Please check if the backend is running and accessible.",
+      );
+    }
+
+    if (error.message?.includes("Network request failed")) {
+      console.error("[API] Network request failed while resolving issue");
+      throw new Error(
+        `Network request failed. Unable to connect to ${API_BASE_URL}. ` +
+          `Please ensure your backend is running and the URL is correct.`,
+      );
+    }
+
+    console.error("[API] Error resolving issue:", error);
     throw error;
   }
 }
