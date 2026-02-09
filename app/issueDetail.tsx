@@ -100,6 +100,7 @@ const IssueDetailScreen = () => {
         username: media.username || (index === 0 ? issue.user.username : undefined),
         profile_photo: media.profile_photo || (index === 0 ? issue.user.profilePictureUrl : undefined),
         created_at: media.created_at ? formatDate(media.created_at) : undefined,
+        days_active: media.created_at ? calculateDaysActive(media.created_at) : undefined,
     }));
 
     const locationString = formatLocationString(issue.location);
@@ -121,7 +122,6 @@ const IssueDetailScreen = () => {
                     mediaItems={mediaItems}
                     location={locationString}
                     timestamp={formattedDate}
-                    daysActive={daysActive}
                     className="w-full"
                 />
             </View>

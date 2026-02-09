@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
 import '../../global.css';
@@ -18,6 +19,7 @@ export interface MediaItem {
   username?: string;
   profile_photo?: string;
   created_at?: string;
+  days_active?: string;
 }
 
 interface IssueImageProps {
@@ -26,9 +28,7 @@ interface IssueImageProps {
   mediaItems?: MediaItem[];
   location?: string;
   timestamp?: string;
-  daysActive?: string;
   className?: string;
-  onShare?: () => void;
 }
 
 const IssueImage: React.FC<IssueImageProps> = ({
@@ -37,9 +37,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
   mediaItems,
   location,
   timestamp,
-  daysActive,
   className,
-  onShare
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -104,16 +102,6 @@ const IssueImage: React.FC<IssueImageProps> = ({
                     onError={handleImageError}
                     onPress={handleImagePress}
                   >
-                    <TopOverlay
-                      location={location}
-                      timestamp={mediaItem?.created_at || timestamp}
-                      index={index}
-                    />
-                    <BottomOverlay
-                      daysActive={daysActive}
-                      onShare={onShare}
-                      index={index}
-                    />
                   </ImageCarouselItem>
                 );
               })}
@@ -122,7 +110,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
             <PaginationDots
               totalImages={images.length}
               currentIndex={currentIndex}
-              hasBottomOverlay={!!(daysActive || onShare)}
+              hasBottomOverlay={false}
             />
           </View>
         ) : (
@@ -132,6 +120,14 @@ const IssueImage: React.FC<IssueImageProps> = ({
         {/* Media Info Card - updates with slideshow */}
         {mediaItems && mediaItems.length > 0 && (currentMediaItem?.description || currentMediaItem?.username) && (
           <View className="p-4 bg-white">
+            {currentMediaItem?.days_active && (
+              <View className="flex-row items-center mb-2">
+                <MaterialIcons name="access-time" size={16} color="#666" />
+                <CustomText className="ml-1 text-gray-500 text-sm">
+                  {currentMediaItem.days_active}
+                </CustomText>
+              </View>
+            )}
             {currentMediaItem?.description && (
               <CustomText className="text-gray-700 mb-3">
                 {currentMediaItem.description}
@@ -146,7 +142,6 @@ const IssueImage: React.FC<IssueImageProps> = ({
                   />
                 )}
                 <CustomText className={`text-gray-600 text-sm ${currentMediaItem?.profile_photo ? 'ml-2' : ''}`}>
-                  {currentIndex === 0 ? 'Reported by ' : 'Updated by '}
                   <CustomText className="font-bold">{currentMediaItem.username}</CustomText>
                 </CustomText>
               </View>
