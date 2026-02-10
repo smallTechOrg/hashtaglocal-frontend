@@ -251,23 +251,10 @@ export default function RootLayout() {
         />
 
         <Drawer.Screen
-          name="about"
-          options={({ navigation }) => ({
-            title: "About Page",
-            headerTitleStyle: {
-              fontFamily: "Nunito-Regular",
-            },
-            headerLeft: (props) => (
-              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
-            ),
-            drawerItemStyle: { display: "none" },
-          })}
-        />
-
-        <Drawer.Screen
           name="ReportIssue"
           options={({ navigation }) => ({
             title: "Report Issue",
+            drawerItemStyle: { display: "none" },
             headerTitleStyle: {
               fontFamily: "Nunito-Regular",
             },

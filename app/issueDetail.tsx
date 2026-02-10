@@ -1,16 +1,17 @@
 
-import { fetchIssue } from "@/api/IssueDetail";
+import { fetchIssue, rejectIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
+import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 
 
 
@@ -19,15 +20,18 @@ const IssueDetailScreen = () => {
     const params = useLocalSearchParams<{ id?: string; issueId?: string; refresh?: string }>();
     const navigation = useNavigation();
     const router = useRouter();
+    const { user } = useUser();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const loadIssue = async () => {
             try {
                 setLoading(true);
                 setError(null);
+                setIsDeleting(false);
                 // Get issue ID from route params, check both 'id' and 'issueId'
                 const issueId = params.issueId
                     ? parseInt(params.issueId, 10)
@@ -114,11 +118,24 @@ const IssueDetailScreen = () => {
     const daysActive = calculateDaysActive(issue.created_at);
 
     // Get issue ID for share functionality
-    const issueId = params.issueId 
-        ? parseInt(params.issueId, 10) 
-        : params.id 
-        ? parseInt(params.id, 10) 
+    const issueId = params.issueId
+        ? parseInt(params.issueId, 10)
+        : params.id
+        ? parseInt(params.id, 10)
         : undefined;
+
+    const handleDelete = async () => {
+        if (!issueId) return;
+        setIsDeleting(true);
+        try {
+            await rejectIssue(issueId);
+            router.replace("/(tabs)");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Failed to delete issue";
+            Alert.alert("Error", msg);
+            setIsDeleting(false);
+        }
+    };
 
     return (
         <ScrollView className="bg-gray-50">
@@ -171,6 +188,14 @@ const IssueDetailScreen = () => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Verify Count */}
+                <View className="flex-row items-center mb-3">
+                    <MaterialIcons name="verified" size={20} color="#256D1B" />
+                    <CustomText className="ml-2 text-gray-700">
+                        {issue.verify_count} {issue.verify_count === 1 ? 'verification' : 'verifications'}
+                    </CustomText>
+                </View>
+
                 {/* Location Details */}
                 <View className="mb-3">
                     <View className="flex-row items-center mb-2">
@@ -204,6 +229,25 @@ const IssueDetailScreen = () => {
                     </CustomText>
                 </View>
             </View>
+
+            {/* Delete Button - only visible to the original reporter */}
+            {user?.username === issue.user.username && (
+                <TouchableOpacity
+                    onPress={handleDelete}
+                    disabled={isDeleting}
+                    className="flex-row items-center justify-center gap-2 mx-3 mb-6 py-3"
+                    style={{ elevation: 2 }}
+                >
+                    {isDeleting ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                        <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                    )}
+                    <CustomText className="text-red-500 font-semibold">
+                        {isDeleting ? "Deleting..." : "Delete Issue"}
+                    </CustomText>
+                </TouchableOpacity>
+            )}
 
         </ScrollView>
     );
