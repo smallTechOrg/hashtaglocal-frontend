@@ -6,6 +6,7 @@ import { APIResponse } from "@/models/APIResponse";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
+import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -19,6 +20,7 @@ const IssueDetailScreen = () => {
     const params = useLocalSearchParams<{ id?: string; issueId?: string; refresh?: string }>();
     const navigation = useNavigation();
     const router = useRouter();
+    const { user } = useUser();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,7 @@ const IssueDetailScreen = () => {
             try {
                 setLoading(true);
                 setError(null);
+                setIsDeleting(false);
                 // Get issue ID from route params, check both 'id' and 'issueId'
                 const issueId = params.issueId
                     ? parseInt(params.issueId, 10)
@@ -227,22 +230,24 @@ const IssueDetailScreen = () => {
                 </View>
             </View>
 
-            {/* Delete Button */}
-            <TouchableOpacity
-                onPress={handleDelete}
-                disabled={isDeleting}
-                className="flex-row items-center justify-center gap-2 mx-3 mb-6 py-3"
-                style={{ elevation: 2 }}
-            >
-                {isDeleting ? (
-                    <ActivityIndicator size="small" color="#EF4444" />
-                ) : (
-                    <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
-                )}
-                <CustomText className="text-red-500 font-semibold">
-                    {isDeleting ? "Deleting..." : "Delete Issue"}
-                </CustomText>
-            </TouchableOpacity>
+            {/* Delete Button - only visible to the original reporter */}
+            {user?.username === issue.user.username && (
+                <TouchableOpacity
+                    onPress={handleDelete}
+                    disabled={isDeleting}
+                    className="flex-row items-center justify-center gap-2 mx-3 mb-6 py-3"
+                    style={{ elevation: 2 }}
+                >
+                    {isDeleting ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                        <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                    )}
+                    <CustomText className="text-red-500 font-semibold">
+                        {isDeleting ? "Deleting..." : "Delete Issue"}
+                    </CustomText>
+                </TouchableOpacity>
+            )}
 
         </ScrollView>
     );
