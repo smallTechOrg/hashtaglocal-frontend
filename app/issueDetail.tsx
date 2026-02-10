@@ -170,22 +170,36 @@ const IssueDetailScreen = () => {
                 </CustomText>
             </TouchableOpacity>
 
+
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
-                {/* Issue Type */}
-                <View className="flex-row items-center justify-between mb-3">
-                    <View className="flex-row items-center">
-                        <MaterialIcons name="category" size={20} color="#256D1B" />
-                        <CustomText className="ml-2 text-lg font-bold capitalize">
-                            {issue.type}
-                        </CustomText>
+                 {/* Location Details */}
+                <View className="mb-3">
+                    <View className="flex-row items-center justify-between mb-2">
+                        <View className="flex-row items-center">
+                            <MaterialIcons name="location-on" size={20} color="#256D1B" />
+                            <CustomText className="ml-2 font-bold">Location</CustomText>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => handleShare(issueId, issue.type)}
+                            className="p-2"
+                        >
+                            <MaterialIcons name="share" size={26} color="#256D1B" />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => handleShare(issueId, issue.type)}
-                        className="p-2"
-                    >
-                        <MaterialIcons name="share" size={26} color="#256D1B" />
-                    </TouchableOpacity>
+                    <CustomText className="text-gray-700 ml-7">
+                        {issue.location.colloquial_name || issue.location.address}
+                    </CustomText>
+                    <CustomText className="text-gray-500 text-sm ml-7">
+                        {issue.location.lat.toFixed(6)}, {issue.location.lng.toFixed(6)}
+                    </CustomText>
+                </View>
+                {/* Issue Type */}
+                <View className="flex-row items-center mb-3">
+                    <MaterialIcons name="category" size={20} color="#256D1B" />
+                    <CustomText className="ml-2 text-lg font-bold capitalize">
+                        {issue.type}
+                    </CustomText>
                 </View>
 
                 {/* Verify Count */}
@@ -195,20 +209,29 @@ const IssueDetailScreen = () => {
                         {issue.verify_count} {issue.verify_count === 1 ? 'verification' : 'verifications'}
                     </CustomText>
                 </View>
-
-                {/* Location Details */}
-                <View className="mb-3">
-                    <View className="flex-row items-center mb-2">
-                        <MaterialIcons name="location-on" size={20} color="#256D1B" />
-                        <CustomText className="ml-2 font-bold">Location</CustomText>
-                    </View>
-                    <CustomText className="text-gray-700 ml-7">
-                        {issue.location.colloquial_name || issue.location.address}
-                    </CustomText>
-                    <CustomText className="text-gray-500 text-sm ml-7">
-                        {issue.location.lat.toFixed(6)}, {issue.location.lng.toFixed(6)}
-                    </CustomText>
-                </View>
+                {/* Status */}
+                {issue.status && (
+                    <TouchableOpacity
+                        onPress={() => Alert.alert(
+                            "Issue Status",
+                            issue.status === "OPEN"
+                                ? "This issue is open and visible to the community. Updates and verifications can be added."
+                                : issue.status === "RESOLVE"
+                                ? "This issue has been resolved and closed."
+                                : issue.status === "ONHOLD"
+                                ? "This issue is on hold and is being reviewed by the admin before it goes public."
+                                : issue.status === "REJECTED"
+                                ? "This issue has been rejected and removed."
+                                : `Current status: ${issue.status}`
+                        )}
+                        className="mb-3 flex-row items-center self-start bg-gray-100 px-3 py-2 rounded-full gap-2"
+                    >
+                        <CustomText className="text-xs text-gray-600 uppercase font-semibold">
+                            {issue.status}
+                        </CustomText>
+                        <MaterialIcons name="info-outline" size={16} color="#9ca3af" />
+                    </TouchableOpacity>
+                )}
 
                 {/* Hashtags */}
                 {issue.location.locality?.hashtags && issue.location.locality.hashtags.length > 0 && (
