@@ -185,6 +185,14 @@ const IssueDetailScreen = () => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Verify Count */}
+                <View className="flex-row items-center mb-3">
+                    <MaterialIcons name="verified" size={20} color="#256D1B" />
+                    <CustomText className="ml-2 text-gray-700">
+                        {issue.verify_count} {issue.verify_count === 1 ? 'verification' : 'verifications'}
+                    </CustomText>
+                </View>
+
                 {/* Location Details */}
                 <View className="mb-3">
                     <View className="flex-row items-center mb-2">
