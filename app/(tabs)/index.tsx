@@ -8,6 +8,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -92,6 +93,15 @@ export default function MapScreen() {
   useEffect(() => {
     loadUserLocation();
   }, []);
+
+  // Reload issues when screen comes back into focus (after delete, report, verify, etc.)
+  useFocusEffect(
+    useCallback(() => {
+      if (userLocation) {
+        loadNearbyIssues(userLocation.latitude, userLocation.longitude);
+      }
+    }, [userLocation])
+  );
 
   // Open/close bottom sheet when issue is selected/deselected
   useEffect(() => {
