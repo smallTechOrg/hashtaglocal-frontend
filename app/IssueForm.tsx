@@ -1,10 +1,8 @@
-import { fetchIssue, reportIssue, resolveIssue, uploadImage, verifyIssue } from "@/api/IssueDetail";
+import { reportIssue, verifyIssue, resolveIssue, uploadImage } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import TopOverlay from "@/components/IssueImage/TopOverlay";
-import { APIResponse } from "@/models/APIResponse";
 import { formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
-import { calculateHaversineDistance } from "@/utils/LocationService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -23,8 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-const DISTANCE_THRESHOLD = 50; // 50 meters
 
 const ISSUE_TYPES = [
   { id: "POTHOLE", label: "Road Damage & Potholes", icon: "construction" },
@@ -75,10 +71,6 @@ export default function IssueForm() {
   const [address, setAddress] = useState<string>("");
   const [addressDetails, setAddressDetails] = useState<Location.LocationGeocodedAddress | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-
-  // Issue data for update/verify/resolve flows
-  const [issueData, setIssueData] = useState<APIResponse | null>(null);
-  const [isLoadingIssue, setIsLoadingIssue] = useState(false);
 
   const { imageUri, timestamp } = params;
 
@@ -169,26 +161,6 @@ export default function IssueForm() {
     };
   }, []);
 
-  // Fetch issue data when in update/verify/resolve mode
-  useEffect(() => {
-    if (isUpdateMode && params.issueId) {
-      const loadIssueData = async () => {
-        try {
-          setIsLoadingIssue(true);
-          const issueId = parseInt(params.issueId as string, 10);
-          const data = await fetchIssue(issueId);
-          setIssueData(data);
-        } catch (error) {
-          console.error("Error loading issue data:", error);
-        } finally {
-          setIsLoadingIssue(false);
-        }
-      };
-
-      loadIssueData();
-    }
-  }, [isUpdateMode, params.issueId]);
-
   // Upload image on component mount
   useEffect(() => {
     const uploadImageToGCS = async () => {
@@ -270,33 +242,6 @@ export default function IssueForm() {
         [{ text: "OK" }]
       );
       return;
-    }
-
-    // Check distance for verification only
-    if (isUpdateMode && (action === "VERIFY" || action === "RESOLVE") && issueData) {
-      const issueLocation = issueData.data.issue.location;
-      const userLatNum = parseFloat(latitude);
-      const userLngNum = parseFloat(longitude);
-      const issueLatNum = issueLocation.lat;
-      const issueLngNum = issueLocation.lng;
-
-      const distanceInMeters = calculateHaversineDistance(
-        userLatNum,
-        userLngNum,
-        issueLatNum,
-        issueLngNum
-      );
-
-      if (distanceInMeters > DISTANCE_THRESHOLD) {
-        const distanceInKm = (distanceInMeters / 1000).toFixed(2);
-        Alert.alert(
-          "Too Far from Issue Location",
-          `You are ${distanceInKm} km away from the issue location. You must be within 50 meters to verify this issue.\n\nMove closer to the issue location and try again.`,
-          [{ text: "OK" }]
-        );
-        setIsSubmitting(false);
-        return;
-      }
     }
 
     if (isUpdateMode) {

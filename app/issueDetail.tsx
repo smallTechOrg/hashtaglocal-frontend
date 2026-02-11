@@ -12,7 +12,6 @@ import {
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
