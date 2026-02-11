@@ -5,17 +5,21 @@ import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
+import { 
+    calculateHaversineDistance,
+    getLocationWithPermission,
+ } from "@/utils/LocationService";
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
 import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 
+const DISTANCE_THRESHOLD = 50; // 50 meters
 
-
-  
 const IssueDetailScreen = () => {
     const params = useLocalSearchParams<{ id?: string; issueId?: string; refresh?: string }>();
     const navigation = useNavigation();
@@ -25,6 +29,7 @@ const IssueDetailScreen = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [checkingDistance, setCheckingDistance] = useState(false);
 
     useEffect(() => {
         const loadIssue = async () => {
@@ -124,6 +129,50 @@ const IssueDetailScreen = () => {
         ? parseInt(params.id, 10)
         : undefined;
 
+    const handleUpdate = async () => {
+        if (!issueId) return;
+
+        try {
+            setCheckingDistance(true);
+            const userLocation = await getLocationWithPermission();
+            if (!userLocation.success) {
+                Alert.alert("Location Error", userLocation.error?.message || "Unable to get your location. Please ensure location services are enabled and permissions are granted.");
+                return;
+            }
+
+            const distanceInMeters = calculateHaversineDistance(
+                userLocation.location.latitude,
+                userLocation.location.longitude,
+                issue.location.lat,
+                issue.location.lng
+            );
+
+            if (distanceInMeters > DISTANCE_THRESHOLD) {
+                const distanceInKm = (distanceInMeters / 1000).toFixed(2);
+                Alert.alert(
+                    "Too Far from Issue",
+                    `You are currently ${distanceInKm} km away from the issue location. Please move closer to update the issue.`
+                );
+                return;
+            }
+
+            // If within distance threshold, navigate to update screen
+            router.push({
+                pathname: "/CameraCapture",
+                params: {
+                    mode: "update",
+                    issueType: issue.type.toUpperCase(),
+                    issueId: issueId,
+                },
+            });
+        } catch (err) {
+            console.error("Distance check error:", err);
+            Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
+        } finally {
+            setCheckingDistance(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!issueId) return;
         setIsDeleting(true);
@@ -151,23 +200,21 @@ const IssueDetailScreen = () => {
 
             {/* Update Button */}
             <TouchableOpacity
-                onPress={() => {
-                    router.push({
-                        pathname: "/CameraCapture",
-                        params: {
-                            mode: "update",
-                            issueType: issue.type.toUpperCase(),
-                            issueId: issueId,
-                        },
-                    });
-                }}
+                onPress={handleUpdate}
+                disabled={checkingDistance}
                 className="flex-row items-center justify-center gap-2 bg-[#2563EB] mx-3 mt-3 py-3 rounded-xl"
                 style={{ elevation: 2 }}
             >
-                <MaterialIcons name="camera-alt" size={20} color="#fff" />
-                <CustomText className="text-white font-semibold p">
+                {checkingDistance ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <>
+                    <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                    <CustomText className="text-white font-semibold p">
                     Update Issue
-                </CustomText>
+                    </CustomText>
+                    </>
+                )}
             </TouchableOpacity>
 
             {/* Issue Details Card */}
