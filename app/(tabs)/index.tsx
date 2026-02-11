@@ -5,6 +5,7 @@ import {
   LocationError,
   UserLocation,
 } from "@/utils/LocationService";
+import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
@@ -76,6 +77,7 @@ const getIssueColor = (type: string): string => {
 
 export default function MapScreen() {
   const router = useRouter();
+  const { user } = useUser();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -91,8 +93,10 @@ export default function MapScreen() {
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
 
   useEffect(() => {
-    loadUserLocation();
-  }, []);
+    if (user) {
+      loadUserLocation();
+    }
+  }, [user]);
 
   // Reload issues when screen comes back into focus (after delete, report, verify, etc.)
   useFocusEffect(
