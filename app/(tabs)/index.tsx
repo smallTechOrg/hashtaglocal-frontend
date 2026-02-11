@@ -1,5 +1,6 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
+import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import {
   getLocationWithPermission,
   LocationError,
@@ -176,18 +177,24 @@ export default function MapScreen() {
     }
   }, [selectedIssue, router]);
 
-  const handleUpdateIssue = useCallback(() => {
-    if (selectedIssue) {
-      bottomSheetRef.current?.close();
-      router.push({
-        pathname: "/CameraCapture",
-        params: {
-          mode: "update",
-          issueType: selectedIssue.type.toUpperCase(),
-          issueId: selectedIssue.id,
-        },
-      });
-    }
+  const handleUpdateIssue = useCallback(async() => {
+    if (!selectedIssue) return;
+
+    const isNear = await ensureUserIsNearIssue(selectedIssue.location.lat, selectedIssue.location.lng);
+    if (!isNear) return;
+
+
+    
+    bottomSheetRef.current?.close();
+    router.push({
+      pathname: "/CameraCapture",
+      params: {
+        mode: "update",
+        issueType: selectedIssue.type.toUpperCase(),
+        issueId: selectedIssue.id,
+      },
+    });
+    
   }, [selectedIssue, router]);
 
   // Filter issues based on selected filter
