@@ -130,7 +130,7 @@ const IssueDetailScreen = () => {
         : undefined;
 
     const handleUpdate = async () => {
-        if (!issueId) return;
+        if (!issueId || checkingDistance) return;
 
         try {
             setCheckingDistance(true);

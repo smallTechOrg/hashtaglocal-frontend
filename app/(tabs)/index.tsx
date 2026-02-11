@@ -89,6 +89,7 @@ export default function MapScreen() {
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [checkingDistance, setCheckingDistance] = useState(false);
 
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
@@ -178,24 +179,28 @@ export default function MapScreen() {
   }, [selectedIssue, router]);
 
   const handleUpdateIssue = useCallback(async() => {
-    if (!selectedIssue) return;
+    if (!selectedIssue || checkingDistance) return;
 
-    const isNear = await ensureUserIsNearIssue(selectedIssue.location.lat, selectedIssue.location.lng);
-    if (!isNear) return;
+    try {
+      setCheckingDistance(true);
+      const isNear = await ensureUserIsNearIssue(selectedIssue.location.lat, selectedIssue.location.lng);
+      if (!isNear) return;
 
-
-    
-    bottomSheetRef.current?.close();
-    router.push({
-      pathname: "/CameraCapture",
-      params: {
-        mode: "update",
-        issueType: selectedIssue.type.toUpperCase(),
-        issueId: selectedIssue.id,
-      },
-    });
-    
-  }, [selectedIssue, router]);
+      bottomSheetRef.current?.close();
+      router.push({
+        pathname: "/CameraCapture",
+        params: {
+          mode: "update",
+          issueType: selectedIssue.type.toUpperCase(),
+          issueId: selectedIssue.id,
+        },
+      });
+    } catch (e) {
+      console.error("Distance check failed", e);      
+    } finally {
+      setCheckingDistance(false);
+    }
+  }, [selectedIssue, router, checkingDistance]);
 
   // Filter issues based on selected filter
   const filteredIssues = useMemo(() => {
@@ -506,14 +511,22 @@ export default function MapScreen() {
 
               <TouchableOpacity
                 onPress={handleUpdateIssue}
+                disabled={checkingDistance}
                 style={styles.verifyButton}
               >
-                <MaterialIcons name="camera-alt" size={20} color="#fff" />
-                <CustomText className="text-white font-semibold p">
-                  Update Issue
-                </CustomText>
+                {checkingDistance ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                    <CustomText className="text-white font-semibold p">
+                      Update Issue
+                    </CustomText>
+                  </>
+                )}   
               </TouchableOpacity>
-               <TouchableOpacity
+
+              <TouchableOpacity
                 onPress={handleViewDetails}
                 style={styles.viewDetailsButton}
               >
