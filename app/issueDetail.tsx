@@ -3,6 +3,7 @@ import { fetchIssue, rejectIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
+import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
 import { 
@@ -133,25 +134,8 @@ const IssueDetailScreen = () => {
 
         try {
             setCheckingDistance(true);
-            const userLocation = await getLocationWithPermission();
-            if (!userLocation.success) {
-                Alert.alert("Location Error", userLocation.error?.message || "Unable to get your location. Please ensure location services are enabled and permissions are granted.");
-                return;
-            }
-
-            const distanceInMeters = calculateHaversineDistance(
-                userLocation.location.latitude,
-                userLocation.location.longitude,
-                issue.location.lat,
-                issue.location.lng
-            );
-
-            if (distanceInMeters > DISTANCE_THRESHOLD) {
-                const distanceInKm = (distanceInMeters / 1000).toFixed(2);
-                Alert.alert(
-                    "Too Far from Issue",
-                    `You are currently ${distanceInKm} km away from the issue location. Please move closer to update the issue.`
-                );
+            const isNear = await ensureUserIsNearIssue(issue.location.lat, issue.location.lng);
+            if (!isNear) {
                 return;
             }
 
