@@ -82,6 +82,8 @@ export default function IssueForm() {
     if (!isUpdateMode) {
       setSelectedType("OTHER");
     }
+    setLatitude(null);
+    setLongitude(null);
   }, [imageUri, isUpdateMode]);
 
   // Fetch location in background
@@ -141,7 +143,7 @@ export default function IssueForm() {
     };
 
     fetchLocation();
-  }, []);
+  }, [imageUri]);
 
   // Handle keyboard showing and scroll input into view
   useEffect(() => {
@@ -225,10 +227,10 @@ export default function IssueForm() {
   const locationString = isLoadingLocation
     ? "Getting location..."
     : formatLocationString({
-        address: address || "",
-        lat: latitude || "N/A",
-        lng: longitude || "N/A",
-      });
+      address: address || "",
+      lat: latitude || "N/A",
+      lng: longitude || "N/A",
+    });
   const timestampString = formatDate(timestamp || "");
 
   const handleSubmit = async (action?: "VERIFY" | "RESOLVE") => {
@@ -270,8 +272,10 @@ export default function IssueForm() {
             ],
           },
         };
-
+        console.log(latitude,longitude)
+console.log(verifyPayload.issue_action.media_urls[0])
         response = await verifyIssue(parseInt(params.issueId, 10), verifyPayload);
+
       } else if (isUpdateMode && params.issueId && action === "RESOLVE") {
         const resolvePayload = {
           issue_action: {
@@ -314,14 +318,15 @@ export default function IssueForm() {
             description: description,
           },
         };
-
+ console.log(latitude,longitude)
+console.log(payload.issue.media_urls[0])
         response = await reportIssue(payload);
       }
 
       const successMessage =
         action === "VERIFY" ? "Issue verified successfully!\n\nThe resolution is pending approval. Once approved, the issue will be closed." :
-        action === "RESOLVE" ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others." :
-        "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
+          action === "RESOLVE" ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others." :
+            "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
 
       setIsSubmitting(false);
       Alert.alert("Success", successMessage, [
@@ -512,12 +517,11 @@ export default function IssueForm() {
           {/* Submit Button(s) */}
           {isUpdateMode ? (
             <View className="mt-2 flex-row gap-3">
-               <TouchableOpacity
+              <TouchableOpacity
                 onPress={() => handleSubmit("RESOLVE")}
                 disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
-                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
-                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
-                }`}
+                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
+                  }`}
                 style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
               >
                 <MaterialIcons
@@ -526,9 +530,8 @@ export default function IssueForm() {
                   color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
                 />
                 <CustomText
-                  className={`ml-2 font-bold text-base ${
-                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
-                  }`}
+                  className={`ml-2 font-bold text-base ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                    }`}
                 >
                   {isSubmitting && selectedAction === "RESOLVE" ? "Resolving..." : "Resolve Issue"}
                 </CustomText>
@@ -536,9 +539,8 @@ export default function IssueForm() {
               <TouchableOpacity
                 onPress={() => handleSubmit("VERIFY")}
                 disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
-                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${
-                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#2563EB]" : "bg-gray-300"
-                }`}
+                className={`flex-1 py-4 rounded-xl items-center flex-row justify-center ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#2563EB]" : "bg-gray-300"
+                  }`}
                 style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
               >
                 <MaterialIcons
@@ -547,23 +549,21 @@ export default function IssueForm() {
                   color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
                 />
                 <CustomText
-                  className={`ml-2 font-bold text-base ${
-                    selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
-                  }`}
+                  className={`ml-2 font-bold text-base ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                    }`}
                 >
                   {isSubmitting && selectedAction === "VERIFY" ? "Verifying..." : "Verify Issue"}
                 </CustomText>
               </TouchableOpacity>
 
-             
+
             </View>
           ) : (
             <TouchableOpacity
               onPress={() => handleSubmit()}
               disabled={!selectedType || isSubmitting || isUploading || !gcsPath || isLoadingLocation}
-              className={`mt-2 py-4 rounded-xl items-center flex-row justify-center ${
-                selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
-              }`}
+              className={`mt-2 py-4 rounded-xl items-center flex-row justify-center ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "bg-[#256D1B]" : "bg-gray-300"
+                }`}
               style={{ elevation: selectedType && gcsPath && !isLoadingLocation ? 2 : 0 }}
             >
               <MaterialIcons
@@ -572,9 +572,8 @@ export default function IssueForm() {
                 color={selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "white" : "#999"}
               />
               <CustomText
-                className={`ml-2 font-bold text-lg ${
-                  selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
-                }`}
+                className={`ml-2 font-bold text-lg ${selectedType && !isSubmitting && !isUploading && gcsPath && !isLoadingLocation ? "text-white" : "text-gray-500"
+                  }`}
               >
                 {isLoadingLocation ? "Getting Location..." : isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Report"}
               </CustomText>
@@ -617,15 +616,12 @@ export default function IssueForm() {
                       setSelectedType(type.id);
                       setDropdownVisible(false);
                     }}
-                    className={`flex-row items-center p-5 ${
-                      index !== ISSUE_TYPES.length - 1 ? 'border-b border-gray-100' : ''
-                    } ${
-                      selectedType === type.id ? "bg-green-50" : "bg-white"
-                    }`}
+                    className={`flex-row items-center p-5 ${index !== ISSUE_TYPES.length - 1 ? 'border-b border-gray-100' : ''
+                      } ${selectedType === type.id ? "bg-green-50" : "bg-white"
+                      }`}
                   >
-                    <View className={`w-12 h-12 rounded-full items-center justify-center ${
-                      selectedType === type.id ? 'bg-green-100' : 'bg-gray-100'
-                    }`}>
+                    <View className={`w-12 h-12 rounded-full items-center justify-center ${selectedType === type.id ? 'bg-green-100' : 'bg-gray-100'
+                      }`}>
                       <MaterialIcons
                         name={type.icon as any}
                         size={28}
@@ -633,11 +629,10 @@ export default function IssueForm() {
                       />
                     </View>
                     <CustomText
-                      className={`flex-1 ml-4 text-base ${
-                        selectedType === type.id
+                      className={`flex-1 ml-4 text-base ${selectedType === type.id
                           ? "text-[#256D1B] font-semibold"
                           : "text-gray-700"
-                      }`}
+                        }`}
                     >
                       {type.label}
                     </CustomText>
