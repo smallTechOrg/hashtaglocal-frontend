@@ -12,7 +12,7 @@ export async function ensureUserIsNearIssue(
   if (!result.success) {
     Alert.alert(
       "Location Error",
-      result.error?.message || "Unable to get your location. Please enable location services."
+      result.error?.message || "Unable to get your location. Please enable location or try again."
     );
     return false;
   }

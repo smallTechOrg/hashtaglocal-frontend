@@ -246,10 +246,12 @@ const IssueDetailScreen = () => {
                             "Issue Status",
                             issue.status === "OPEN"
                                 ? "This issue is open and visible to the community. Updates and verifications can be added."
-                                : issue.status === "RESOLVE"
+                                : issue.status === "RESOLVED"
                                 ? "This issue has been resolved and closed."
                                 : issue.status === "ONHOLD"
                                 ? "This issue is on hold and is being reviewed by the admin before it goes public."
+                                : issue.status === "PENDING"
+                                ? "This issue is pending to be resolved and is being reviewed by our community."
                                 : issue.status === "REJECTED"
                                 ? "This issue has been rejected and removed."
                                 : `Current status: ${issue.status}`

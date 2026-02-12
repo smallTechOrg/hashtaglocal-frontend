@@ -26,7 +26,7 @@ export default function Index() {
             <View className="space-y-1">
               <View className="flex-row items-center mb-1">
                 <MaterialIcons name="construction" size={16} color="#666" />
-                <CustomText className="text-gray-600 ml-2">Road Damage & Potholes</CustomText>
+                <CustomText className="text-gray-600 ml-2">Potholes & Road Damages</CustomText>
               </View>
               <View className="flex-row items-center mb-1">
                 <MaterialIcons name="delete-outline" size={16} color="#666" />
@@ -38,7 +38,7 @@ export default function Index() {
               </View>
               <View className="flex-row items-center mb-1">
                 <MaterialIcons name="air" size={16} color="#666" />
-                <CustomText className="text-gray-600 ml-2">Air & Noise Pollution</CustomText>
+                <CustomText className="text-gray-600 ml-2">Air, Water or Noise Pollution</CustomText>
               </View>
               <View className="flex-row items-center mb-1">
                 <MaterialIcons name="cleaning-services" size={16} color="#666" />

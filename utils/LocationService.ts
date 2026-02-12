@@ -137,7 +137,7 @@ export async function getCurrentLocation(
       error: {
         code: "LOCATION_UNAVAILABLE",
         message:
-          "Unable to get your location. Please ensure GPS is enabled.",
+          "Unable to get your location. Please ensure GPS is enabled or try again.",
       },
     };
   }
