@@ -515,15 +515,13 @@ export default function MapScreen() {
                 style={styles.verifyButton}
               >
                 {checkingDistance ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <>
-                    <MaterialIcons name="camera-alt" size={20} color="#fff" />
-                    <CustomText className="text-white font-semibold p">
-                      Update Issue
-                    </CustomText>
-                  </>
-                )}   
+                  <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                )}
+                <CustomText className="text-white font-semibold p">
+                  Update Issue
+                </CustomText>   
               </TouchableOpacity>
 
               <TouchableOpacity
