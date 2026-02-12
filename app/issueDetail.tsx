@@ -17,6 +17,7 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
 import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DISTANCE_THRESHOLD = 50; // 50 meters
 
@@ -25,6 +26,7 @@ const IssueDetailScreen = () => {
     const navigation = useNavigation();
     const router = useRouter();
     const { user } = useUser();
+    const insets = useSafeAreaInsets();
     const [issueData, setIssueData] = useState<APIResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -170,7 +172,7 @@ const IssueDetailScreen = () => {
     };
 
     return (
-        <ScrollView className="bg-gray-50">
+        <ScrollView className="bg-gray-50" contentContainerStyle={{ paddingBottom: insets.bottom + 25 }}>
             {/* Image Card — image + description + reported/updated by (updates with slideshow) */}
             <View className="bg-white mx-3 mt-3 rounded-xl shadow-md overflow-hidden" style={{ elevation: 3 }}>
                 <IssueImage
@@ -189,15 +191,13 @@ const IssueDetailScreen = () => {
                 style={{ elevation: 2 }}
             >
                 {checkingDistance ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                    <>
                     <MaterialIcons name="camera-alt" size={20} color="#fff" />
-                    <CustomText className="text-white font-semibold p">
-                    Update Issue
-                    </CustomText>
-                    </>
                 )}
+                <CustomText className="text-white font-semibold p">
+                    Update Issue
+                </CustomText>
             </TouchableOpacity>
 
 
