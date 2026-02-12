@@ -609,7 +609,7 @@ export default function IssueForm() {
                   </TouchableOpacity>
                 </View>
               </View>
-              <ScrollView>
+              <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 {ISSUE_TYPES.map((type, index) => (
                   <TouchableOpacity
                     key={type.id}

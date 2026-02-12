@@ -6,10 +6,6 @@ import { APIResponse } from "@/models/APIResponse";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
-import { 
-    calculateHaversineDistance,
-    getLocationWithPermission,
- } from "@/utils/LocationService";
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -32,6 +28,7 @@ const IssueDetailScreen = () => {
     const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [checkingDistance, setCheckingDistance] = useState(false);
+    const [showStatusDetails, setShowStatusDetails] = useState(false);
 
     useEffect(() => {
         const loadIssue = async () => {
@@ -203,7 +200,7 @@ const IssueDetailScreen = () => {
 
             {/* Issue Details Card */}
             <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
-                 {/* Location Details */}
+                {/* Location Details */}
                 <View className="mb-3">
                     <View className="flex-row items-center justify-between mb-2">
                         <View className="flex-row items-center">
@@ -224,46 +221,53 @@ const IssueDetailScreen = () => {
                         {issue.location.lat.toFixed(6)}, {issue.location.lng.toFixed(6)}
                     </CustomText>
                 </View>
-                {/* Issue Type */}
-                <View className="flex-row items-center mb-3">
-                    <MaterialIcons name="category" size={20} color="#256D1B" />
-                    <CustomText className="ml-2 text-lg font-bold capitalize">
-                        {issue.type}
-                    </CustomText>
-                </View>
 
-                {/* Verify Count */}
-                <View className="flex-row items-center mb-3">
-                    <MaterialIcons name="verified" size={20} color="#256D1B" />
-                    <CustomText className="ml-2 text-gray-700">
-                        {issue.verify_count} {issue.verify_count === 1 ? 'verification' : 'verifications'}
-                    </CustomText>
-                </View>
-                {/* Status */}
+                {/* Status - Prominent */}
                 {issue.status && (
                     <TouchableOpacity
-                        onPress={() => Alert.alert(
-                            "Issue Status",
-                            issue.status === "OPEN"
-                                ? "This issue is open and visible to the community. Updates and verifications can be added."
-                                : issue.status === "RESOLVED"
-                                ? "This issue has been resolved and closed."
-                                : issue.status === "ONHOLD"
-                                ? "This issue is on hold and is being reviewed by the admin before it goes public."
-                                : issue.status === "PENDING"
-                                ? "This issue is pending to be resolved and is being reviewed by our community."
-                                : issue.status === "REJECTED"
-                                ? "This issue has been rejected and removed."
-                                : `Current status: ${issue.status}`
-                        )}
-                        className="mb-3 flex-row items-center self-start bg-gray-100 px-3 py-2 rounded-full gap-2"
+                        onPress={() => setShowStatusDetails(!showStatusDetails)}
+                        className="mb-4"
+                        activeOpacity={0.7}
                     >
-                        <CustomText className="text-xs text-gray-600 uppercase font-semibold">
-                            {issue.status}
-                        </CustomText>
-                        <MaterialIcons name="info-outline" size={16} color="#9ca3af" />
+                        <View className="flex-row items-center gap-2 bg-blue-50 px-4 py-3 rounded-lg border border-blue-200">
+                            <MaterialIcons name="info" size={20} color="#2563EB" />
+                            <CustomText className="text-sm text-blue-900 uppercase font-bold">
+                                {issue.status}
+                            </CustomText>
+                        </View>
+                        {showStatusDetails && (
+                            <CustomText className="text-gray-600 text-sm mt-2">
+                                {issue.status === "OPEN"
+                                    ? "This issue is open and visible to the community. Updates and verifications can be added."
+                                    : issue.status === "RESOLVED"
+                                    ? "This issue has been resolved and closed."
+                                    : issue.status === "ONHOLD"
+                                    ? "This issue is on hold and is being reviewed by the admin before it goes public."
+                                    : issue.status === "PENDING"
+                                    ? "This issue is pending to be resolved and is being reviewed by our community."
+                                    : issue.status === "REJECTED"
+                                    ? "This issue has been rejected and removed."
+                                    : `Current status: ${issue.status}`}
+                            </CustomText>
+                        )}
                     </TouchableOpacity>
                 )}
+
+                {/* Issue Type & Verify Count - Side by Side */}
+                <View className="flex-row gap-4 mb-3">
+                    <View className="flex-1 flex-row items-center">
+                        <MaterialIcons name="category" size={20} color="#256D1B" />
+                        <CustomText className="ml-2 text-lg font-bold capitalize">
+                            {issue.type}
+                        </CustomText>
+                    </View>
+                    <View className="flex-1 flex-row items-center">
+                        <MaterialIcons name="verified" size={20} color="#256D1B" />
+                        <CustomText className="ml-2 text-gray-700">
+                            {issue.verify_count} {issue.verify_count === 1 ? 'verification' : 'verifications'}
+                        </CustomText>
+                    </View>
+                </View>
 
                 {/* Hashtags */}
                 {issue.location.locality?.hashtags && issue.location.locality.hashtags.length > 0 && (
@@ -277,10 +281,10 @@ const IssueDetailScreen = () => {
                 )}
 
                 {/* Timestamp */}
-                <View className="flex-row items-center">
-                    <MaterialIcons name="access-time" size={20} color="#666" />
-                    <CustomText className="ml-2 text-gray-600 text-sm">
-                        {formattedDate} • {daysActive}
+                <View className="flex-row items-center justify-end">
+                    <MaterialIcons name="access-time" size={16} color="#666" />
+                    <CustomText className="text-gray-600 text-sm ml-1">
+                        {daysActive}
                     </CustomText>
                 </View>
             </View>
