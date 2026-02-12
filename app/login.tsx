@@ -1,8 +1,7 @@
-import { View, Text, Pressable, Image, ImageBackground } from "react-native";
-import { useRouter } from "expo-router";
-import { googleAuth } from "@/api/auth";
-import { saveTokens } from "@/utils/tokenStorage";
 import { useGoogleAuth } from "@/api/GoogleAuth";
+import CustomText from "@/components/CustomText";
+import { useRouter } from "expo-router";
+import { Image, ImageBackground, Pressable, View } from "react-native";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -11,22 +10,22 @@ const { signIn } = useGoogleAuth();
 
   return (
     <ImageBackground
-      source={require("../assets/logo-green.png")}
-      resizeMode="contain"
-      imageStyle={{ opacity: 0.1 }}
+      source={require("../assets/bg.png")}
+      resizeMode="fill"
+      imageStyle={{ opacity: 0.3 }}
       className="flex-1"
     >
-      <View className="flex-1 items-center justify-center px-6">
+      <View className="items-center justify-center px-6 pt-40">
         <Image
           source={require("../assets/logo-green.png")}
-          style={{ width: 80, height: 100, marginBottom: 24 }}
+          style={{height: 130, marginBottom: 70 }}
           resizeMode="contain"
         />
 
-        <Text className="h1 font-bold mb-2">#local</Text>
-        <Text className="text-center mb-12">
-          Report and track local issues in your community
-        </Text>
+        <CustomText className="h1 font-[500] mb-2 mt-20">#local</CustomText>
+        <CustomText className="h3 font-[300] text-center mb-12">
+          a location based community platform
+        </CustomText>
 
         <Pressable
           onPress={() => {
@@ -35,9 +34,14 @@ const { signIn } = useGoogleAuth();
           className="flex-row items-center bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm"
           style={{ elevation: 2 }}
         >
-          <Text className="text-gray-700 p font-medium">
-            Sign up with Google
-          </Text>
+          <Image
+            source={require("../assets/google.png")}
+            style={{ width: 24, height: 24, marginRight: 12 }}
+            resizeMode="contain"
+          />
+          <CustomText className="text-gray-700 h3">
+            Sign In with Google
+          </CustomText>
         </Pressable>
       </View>
     </ImageBackground>
