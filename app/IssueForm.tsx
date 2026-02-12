@@ -321,7 +321,7 @@ export default function IssueForm() {
       const successMessage =
         action === "VERIFY" ? "Issue verified successfully!\n\nThe resolution is pending approval. Once approved, the issue will be closed." :
         action === "RESOLVE" ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others." :
-        "Unkown Action";
+        "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
 
       setIsSubmitting(false);
       Alert.alert("Success", successMessage, [

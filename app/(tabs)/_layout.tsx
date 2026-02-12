@@ -43,6 +43,34 @@ export default function TabsLayout() {
         options={indexOptions}
       />
       <Tabs.Screen
+        name="issues"
+        options={{
+          title: 'Issues',
+          headerTitleStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          headerLeft: () => <DrawerToggleButton />,
+          headerRight: () => (
+            <Image
+              source={require("../../assets/logo-green.png")}
+              style={{ width: 32, height: 40, marginRight: 16 }}
+              resizeMode="contain"
+            />
+          ),
+          tabBarLabel: 'Issues',
+          tabBarLabelStyle: {
+            fontFamily: "Nunito-Regular",
+          },
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons 
+              name={focused ? 'format-list-bulleted' : 'format-list-bulleted'} 
+              color={color} 
+              size={24} 
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="report"
         options={{
           title: 'Report Issue',

@@ -1,6 +1,7 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
+import { useIssues } from "@/utils/IssuesContext";
 import {
   getLocationWithPermission,
   LocationError,
@@ -9,8 +10,8 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { Image } from "expo-image";
 import { useFocusEffect } from "@react-navigation/native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -79,6 +80,7 @@ const getIssueColor = (type: string): string => {
 export default function MapScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { setIssues: setContextIssues } = useIssues();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -153,6 +155,8 @@ export default function MapScreen() {
       const issuesData = await getIssuesByLocation(lat, lng);
       console.log("Issues loaded:", issuesData.length);
       setIssues(issuesData);
+      // Also save to context for other tabs to use
+      setContextIssues(issuesData);
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
     } finally {
