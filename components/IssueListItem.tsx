@@ -14,7 +14,7 @@ interface IssueListItemProps {
       city?: string;
       district?: string;
     };
-    address_text?: string;
+    address?: string;
   };
   media_urls?: Array<{ url: string }>;
 }
@@ -51,8 +51,8 @@ export default function IssueListItem({
   };
 
   const getLocationText = (): string => {
-    if (location?.address_text) {
-      return location.address_text;
+    if (location?.address) {
+      return location.address;
     }
     if (location?.locality?.city) {
       return location.locality.city;

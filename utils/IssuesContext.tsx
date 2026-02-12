@@ -13,7 +13,7 @@ export interface IssueMarker {
       city?: string;
       district?: string;
     };
-    address_text?: string;
+    address?: string;
   };
   media_urls?: Array<{ url: string }>;
   vote_count?: number;
