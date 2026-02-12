@@ -23,10 +23,10 @@ import {
 } from "react-native";
 
 const ISSUE_TYPES = [
-  { id: "POTHOLE", label: "Road Damage & Potholes", icon: "construction" },
+  { id: "POTHOLE", label: "Potholes & Road Damages", icon: "construction" },
   { id: "WASTE", label: "Waste & Garbage Disposal", icon: "delete-outline" },
   { id: "FOOTPATH", label: "Footpath & Walkability Issues", icon: "directions-walk" },
-  { id: "POLLUTION", label: "Air & Noise Pollution", icon: "air" },
+  { id: "POLLUTION", label: "Air, Noise or Water Pollution", icon: "air" },
   { id: "HYGIENE", label: "Hygiene & Sanitation", icon: "cleaning-services" },
   { id: "SAFETY", label: "Safety & Street Lighting", icon: "lightbulb-outline" },
   { id: "OTHER", label: "Other Community Issues", icon: "help-outline" },
@@ -320,7 +320,7 @@ export default function IssueForm() {
 
       const successMessage =
         action === "VERIFY" ? "Issue verified successfully!\n\nThe resolution is pending approval. Once approved, the issue will be closed." :
-        action === "RESOLVE" ? "Issue resolved successfully!\n\nThe issue is now open and visible to others. Updates and resolutions can now be added." :
+        action === "RESOLVE" ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others." :
         "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
 
       setIsSubmitting(false);
@@ -609,7 +609,7 @@ export default function IssueForm() {
                   </TouchableOpacity>
                 </View>
               </View>
-              <ScrollView>
+              <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 {ISSUE_TYPES.map((type, index) => (
                   <TouchableOpacity
                     key={type.id}

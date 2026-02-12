@@ -1,12 +1,13 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
+import { IssuesProvider } from "@/utils/IssuesContext";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
-  DrawerContentComponentProps,
-  DrawerContentScrollView,
-  DrawerItemList,
+    DrawerContentComponentProps,
+    DrawerContentScrollView,
+    DrawerItemList,
 } from "@react-navigation/drawer";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
@@ -206,19 +207,20 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
-      <AuthLoader>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <Drawer
-          initialRouteName="(tabs)"
-          drawerContent={(props) => <CustomDrawerContent {...props} />}
-          screenOptions={{
-            drawerActiveTintColor: "blue",
-            drawerLabelStyle: {
-              fontFamily: "Nunito-Regular",
-            },
-          }}
-        >
+      <IssuesProvider>
+        <AuthLoader>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <Drawer
+            initialRouteName="(tabs)"
+            drawerContent={(props) => <CustomDrawerContent {...props} />}
+            screenOptions={{
+              drawerActiveTintColor: "blue",
+              drawerLabelStyle: {
+                fontFamily: "Nunito-Regular",
+              },
+            }}
+          >
         <Drawer.Screen
           name="login"
           options={{
@@ -307,6 +309,7 @@ export default function RootLayout() {
       </Drawer>
         </NavigationContainer>
       </AuthLoader>
+      </IssuesProvider>
     </UserProvider>
   );
 }
