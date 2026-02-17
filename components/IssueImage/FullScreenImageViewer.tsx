@@ -101,7 +101,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
             <PaginationDots
               totalImages={imageSources.length}
               currentIndex={currentIndex}
-              hasBottomOverlay={false}
+    
             />
           </View>
         )}
