@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import React from 'react';
+import React, { useState } from 'react';
 import { ImageSourcePropType, Pressable, Image as RNImage, View } from 'react-native';
 
 interface ImageCarouselItemProps {
   imageSource: ImageSourcePropType | { uri: string };
+  thumbnailSource?: { uri: string };
   index: number;
   width: number;
   height: number;
@@ -15,6 +16,7 @@ interface ImageCarouselItemProps {
 
 const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
   imageSource,
+  thumbnailSource,
   index,
   width,
   height,
@@ -23,6 +25,8 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
   onPress,
   children
 }) => {
+  const [fullImageLoaded, setFullImageLoaded] = useState(false);
+
   return (
     <View
       key={`image-${index}`}
@@ -37,27 +41,36 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
             onError={(error: any) => {
-              console.error(`[IssueImage] ❌ RN Image also failed for ${index}:`, error);
-            }}
-            onLoad={() => {
-              console.log(`[IssueImage] ✅ RN Image loaded ${index}`);
+              console.error(`[IssueImage] RN Image also failed for ${index}:`, error);
             }}
           />
         ) : (
-          <Image
-            source={imageSource}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-            onError={(error) => {
-              console.error(`[IssueImage] Error loading image ${index}:`, error);
-              onError(index);
-            }}
-            onLoad={() => {
-              console.log(`[IssueImage] Successfully loaded image ${index}`);
-            }}
-          />
+          <View style={{ width: '100%', height: '100%' }}>
+            {/* Thumbnail layer - shown until full image loads */}
+            {thumbnailSource && !fullImageLoaded && (
+              <Image
+                source={thumbnailSource}
+                style={{ position: 'absolute', width: '100%', height: '100%' }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            )}
+            {/* Full resolution image layer */}
+            <Image
+              source={imageSource}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={thumbnailSource ? 300 : 200}
+              cachePolicy="memory-disk"
+              onError={(error) => {
+                console.error(`[IssueImage] Error loading image ${index}:`, error);
+                onError(index);
+              }}
+              onLoad={() => {
+                setFullImageLoaded(true);
+              }}
+            />
+          </View>
         )}
       </Pressable>
 

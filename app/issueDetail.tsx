@@ -110,6 +110,7 @@ const IssueDetailScreen = () => {
     // Process media items for the slideshow (with username, description, timestamp, profile_photo per image)
     const mediaItems = sortedMedia.map((media, index) => ({
         url: media.url,
+        url_thumbnail: media.url_thumbnail,
         description: media.description || (index === 0 ? issue.description : undefined),
         username: media.username || (index === 0 ? issue.user.username : undefined),
         profile_photo: media.profile_photo || (index === 0 ? issue.user.profilePictureUrl : undefined),

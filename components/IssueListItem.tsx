@@ -16,7 +16,7 @@ interface IssueListItemProps {
     };
     address?: string;
   };
-  media_urls?: Array<{ url: string }>;
+  media_urls?: { url: string; url_thumbnail?: string }[];
 }
 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
@@ -61,7 +61,7 @@ export default function IssueListItem({
   };
 
   const daysActive = calculateDaysActive(created_at);
-  const thumbnailUrl = media_urls?.[0]?.url;
+  const thumbnailUrl = media_urls?.[0]?.url_thumbnail || media_urls?.[0]?.url;
   const locationName = getLocationText();
 
   return (

@@ -10,7 +10,6 @@ const oauth_endpoint = {
 };
 const owner = Constants.expoConfig?.owner;
 const slug = Constants.expoConfig?.slug;
-console.log(owner,slug,"owner")
 
 export function useGoogleAuth() {
     const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI!;

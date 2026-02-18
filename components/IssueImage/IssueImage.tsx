@@ -10,6 +10,7 @@ import PaginationDots from './PaginationDots';
 
 export interface MediaItem {
   url: string;
+  url_thumbnail?: string;
   description?: string;
   username?: string;
   profile_photo?: string;
@@ -47,6 +48,11 @@ const IssueImage: React.FC<IssueImageProps> = ({
       : imageSource
         ? [imageSource]
         : [];
+
+  // Extract thumbnail URLs for progressive loading
+  const thumbnails = mediaItems && mediaItems.length > 0
+    ? mediaItems.map(m => m.url_thumbnail)
+    : [];
 
   const handleScroll = (event: any) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -95,6 +101,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
                     <ImageCarouselItem
                       key={`image-${index}`}
                       imageSource={imageSource}
+                      thumbnailSource={thumbnails[index] ? { uri: thumbnails[index] } : undefined}
                       index={index}
                       width={containerWidth}
                       height={450}
