@@ -111,7 +111,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
             <PaginationDots
               totalImages={images.length}
               currentIndex={currentIndex}
-              hasBottomOverlay={false}
+            
             />
           </View>
         ) : (

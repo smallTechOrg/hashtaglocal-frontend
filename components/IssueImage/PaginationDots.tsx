@@ -4,13 +4,13 @@ import { View } from 'react-native';
 interface PaginationDotsProps {
   totalImages: number;
   currentIndex: number;
-  hasBottomOverlay: boolean;
+
 }
 
 const PaginationDots: React.FC<PaginationDotsProps> = ({
   totalImages,
   currentIndex,
-  hasBottomOverlay
+
 }) => {
   if (totalImages <= 1) return null;
 
@@ -18,7 +18,7 @@ const PaginationDots: React.FC<PaginationDotsProps> = ({
     <View
       className="absolute left-0 right-0 flex-row justify-center"
       style={{
-        bottom: hasBottomOverlay ? 56 : 12,
+        bottom: 12,
         zIndex: 20
       }}
     >
