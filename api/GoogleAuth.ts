@@ -10,7 +10,6 @@ const oauth_endpoint = {
 };
 const owner = Constants.expoConfig?.owner;
 const slug = Constants.expoConfig?.slug;
-console.log(owner,slug,"owner")
 
 export function useGoogleAuth() {
     const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI!;
@@ -20,7 +19,7 @@ export function useGoogleAuth() {
     const [request, response, promptAsync] =
         AuthSession.useAuthRequest(
             {
-                clientId: "870371939888-dtnniua1oc41pd9mlnluo16mjbfhb83r.apps.googleusercontent.com",
+                clientId: "870371939888-o448r3h3bqgvlgehh78q9o3dhqcpocdn.apps.googleusercontent.com",
                 scopes: ["openid", "email", "profile"],
                 redirectUri,
                 responseType: AuthSession.ResponseType.Token,

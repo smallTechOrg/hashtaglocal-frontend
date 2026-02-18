@@ -57,7 +57,7 @@ interface IssueMarker {
   voteCount?: number;
   vote_count?: number;
   createdAt?: string;
-  media_urls?: Array<{ url: string }>;
+  media_urls?: { url: string; url_thumbnail?: string }[];
 }
 
 const ISSUE_TYPES = ["All", "Pothole", "Waste", "Footpath", "Pollution", "Hygiene", "Safety", "Other"];
@@ -463,7 +463,7 @@ export default function MapScreen() {
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
-                  source={{ uri: selectedIssue.media_urls[0].url }}
+                  source={{ uri: selectedIssue.media_urls[0].url_thumbnail || selectedIssue.media_urls[0].url }}
                   style={styles.previewImage}
                   contentFit="cover"
                   placeholder={{ blurhash: 'LGF5?xYk^6#M@-5c,1J5@[or[Q6.' }}
