@@ -9,6 +9,7 @@ import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
@@ -45,6 +46,10 @@ const IssueDetailScreen = () => {
                 console.log('Loading issue with ID:', issueId);
                 const data = await fetchIssue(issueId);
                 setIssueData(data);
+                // Prefetch thumbnails so they're cached before the carousel renders
+                data?.data?.issue?.media_urls?.forEach((m: { url_thumbnail?: string }) => {
+                    if (m.url_thumbnail) Image.prefetch(m.url_thumbnail);
+                });
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to load issue';
                 setError(errorMessage);
