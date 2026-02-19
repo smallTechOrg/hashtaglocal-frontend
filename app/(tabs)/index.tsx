@@ -183,6 +183,11 @@ export default function MapScreen() {
       setIssues(issuesData);
       // Also save to context for other tabs to use
       setContextIssues(issuesData);
+      // Prefetch thumbnails so they're cached before a marker is tapped
+      issuesData.forEach((issue: IssueMarker) => {
+        const thumb = issue.media_urls?.[0]?.url_thumbnail;
+        if (thumb) Image.prefetch(thumb);
+      });
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
     } finally {
@@ -489,13 +494,13 @@ export default function MapScreen() {
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
-                  source={{ uri: selectedIssue.media_urls[0].url_thumbnail || selectedIssue.media_urls[0].url }}
+                  source={{ uri: selectedIssue.media_urls[0].url }}
+                  placeholder={selectedIssue.media_urls[0].url_thumbnail ? { uri: selectedIssue.media_urls[0].url_thumbnail } : undefined}
+                  placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
-                  placeholder={{ blurhash: 'LGF5?xYk^6#M@-5c,1J5@[or[Q6.' }}
-                  priority="normal"
-                  cachePolicy="memory-disk"
                   transition={300}
+                  cachePolicy="memory-disk"
                 />
               </View>
             ) : (

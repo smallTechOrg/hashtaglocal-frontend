@@ -76,11 +76,11 @@ export async function checkLocationPermission(): Promise<{
 
 /**
  * Get the user's current location (one-time fetch)
- * @param timeoutMs - Maximum time to wait for location (default: 10000ms)
+ * @param timeoutMs - Maximum time to wait for location (default: 30000ms)
  * @returns LocationResult with location data or error
  */
 export async function getCurrentLocation(
-  timeoutMs: number = 10000
+  timeoutMs: number = 30000 // 30 seconds
 ): Promise<LocationResult> {
   try {
     // Check permission first

@@ -1,6 +1,7 @@
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import CustomText from "./CustomText";
 
@@ -61,8 +62,10 @@ export default function IssueListItem({
   };
 
   const daysActive = calculateDaysActive(created_at);
-  const thumbnailUrl = media_urls?.[0]?.url_thumbnail || media_urls?.[0]?.url;
+  const thumbnailUrl = media_urls?.[0]?.url_thumbnail;
+  const fullUrl = media_urls?.[0]?.url;
   const locationName = getLocationText();
+  const [fullImageLoaded, setFullImageLoaded] = useState(false);
 
   return (
     <TouchableOpacity
@@ -70,13 +73,26 @@ export default function IssueListItem({
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      {/* Image - Full width, bigger */}
-      {thumbnailUrl && (
-        <Image
-          source={{ uri: thumbnailUrl }}
-          style={styles.imageContainer}
-          contentFit="cover"
-        />
+      {/* Image - Full width, progressive thumbnail → high-res */}
+      {(thumbnailUrl || fullUrl) && (
+        <View style={[styles.imageContainer, { overflow: "hidden" }]}>
+          {thumbnailUrl && !fullImageLoaded && (
+            <Image
+              source={{ uri: thumbnailUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+          )}
+          <Image
+            source={{ uri: fullUrl || thumbnailUrl! }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={thumbnailUrl ? 300 : 200}
+            cachePolicy="memory-disk"
+            onLoad={() => setFullImageLoaded(true)}
+          />
+        </View>
       )}
 
       {/* Content below image */}

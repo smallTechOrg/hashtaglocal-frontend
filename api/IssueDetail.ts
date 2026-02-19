@@ -96,7 +96,7 @@ export interface ResolveIssuePayload {
   };
 }
 
-const TIME_OUT = 10000; // 10 second timeout
+const TIME_OUT = 30000; // 30 seconds
 export async function fetchIssue(issueId: number): Promise<APIResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
 

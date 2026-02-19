@@ -31,7 +31,7 @@ export interface AuthError {
   };
 }
 
-const TIME_OUT = 10000;
+const TIME_OUT = 30000; // 30 seconds
 
 // Function to refresh auth tokens using refresh token
 export async function refreshAuthToken(
