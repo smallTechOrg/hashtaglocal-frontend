@@ -200,3 +200,84 @@ export function calculateHaversineDistance(
 
   return distance;
 }
+
+/**
+ * Get fast location using OS cache first, fallback to GPS if needed
+ * Optimized for startup and non-critical accuracy use cases
+ */
+export async function getFastLocationWithPermission(
+  timeoutMs: number = 6000
+): Promise<LocationResult & { source?: "cache" | "gps" }> {
+  try {
+    const { granted } = await checkLocationPermission();
+
+    if (!granted) {
+      const permissionResult = await requestLocationPermission();
+      if (!permissionResult.granted) {
+        return {
+          success: false,
+          error: {
+            code: "PERMISSION_DENIED",
+            message: "Location permission is required",
+          },
+        };
+      }
+    }
+
+    // ✅ 1. Try cached location first (instant)
+    const cached = await Location.getLastKnownPositionAsync();
+
+    if (cached) {
+      return {
+        success: true,
+        location: {
+          latitude: cached.coords.latitude,
+          longitude: cached.coords.longitude,
+          accuracy: cached.coords.accuracy ?? null,
+          timestamp: cached.timestamp,
+        },
+        source: "cache",
+      };
+    }
+
+    // ✅ 2. Fallback to fresh GPS (balanced accuracy for speed)
+    const locationPromise = Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Low,
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Location request timed out")), timeoutMs)
+    );
+
+    const position = await Promise.race([locationPromise, timeoutPromise]);
+
+    return {
+      success: true,
+      location: {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp,
+      },
+      source: "gps",
+    };
+  } catch (error: any) {
+    if (error.message?.includes("timed out")) {
+      return {
+        success: false,
+        error: {
+          code: "TIMEOUT",
+          message: "Location request timed out. Please try again.",
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: {
+        code: "LOCATION_UNAVAILABLE",
+        message: "Unable to get your location",
+      },
+    };
+  }
+}

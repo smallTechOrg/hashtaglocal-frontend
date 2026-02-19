@@ -3,7 +3,7 @@ import CustomText from "@/components/CustomText";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { useIssues } from "@/utils/IssuesContext";
 import {
-  getLocationWithPermission,
+  getFastLocationWithPermission,
   LocationError,
   UserLocation,
 } from "@/utils/LocationService";
@@ -136,7 +136,7 @@ export default function MapScreen() {
     setLoadingState("loading");
     setError(null);
 
-    const result = await getLocationWithPermission();
+    const result = await getFastLocationWithPermission();
 
     if (result.success) {
       setUserLocation(result.location);

@@ -1,6 +1,7 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
 import { IssuesProvider } from "@/utils/IssuesContext";
+import { getFastLocationWithPermission } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -45,11 +46,11 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         // Get user location for profile API
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
-          });
-          const { latitude, longitude } = location.coords;
-          profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+          const location = await getFastLocationWithPermission();
+          if (location.success) {
+            const { latitude, longitude } = location.location;
+            profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+          }
         } catch (locError) {
           console.log("Location not available for profile API, using without location");
         }
