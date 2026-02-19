@@ -228,6 +228,9 @@ export async function getFastLocationWithPermission(
     const cached = await Location.getLastKnownPositionAsync();
 
     if (cached) {
+      // Start background progressive watcher to improve accuracy after returning cached result
+      startProgressiveWatch().catch(() => {});
+
       return {
         success: true,
         location: {
@@ -250,6 +253,9 @@ export async function getFastLocationWithPermission(
     );
 
     const position = await Promise.race([locationPromise, timeoutPromise]);
+
+    // Start background progressive watcher to continue improving accuracy
+    startProgressiveWatch().catch(() => {});
 
     return {
       success: true,
@@ -279,5 +285,115 @@ export async function getFastLocationWithPermission(
         message: "Unable to get your location",
       },
     };
+  }
+}
+
+// -----------------------
+// Progressive watch API
+// -----------------------
+
+let _watcher: Location.LocationSubscription | null = null;
+let _bestLocation: UserLocation | null = null;
+const _subscribers = new Set<(loc: UserLocation) => void>();
+let _watchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export function getBestKnownLocation(): UserLocation | null {
+  return _bestLocation;
+}
+
+export function subscribeToBestLocation(
+  cb: (loc: UserLocation) => void,
+  callImmediately: boolean = true
+): () => void {
+  _subscribers.add(cb);
+  if (callImmediately && _bestLocation) cb(_bestLocation);
+  return () => _subscribers.delete(cb);
+}
+
+export async function startProgressiveWatch(options?: {
+  accuracyTargetMeters?: number;
+  timeoutMs?: number;
+  timeIntervalMs?: number;
+  distanceInterval?: number;
+}): Promise<{ started: boolean; error?: string }> {
+  const {
+    accuracyTargetMeters = 10,
+    timeoutMs = 30000,
+    timeIntervalMs = 1000,
+    distanceInterval = 0,
+  } = options || {};
+
+  try {
+    const { granted } = await checkLocationPermission();
+    if (!granted) {
+      const permissionResult = await requestLocationPermission();
+      if (!permissionResult.granted) {
+        return { started: false, error: "permission_denied" };
+      }
+    }
+
+    if (_watcher) return { started: true };
+
+    _watcher = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Highest,
+        timeInterval: timeIntervalMs,
+        distanceInterval,
+      },
+      (position) => {
+        const loc: UserLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy ?? null,
+          timestamp: position.timestamp,
+        };
+
+        const improved =
+          !_bestLocation ||
+          (loc.accuracy !== null &&
+            (_bestLocation.accuracy === null || loc.accuracy < _bestLocation.accuracy));
+
+        if (improved) {
+          _bestLocation = loc;
+          for (const s of Array.from(_subscribers)) {
+            try {
+              s(loc);
+            } catch (e) {
+              // swallow subscriber errors
+            }
+          }
+        }
+
+        if (loc.accuracy !== null && loc.accuracy <= accuracyTargetMeters) {
+          // satisfied target; stop watcher
+          stopProgressiveWatch();
+        }
+      }
+    );
+
+    if (_watchTimeout) clearTimeout(_watchTimeout);
+    _watchTimeout = setTimeout(() => {
+      stopProgressiveWatch();
+    }, timeoutMs);
+
+    return { started: true };
+  } catch (error: any) {
+    return { started: false, error: String(error?.message ?? error) };
+  }
+}
+
+export function stopProgressiveWatch(): void {
+  if (_watchTimeout) {
+    clearTimeout(_watchTimeout);
+    _watchTimeout = null;
+  }
+
+  if (_watcher) {
+    try {
+      _watcher.remove();
+    } catch (e) {
+      // ignore
+    }
+    _watcher = null;
   }
 }

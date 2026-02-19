@@ -1,5 +1,5 @@
+import { calculateHaversineDistance, getBestKnownLocation, getLocationWithPermission } from "@/utils/LocationService";
 import { Alert } from "react-native";
-import { calculateHaversineDistance, getLocationWithPermission } from "@/utils/LocationService";
 
 const DISTANCE_THRESHOLD = 50; // meters
 
@@ -7,19 +7,29 @@ export async function ensureUserIsNearIssue(
   issueLat: number,
   issueLng: number
 ): Promise<boolean> {
-  const result = await getLocationWithPermission();
+  const best = getBestKnownLocation();
+  let lat: number | null = null;
+  let lng: number | null = null;
 
-  if (!result.success) {
-    Alert.alert(
-      "Location Error",
-      result.error?.message || "Unable to get your location. Please enable location or try again."
-    );
-    return false;
+  if (best) {
+    lat = best.latitude;
+    lng = best.longitude;
+  } else {
+    const result = await getLocationWithPermission();
+    if (!result.success) {
+      Alert.alert(
+        "Location Error",
+        result.error?.message || "Unable to get your location. Please enable location or try again."
+      );
+      return false;
+    }
+    lat = result.location.latitude;
+    lng = result.location.longitude;
   }
 
   const distanceInMeters = calculateHaversineDistance(
-    result.location.latitude,
-    result.location.longitude,
+    lat as number,
+    lng as number,
     issueLat,
     issueLng
   );

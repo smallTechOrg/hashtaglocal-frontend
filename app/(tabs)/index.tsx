@@ -6,6 +6,9 @@ import {
   getFastLocationWithPermission,
   LocationError,
   UserLocation,
+  startProgressiveWatch,
+  subscribeToBestLocation,
+  getBestKnownLocation,
 } from "@/utils/LocationService";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -102,6 +105,17 @@ export default function MapScreen() {
     }
   }, [user]);
 
+  useEffect(() => {
+    // Subscribe to progressive updates and update map when accuracy improves
+    const unsub = subscribeToBestLocation((loc) => {
+      setUserLocation(loc);
+      setLoadingState("success");
+      loadNearbyIssues(loc.latitude, loc.longitude);
+    });
+
+    return () => unsub();
+  }, []);
+
   // Reload issues when screen comes back into focus (after delete, report, verify, etc.)
   useFocusEffect(
     useCallback(() => {
@@ -136,6 +150,18 @@ export default function MapScreen() {
     setLoadingState("loading");
     setError(null);
 
+    // Try to read best known location immediately (sync)
+    const best = getBestKnownLocation();
+    if (best) {
+      setUserLocation(best);
+      setLoadingState("success");
+      loadNearbyIssues(best.latitude, best.longitude);
+      // Ensure watcher is running
+      startProgressiveWatch().catch(() => {});
+      return;
+    }
+
+    // Fallback to fast one-off fetch which also starts progressive watch
     const result = await getFastLocationWithPermission();
 
     if (result.success) {

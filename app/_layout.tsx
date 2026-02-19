@@ -1,7 +1,7 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
 import { IssuesProvider } from "@/utils/IssuesContext";
-import { getFastLocationWithPermission } from "@/utils/LocationService";
+import { getFastLocationWithPermission, startProgressiveWatch, getBestKnownLocation } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -200,6 +200,13 @@ export default function RootLayout() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Start progressive location watcher early so components can subscribe
+  useEffect(() => {
+    startProgressiveWatch().catch((e) => {
+      console.debug("Progressive location watch failed to start:", e);
+    });
   }, []);
 
   if (!fontsLoaded && !fontError) {
