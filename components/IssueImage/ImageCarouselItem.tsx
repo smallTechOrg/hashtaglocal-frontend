@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React, { useState } from 'react';
+import React from 'react';
 import { ImageSourcePropType, Pressable, Image as RNImage, View } from 'react-native';
 
 interface ImageCarouselItemProps {
@@ -25,8 +25,6 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
   onPress,
   children
 }) => {
-  const [fullImageLoaded, setFullImageLoaded] = useState(false);
-
   return (
     <View
       key={`image-${index}`}
@@ -45,32 +43,19 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             }}
           />
         ) : (
-          <View style={{ width: '100%', height: '100%' }}>
-            {/* Thumbnail layer - shown until full image loads */}
-            {thumbnailSource && !fullImageLoaded && (
-              <Image
-                source={thumbnailSource}
-                style={{ position: 'absolute', width: '100%', height: '100%' }}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-              />
-            )}
-            {/* Full resolution image layer */}
-            <Image
-              source={imageSource}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={thumbnailSource ? 300 : 200}
-              cachePolicy="memory-disk"
-              onError={(error) => {
-                console.error(`[IssueImage] Error loading image ${index}:`, error);
-                onError(index);
-              }}
-              onLoad={() => {
-                setFullImageLoaded(true);
-              }}
-            />
-          </View>
+          <Image
+            source={imageSource}
+            placeholder={thumbnailSource}
+            placeholderContentFit="cover"
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
+            onError={(error) => {
+              console.error(`[IssueImage] Error loading image ${index}:`, error);
+              onError(index);
+            }}
+          />
         )}
       </Pressable>
 

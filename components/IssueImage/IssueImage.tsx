@@ -1,6 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Image, ImageSourcePropType, ScrollView, View } from 'react-native';
+import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 import '../../global.css';
 import CustomText from '../CustomText';
 import EmptyImagePlaceholder from './EmptyImagePlaceholder';
@@ -38,7 +40,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH);
 
   // Support mediaItems, imageSources, or single imageSource
   const images = mediaItems && mediaItems.length > 0

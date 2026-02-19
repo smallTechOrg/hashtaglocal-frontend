@@ -39,7 +39,7 @@ export default function CameraCapture() {
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 1,
         base64: false,
       });
 
