@@ -157,6 +157,11 @@ export default function MapScreen() {
       setIssues(issuesData);
       // Also save to context for other tabs to use
       setContextIssues(issuesData);
+      // Prefetch thumbnails so they're cached before a marker is tapped
+      issuesData.forEach((issue: IssueMarker) => {
+        const thumb = issue.media_urls?.[0]?.url_thumbnail;
+        if (thumb) Image.prefetch(thumb);
+      });
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
     } finally {
