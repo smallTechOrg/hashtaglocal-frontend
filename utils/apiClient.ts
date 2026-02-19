@@ -11,8 +11,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { authEvents } from "./authEvents";
 
-const DEFAULT_TIMEOUT = 10000;
-
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
 type RequestOptions = Omit<RequestInit, "headers"> & {
   headers?: Record<string, string>;
   timeout?: number;

@@ -463,13 +463,13 @@ export default function MapScreen() {
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
-                  source={{ uri: selectedIssue.media_urls[0].url_thumbnail || selectedIssue.media_urls[0].url }}
+                  source={{ uri: selectedIssue.media_urls[0].url }}
+                  placeholder={selectedIssue.media_urls[0].url_thumbnail ? { uri: selectedIssue.media_urls[0].url_thumbnail } : undefined}
+                  placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
-                  placeholder={{ blurhash: 'LGF5?xYk^6#M@-5c,1J5@[or[Q6.' }}
-                  priority="normal"
-                  cachePolicy="memory-disk"
                   transition={300}
+                  cachePolicy="memory-disk"
                 />
               </View>
             ) : (
