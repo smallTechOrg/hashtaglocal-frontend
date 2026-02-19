@@ -225,7 +225,12 @@ export async function getFastLocationWithPermission(
     }
 
     // ✅ 1. Try cached location first (instant)
-    const cached = await Location.getLastKnownPositionAsync();
+    const cached = await Location.getLastKnownPositionAsync({
+      maxAge: 60 * 60 * 1000,
+      requiredAccuracy: Location.Accuracy.Lowest,
+    });
+
+    console.log("Cached location:", cached);
 
     if (cached) {
       // Start background progressive watcher to improve accuracy after returning cached result
@@ -245,7 +250,7 @@ export async function getFastLocationWithPermission(
 
     // ✅ 2. Fallback to fresh GPS (balanced accuracy for speed)
     const locationPromise = Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Low,
+      accuracy: Location.Accuracy.Lowest,
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
@@ -253,6 +258,8 @@ export async function getFastLocationWithPermission(
     );
 
     const position = await Promise.race([locationPromise, timeoutPromise]);
+
+    console.log("GPS location:", position);
 
     // Start background progressive watcher to continue improving accuracy
     startProgressiveWatch().catch(() => {});
@@ -362,6 +369,7 @@ export async function startProgressiveWatch(options?: {
               // swallow subscriber errors
             }
           }
+          console.log("New best location:", loc);
         }
 
         if (loc.accuracy !== null && loc.accuracy <= accuracyTargetMeters) {
