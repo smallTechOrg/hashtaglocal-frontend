@@ -1,6 +1,7 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
+import { calculateDaysActive } from "@/utils/FormatDate";
 import { useIssues } from "@/utils/IssuesContext";
 import {
   getFastLocationWithProgressiveWatch,
@@ -44,20 +45,14 @@ interface IssueMarker {
   location: {
     lat: number;
     lng: number;
-    meta_data?: {
-      city?: string;
-      district?: string;
-      street?: string;
-      name?: string;
-      formatted_address?: string;
-    };
+    colloquial_name?: string;
+    address?: string;
   };
   type: string;
   description: string;
   status?: string;
-  voteCount?: number;
-  vote_count?: number;
-  createdAt?: string;
+  verify_count?: number;
+  created_at?: string;
   media_urls?: { url: string; url_thumbnail?: string }[];
 }
 
@@ -430,55 +425,11 @@ export default function MapScreen() {
         handleIndicatorStyle={styles.bottomSheetIndicator}
       >
         {selectedIssue && (
-          <BottomSheetScrollView 
+          <BottomSheetScrollView
             contentContainerStyle={styles.bottomSheetContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Header Section */}
-            <View style={styles.previewHeader}>
-              <View style={styles.previewTitleRow}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <View style={[styles.issueTypeTag, { backgroundColor: getIssueColor(selectedIssue.type) }]}>
-                    <CustomText className="text-white text-xs font-bold uppercase">
-                      {selectedIssue.type}
-                    </CustomText>
-                  </View>
-                  {selectedIssue.status && (
-                    <View style={styles.statusBadge}>
-                      <CustomText className="text-xs text-gray-600 uppercase font-semibold">
-                        {selectedIssue.status}
-                      </CustomText>
-                    </View>
-                  )}
-                </View>
-                {(selectedIssue.location.meta_data?.city || selectedIssue.location.meta_data?.district) && (
-                  <View style={styles.locationName}>
-                    <MaterialIcons name="place" size={14} color="#6b7280" />
-                    <CustomText className="text-xs text-gray-600 ml-1">
-                      {selectedIssue.location.meta_data?.city || selectedIssue.location.meta_data?.district}
-                    </CustomText>
-                  </View>
-                )}
-              </View>
-
-              {/* Created Date Row */}
-              {selectedIssue.createdAt && (
-                <View style={styles.dateRow}>
-                  <MaterialIcons name="schedule" size={16} color="#6b7280" />
-                  <CustomText className="text-xs text-gray-600 ml-2">
-                    Reported {new Date(selectedIssue.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </CustomText>
-                </View>
-              )}
-            </View>
-
-            {/* Image Section */}
+            {/* Image */}
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
@@ -492,46 +443,68 @@ export default function MapScreen() {
                 />
               </View>
             ) : (
-              <View style={[styles.imagePlaceholder, { backgroundColor: getIssueColor(selectedIssue.type) + '20' }]}>
-                <MaterialIcons
-                  name={selectedIssue.type.toLowerCase() === 'pothole' ? 'construction' :
-                        selectedIssue.type.toLowerCase() === 'waste' ? 'delete' :
-                        selectedIssue.type.toLowerCase() === 'footpath' ? 'directions-walk' :
-                        selectedIssue.type.toLowerCase() === 'pollution' ? 'cloud' :
-                        selectedIssue.type.toLowerCase() === 'hygiene' ? 'sanitizer' :
-                        selectedIssue.type.toLowerCase() === 'safety' ? 'warning' : 'report-problem'} 
-                  size={64} 
-                  color={getIssueColor(selectedIssue.type)} 
-                />
+              <View style={[styles.imagePlaceholder, { backgroundColor: getIssueColor(selectedIssue.type) + "20" }]}>
+                <MaterialIcons name="report-problem" size={64} color={getIssueColor(selectedIssue.type)} />
                 <CustomText className="text-gray-500 mt-2">No image available</CustomText>
               </View>
             )}
-
-            {/* Description Section */}
+{/* Description */}
             {selectedIssue.description && (
               <View style={styles.descriptionSection}>
-                <CustomText className="text-xs text-gray-500 font-semibold mb-1">DESCRIPTION</CustomText>
-                <CustomText className="text-sm text-gray-700 leading-5">
+                <CustomText className="text-md text-gray-700 leading-5">
                   {selectedIssue.description}
                 </CustomText>
               </View>
             )}
-
-            {/* Location Info with Coordinates */}
-            <View style={styles.locationSection}>
-              <CustomText className="text-xs text-gray-500 font-semibold mb-1">LOCATION</CustomText>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <MaterialIcons name="location-on" size={16} color="#6b7280" />
-                <CustomText className="text-sm text-gray-700 ml-2 flex-1">
-                  {selectedIssue.location.lat.toFixed(6)}, {selectedIssue.location.lng.toFixed(6)}
+            {/* Type + Status */}
+            <View className="flex-row items-center gap-2 mb-3">
+              <View style={[styles.issueTypeTag, { backgroundColor: getIssueColor(selectedIssue.type) }]}>
+                <CustomText className="text-white text-xs font-bold uppercase">
+                  {selectedIssue.type}
                 </CustomText>
               </View>
+              {selectedIssue.status && (
+                <View style={styles.statusBadge}>
+                  <CustomText className="text-xs text-gray-600 uppercase font-semibold">
+                    {selectedIssue.status}
+                  </CustomText>
+                </View>
+              )}
+            </View>
+
+            {/* Location name */}
+            {(selectedIssue.location.colloquial_name || selectedIssue.location.address) && (
+              <View className="flex-row items-center mb-3">
+                <MaterialIcons name="location-on" size={16} color="#256D1B" />
+                <CustomText className="text-sm text-gray-700 ml-2 flex-1">
+                  {selectedIssue.location.colloquial_name || selectedIssue.location.address}
+                </CustomText>
+              </View>
+            )}
+
+            
+
+            {/* Verifications + Time */}
+            <View style={styles.metaRow}>
+              <View className="flex-row items-center">
+                <MaterialIcons name="verified" size={18} color="#256D1B" />
+                <CustomText className="text-sm text-gray-700 ml-1">
+                  {selectedIssue.verify_count ?? 0}{" "}
+                  {(selectedIssue.verify_count ?? 0) === 1 ? "verification" : "verifications"}
+                </CustomText>
+              </View>
+              {selectedIssue.created_at && (
+                <View className="flex-row items-center">
+                  <MaterialIcons name="schedule" size={15} color="#6b7280" />
+                  <CustomText className="text-xs text-gray-500 ml-1">
+                    {calculateDaysActive(selectedIssue.created_at)}
+                  </CustomText>
+                </View>
+              )}
             </View>
 
             {/* Action Buttons */}
             <View style={styles.actionButtonsRow}>
-             
-
               <TouchableOpacity
                 onPress={handleUpdateIssue}
                 disabled={checkingDistance}
@@ -542,9 +515,9 @@ export default function MapScreen() {
                 ) : (
                   <MaterialIcons name="camera-alt" size={20} color="#fff" />
                 )}
-                <CustomText className="text-white font-semibold p">
+                <CustomText className="text-white font-semibold ml-1">
                   Update Issue
-                </CustomText>   
+                </CustomText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -727,6 +700,7 @@ const styles = StyleSheet.create({
   actionButtonsRow: {
     flexDirection: "row",
     gap: 2,
+    marginVertical:16,
   },
   viewDetailsButton: {
     flex: 1,

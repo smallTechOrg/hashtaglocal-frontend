@@ -46,7 +46,7 @@ export default function IssueForm() {
 
   const isUpdateMode = params.mode === "update";
 
-  const [selectedType, setSelectedType] = useState<IssueType | null>("OTHER");
+  const [selectedType, setSelectedType] = useState<IssueType | null>(null);
   const [selectedAction, setSelectedAction] = useState<"VERIFY" | "RESOLVE" | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
@@ -81,10 +81,11 @@ export default function IssueForm() {
     setGcsPath(null);
     setUploadError(null);
     if (!isUpdateMode) {
-      setSelectedType("OTHER");
+      setSelectedType(null);
     }
     setLatitude(null);
     setLongitude(null);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   }, [imageUri, isUpdateMode]);
 
   // Fetch location in background
@@ -383,7 +384,7 @@ console.log(payload.issue.media_urls[0])
         <View className="bg-white shadow-sm">
           <Image
             source={{ uri: imageUri }}
-            style={{ width: "100%", height: 200 }}
+            style={{ width: "100%", height: 450 }}
             contentFit="cover"
           />
           <TopOverlay
@@ -461,15 +462,21 @@ console.log(payload.issue.media_urls[0])
 
           {/* Issue Type Section */}
           <View className="mb-4">
-            <View className="flex-row items-center mb-3">
-              <MaterialIcons name="category" size={20} color="#256D1B" />
-              <CustomText className="ml-2 font-bold text-base">Issue Type</CustomText>
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center">
+                <MaterialIcons name="category" size={20} color="#256D1B" />
+                <CustomText className="ml-2 font-bold text-base">Issue Type</CustomText>
+                {!isUpdateMode && <CustomText className="ml-1 text-red-500 font-bold text-base">*</CustomText>}
+              </View>
+              {!isUpdateMode && !selectedType && (
+                <CustomText className="text-xs text-red-500 font-medium">Required</CustomText>
+              )}
             </View>
 
             <TouchableOpacity
               onPress={() => !isUpdateMode && setDropdownVisible(true)}
               disabled={isUpdateMode}
-              className={`flex-row items-center justify-between border-2 border-gray-200 rounded-xl px-4 py-4 ${isUpdateMode ? "bg-gray-100" : "bg-gray-50"}`}
+              className={`flex-row items-center justify-between border-2 rounded-xl px-4 py-4 ${isUpdateMode ? "bg-gray-100 border-gray-200"  : "bg-gray-50 border-gray-200"}`}
             >
               <View className="flex-row items-center flex-1">
                 {selectedType && (
@@ -480,7 +487,7 @@ console.log(payload.issue.media_urls[0])
                   />
                 )}
                 <CustomText
-                  className={`ml-3 text-base ${selectedType ? "text-gray-900 font-medium" : "text-gray-400"}`}
+                  className={`ml-3 text-base ${ "text-gray-900 font-medium" }`}
                 >
                   {selectedTypeLabel || "Select issue type"}
                 </CustomText>

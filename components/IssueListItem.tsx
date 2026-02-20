@@ -1,21 +1,24 @@
 import { calculateDaysActive } from "@/utils/FormatDate";
+import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import CustomText from "./CustomText";
 
 interface IssueListItemProps {
   id: number;
   type: string;
+  status?: string;
   description: string;
   created_at: string;
+  verify_count?: number;
   location: {
+    colloquial_name?: string;
+    address?: string;
     locality?: {
       city?: string;
       district?: string;
     };
-    address?: string;
   };
   media_urls?: { url: string; url_thumbnail?: string }[];
 }
@@ -37,8 +40,10 @@ const getIssueColor = (type: string): string => {
 export default function IssueListItem({
   id,
   type,
+  status,
   description,
   created_at,
+  verify_count,
   location,
   media_urls,
 }: IssueListItemProps) {
@@ -51,21 +56,15 @@ export default function IssueListItem({
     });
   };
 
-  const getLocationText = (): string => {
-    if (location?.address) {
-      return location.address;
-    }
-    if (location?.locality?.city) {
-      return location.locality.city;
-    }
-    return "Location unknown";
-  };
+  const locationText =
+    location?.colloquial_name ||
+    location?.address ||
+    location?.locality?.city ||
+    location?.locality?.district ||
+    "Location unknown";
 
   const daysActive = calculateDaysActive(created_at);
-  const thumbnailUrl = media_urls?.[0]?.url_thumbnail;
-  const fullUrl = media_urls?.[0]?.url;
-  const locationName = getLocationText();
-  const [fullImageLoaded, setFullImageLoaded] = useState(false);
+  const thumbnailUrl = media_urls?.[0]?.url_thumbnail || media_urls?.[0]?.url;
 
   return (
     <TouchableOpacity
@@ -73,64 +72,66 @@ export default function IssueListItem({
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      {/* Image - Full width, progressive thumbnail → high-res */}
-      {(thumbnailUrl || fullUrl) && (
-        <View style={[styles.imageContainer, { overflow: "hidden" }]}>
-          {thumbnailUrl && !fullImageLoaded && (
-            <Image
-              source={{ uri: thumbnailUrl }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-          )}
-          <Image
-            source={{ uri: fullUrl || thumbnailUrl! }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={thumbnailUrl ? 300 : 200}
-            cachePolicy="memory-disk"
-            onLoad={() => setFullImageLoaded(true)}
-          />
+      {/* Image */}
+      {thumbnailUrl ? (
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={styles.image}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={[styles.imagePlaceholder, { backgroundColor: getIssueColor(type) + "20" }]}>
+          <MaterialIcons name="report-problem" size={40} color={getIssueColor(type)} />
         </View>
       )}
 
-      {/* Content below image */}
-      <View style={styles.contentContainer}>
-        {/* Type badge */}
-        <View
-          style={[
-            styles.typeBadge,
-            { backgroundColor: getIssueColor(type) },
-          ]}
-        >
-          <CustomText className="text-white text-xs font-bold">
-            {type.toUpperCase()}
+      <View className="p-3">
+        {/* Description */}
+        {description ? (
+          <CustomText numberOfLines={2} className="text-gray-700 text-sm mb-3 leading-5">
+            {description}
+          </CustomText>
+        ) : null}
+
+        {/* Type + Status */}
+        <View className="flex-row items-center gap-2 mb-3">
+          <View style={[styles.typeBadge, { backgroundColor: getIssueColor(type) }]}>
+            <CustomText className="text-white text-xs font-bold uppercase">
+              {type}
+            </CustomText>
+          </View>
+          {status && (
+            <View style={styles.statusBadge}>
+              <CustomText className="text-gray-600 text-xs font-semibold uppercase">
+                {status}
+              </CustomText>
+            </View>
+          )}
+        </View>
+
+        {/* Location */}
+        <View className="flex-row items-center mb-3">
+          <MaterialIcons name="location-on" size={14} color="#256D1B" />
+          <CustomText numberOfLines={1} className="text-gray-600 text-sm ml-1 flex-1">
+            {locationText}
           </CustomText>
         </View>
 
-        {/* Location as title */}
-        <CustomText
-          numberOfLines={1}
-          className="font-bold text-lg text-gray-900 mb-2"
-        >
-          {locationName}
-        </CustomText>
-
-        {/* Description as secondary */}
-        {description && (
-          <CustomText
-            numberOfLines={2}
-            className="text-gray-600 text-sm mb-2"
-          >
-            {description}
-          </CustomText>
-        )}
-
-        {/* Time info */}
-        <CustomText className="text-gray-400 text-xs">
-          {daysActive}
-        </CustomText>
+        {/* Verifications + Days active */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <MaterialIcons name="verified" size={15} color="#256D1B" />
+            <CustomText className="text-gray-600 text-xs ml-1">
+              {verify_count ?? 0} {(verify_count ?? 0) === 1 ? "verification" : "verifications"}
+            </CustomText>
+          </View>
+          <View className="flex-row items-center">
+            <MaterialIcons name="schedule" size={14} color="#9ca3af" />
+            <CustomText className="text-gray-400 text-xs ml-1">
+              {daysActive}
+            </CustomText>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -151,19 +152,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  imageContainer: {
+  image: {
     width: "100%",
     height: 200,
     backgroundColor: "#e5e7eb",
   },
-  contentContainer: {
-    padding: 12,
+  imagePlaceholder: {
+    width: "100%",
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
   },
   typeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    alignSelf: "flex-start",
-    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
 });
