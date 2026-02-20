@@ -1,6 +1,6 @@
+import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
-import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -57,11 +57,14 @@ export default function AuthCallbackScreen() {
         // Fetch user profile with location
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
+          const location = await getFastLocationWithProgressiveWatch({
+            instantLoad: true,
+            accuracyThresholdMeters: 50,
           });
-          const { latitude, longitude } = location.coords;
-          profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+          if (location.success) {
+            const { latitude, longitude } = location.location;
+            profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
+          }
         } catch (locError) {
           console.log("Location not available for profile API, using without location");
         }

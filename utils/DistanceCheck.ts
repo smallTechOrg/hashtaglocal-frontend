@@ -1,5 +1,5 @@
 import { Alert } from "react-native";
-import { calculateHaversineDistance, getLocationWithPermission } from "@/utils/LocationService";
+import { calculateHaversineDistance, getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 
 const DISTANCE_THRESHOLD = 50; // meters
 
@@ -7,7 +7,10 @@ export async function ensureUserIsNearIssue(
   issueLat: number,
   issueLng: number
 ): Promise<boolean> {
-  const result = await getLocationWithPermission();
+  const result = await getFastLocationWithProgressiveWatch({
+    instantLoad: false,
+    accuracyThresholdMeters: 15,
+  });
 
   if (!result.success) {
     Alert.alert(
@@ -16,6 +19,9 @@ export async function ensureUserIsNearIssue(
     );
     return false;
   }
+
+  console.log("User location:", result.location);
+  console.log("Issue location:", { latitude: issueLat, longitude: issueLng });
 
   const distanceInMeters = calculateHaversineDistance(
     result.location.latitude,
