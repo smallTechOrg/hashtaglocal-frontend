@@ -4,9 +4,10 @@ import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { useIssues } from "@/utils/IssuesContext";
 import {
-  getLocationWithPermission,
+  getFastLocationWithProgressiveWatch,
   LocationError,
   UserLocation,
+  subscribeToBestLocation,
 } from "@/utils/LocationService";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -97,6 +98,16 @@ export default function MapScreen() {
     }
   }, [user]);
 
+  useEffect(() => {
+    // Subscribe to progressive updates and update map when accuracy improves
+    const unsub = subscribeToBestLocation((loc) => {
+      setUserLocation(loc);
+      loadNearbyIssues(loc.latitude, loc.longitude);
+    });
+
+    return () => unsub();
+  }, []);
+
   // Reload issues when screen comes back into focus (after delete, report, verify, etc.)
   useFocusEffect(
     useCallback(() => {
@@ -131,7 +142,10 @@ export default function MapScreen() {
     setLoadingState("loading");
     setError(null);
 
-    const result = await getLocationWithPermission();
+    const result = await getFastLocationWithProgressiveWatch({
+      instantLoad: true,
+      accuracyThresholdMeters: 400,
+    });
 
     if (result.success) {
       setUserLocation(result.location);
