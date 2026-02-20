@@ -152,8 +152,10 @@ export default function IssuesScreen() {
             <IssueListItem
               id={item.id}
               type={item.type}
+              status={item.status}
               description={item.description}
               created_at={item.created_at}
+              verify_count={item.verify_count}
               location={item.location}
               media_urls={item.media_urls}
             />

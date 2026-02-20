@@ -379,7 +379,7 @@ console.log(payload.issue.media_urls[0])
         <View className="bg-white shadow-sm">
           <Image
             source={{ uri: imageUri }}
-            style={{ width: "100%", height: 200 }}
+            style={{ width: "100%", height: 450 }}
             contentFit="cover"
           />
           <TopOverlay
