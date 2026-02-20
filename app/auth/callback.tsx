@@ -1,4 +1,4 @@
-import { getFastLocationWithPermission, getBestKnownLocation } from "@/utils/LocationService";
+import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -54,18 +54,17 @@ export default function AuthCallbackScreen() {
 
         console.log("Tokens saved successfully");
 
-        // Fetch user profile with best-known location (non-blocking)
+        // Fetch user profile with location
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
-          const best = getBestKnownLocation();
-          if (best) {
-            profileUrl = `${API_BASE_URL}/account/profile?lat=${best.latitude}&lng=${best.longitude}`;
-          } else {
-            const location = await getFastLocationWithPermission();
-            if (location.success) {
-              const { latitude, longitude } = location.location;
-              profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
-            }
+          const location = await getFastLocationWithProgressiveWatch({
+            accuracyLevel: "lowest",
+            instantLoad: true,
+            accuracyThresholdMeters: 50,
+          });
+          if (location.success) {
+            const { latitude, longitude } = location.location;
+            profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
           }
         } catch (locError) {
           console.log("Location not available for profile API, using without location");

@@ -3,6 +3,7 @@ import CustomText from "@/components/CustomText";
 import TopOverlay from "@/components/IssueImage/TopOverlay";
 import { formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
+import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -109,18 +110,22 @@ export default function IssueForm() {
         }
 
         // Get current position with balanced accuracy (faster than highest)
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Highest,
-        });
+        const result = await getFastLocationWithProgressiveWatch({
+            accuracyLevel: "highest",
+            instantLoad: false,
+            accuracyThresholdMeters: 10,
+          });
 
-        setLatitude(location.coords.latitude.toString());
-        setLongitude(location.coords.longitude.toString());
+        console.log("Location fetch result:", result);
+
+        setLatitude(result.location.latitude.toString());
+        setLongitude(result.location.longitude.toString());
 
         // Get address from coordinates (non-blocking for UI)
         try {
           const [addressResult] = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
+            latitude: result.location.latitude,
+            longitude: result.location.longitude,
           });
 
           if (addressResult) {

@@ -1,7 +1,7 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
 import { IssuesProvider } from "@/utils/IssuesContext";
-import { getFastLocationWithPermission, startProgressiveWatch, getBestKnownLocation } from "@/utils/LocationService";
+import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -46,7 +46,11 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         // Get user location for profile API
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
-          const location = await getFastLocationWithPermission();
+          const location = await getFastLocationWithProgressiveWatch({
+            accuracyLevel: "lowest",
+            instantLoad: true,
+            accuracyThresholdMeters: 50,
+          });
           if (location.success) {
             const { latitude, longitude } = location.location;
             profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
@@ -200,13 +204,6 @@ export default function RootLayout() {
     });
 
     return () => subscription.remove();
-  }, []);
-
-  // Start progressive location watcher early so components can subscribe
-  useEffect(() => {
-    startProgressiveWatch().catch((e) => {
-      console.debug("Progressive location watch failed to start:", e);
-    });
   }, []);
 
   if (!fontsLoaded && !fontError) {
