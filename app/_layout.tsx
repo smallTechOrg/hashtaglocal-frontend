@@ -47,9 +47,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
           const location = await getFastLocationWithProgressiveWatch({
-            accuracyLevel: "lowest",
             instantLoad: true,
-            accuracyThresholdMeters: 50,
+            accuracyThresholdMeters: 400,
           });
           if (location.success) {
             const { latitude, longitude } = location.location;

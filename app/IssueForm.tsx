@@ -111,9 +111,9 @@ export default function IssueForm() {
 
         // Get current position with balanced accuracy (faster than highest)
         const result = await getFastLocationWithProgressiveWatch({
-            accuracyLevel: "highest",
             instantLoad: false,
-            accuracyThresholdMeters: 10,
+            accuracyThresholdMeters: 15,
+            timeoutMs: 20000,
           });
 
         console.log("Location fetch result:", result);

@@ -58,7 +58,6 @@ export default function AuthCallbackScreen() {
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
           const location = await getFastLocationWithProgressiveWatch({
-            accuracyLevel: "lowest",
             instantLoad: true,
             accuracyThresholdMeters: 50,
           });

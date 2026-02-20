@@ -8,7 +8,6 @@ export async function ensureUserIsNearIssue(
   issueLng: number
 ): Promise<boolean> {
   const result = await getFastLocationWithProgressiveWatch({
-    accuracyLevel: "balanced",
     instantLoad: false,
     accuracyThresholdMeters: 15,
   });

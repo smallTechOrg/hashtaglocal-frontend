@@ -148,9 +148,8 @@ export default function MapScreen() {
     setError(null);
 
     const result = await getFastLocationWithProgressiveWatch({
-      accuracyLevel:  "lowest",
       instantLoad: true,
-      accuracyThresholdMeters: 50,
+      accuracyThresholdMeters: 400,
     });
 
     if (result.success) {
