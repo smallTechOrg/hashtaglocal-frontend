@@ -1,5 +1,6 @@
 import { LocationMetaData } from "@/models/Location";
 import { formatLocationString } from "@/utils/ImageProcessing";
+import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 import { Alert, Linking } from "react-native";
@@ -26,31 +27,37 @@ export function useLocation(imageUri: string) {
         setIsLoadingLocation(true);
         setLocationError(null);
 
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          setLocationError("Location permission denied");
-          Alert.alert(
-            "Location Permission Required",
-            "Location access is needed to tag the issue location. Please enable it in Settings.",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Open Settings", onPress: () => Linking.openSettings() },
-            ]
-          );
+        const result = await getFastLocationWithProgressiveWatch({
+          instantLoad: false,
+          accuracyThresholdMeters: 15,
+          timeoutMs: 20000,
+        });
+
+        if (!result.success) {
+          if (result.error.code === "PERMISSION_DENIED") {
+            setLocationError("Location permission denied");
+            Alert.alert(
+              "Location Permission Required",
+              "Location access is needed to tag the issue location. Please enable it in Settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => Linking.openSettings() },
+              ]
+            );
+          } else {
+            setLocationError("Failed to get location");
+          }
           return;
         }
 
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Highest,
-        });
-
-        setLatitude(location.coords.latitude.toString());
-        setLongitude(location.coords.longitude.toString());
+        const { latitude: lat, longitude: lng } = result.location;
+        setLatitude(lat.toString());
+        setLongitude(lng.toString());
 
         try {
           const [addressResult] = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
+            latitude: lat,
+            longitude: lng,
           });
 
           if (addressResult) {

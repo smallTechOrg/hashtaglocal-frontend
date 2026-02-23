@@ -19,7 +19,7 @@ export function useGoogleAuth() {
     const [request, response, promptAsync] =
         AuthSession.useAuthRequest(
             {
-                clientId: "870371939888-o448r3h3bqgvlgehh78q9o3dhqcpocdn.apps.googleusercontent.com",
+                clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
                 scopes: ["openid", "email", "profile"],
                 redirectUri,
                 responseType: AuthSession.ResponseType.Token,
