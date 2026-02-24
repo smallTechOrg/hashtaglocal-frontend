@@ -20,17 +20,42 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
  * 4. Submits to report new issue or verify/resolve existing one
  */
 export default function IssueForm() {
-  // Get all form state and handlers from custom hook
   const {
-    imageUri, timestamp, isUpdateMode,
-    selectedIssueType, setSelectedIssueType,
-    isTypeDropdownOpen, setIsTypeDropdownOpen,
-    description, setDescription,
-    descriptionInputRef, scrollViewRef,
-    isLoadingLocation, latitude, longitude, locationError, locationString,
-    isImageUploading, uploadedImagePath, imageUploadError,
-    handleSubmit, isSubmitting, selectedAction,
-    isSubmitEnabled, selectedIssueTypeLabel,
+    // Image & mode
+    imageUri,
+    timestamp,
+    isUpdateMode,
+
+    // Form fields & state
+    selectedIssueType,
+    setSelectedIssueType,
+    selectedIssueTypeLabel,
+    isTypeDropdownOpen,
+    setIsTypeDropdownOpen,
+    description,
+    setDescription,
+
+    // Refs
+    descriptionInputRef,
+    scrollViewRef,
+
+    // Location tracking
+    isLoadingLocation,
+    latitude,
+    longitude,
+    locationError,
+    locationString,
+
+    // Image upload
+    isImageUploading,
+    uploadedImagePath,
+    imageUploadError,
+
+    // Submission
+    handleSubmit,
+    isSubmitting,
+    selectedAction,
+    isSubmitEnabled,
   } = useIssueForm();
 
   return (
