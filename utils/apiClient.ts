@@ -99,6 +99,7 @@ async function refreshAccessToken(): Promise<string | null> {
  */
 export async function getValidAccessToken(): Promise<string | null> {
   const token = await getAccessToken();
+  console.log("[ApiClient] Access token:", token);
 
   if (!token) {
     return null;

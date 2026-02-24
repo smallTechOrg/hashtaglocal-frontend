@@ -1,4 +1,5 @@
 import { APIResponse } from "@/models/APIResponse";
+import { LocationMetaData } from "@/models/Location";
 import { apiGet, apiPost, apiPut } from "@/utils/apiClient";
 
 /**
@@ -21,21 +22,6 @@ export interface SignedUrlResponse {
       path: string;
     };
   };
-}
-
-export interface LocationMetaData {
-  city: string | null;
-  district: string | null;
-  street_number: string | null;
-  street: string | null;
-  region: string | null;
-  sub_region: string | null;
-  country: string | null;
-  postal_code: string | null;
-  name: string | null;
-  iso_country_code: string | null;
-  timezone: string | null;
-  formatted_address: string | null;
 }
 
 export interface ReportIssuePayload {

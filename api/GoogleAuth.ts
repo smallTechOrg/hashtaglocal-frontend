@@ -12,14 +12,14 @@ const owner = Constants.expoConfig?.owner;
 const slug = Constants.expoConfig?.slug;
 
 export function useGoogleAuth() {
-    const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI!;
+    const redirectUri = process.env.EXPO_PUBLIC_API_BASE_URL!+"/auth-handler.html";
 
     console.log("Redirect URI:", redirectUri);
 
     const [request, response, promptAsync] =
         AuthSession.useAuthRequest(
             {
-                clientId: "870371939888-o448r3h3bqgvlgehh78q9o3dhqcpocdn.apps.googleusercontent.com",
+                clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
                 scopes: ["openid", "email", "profile"],
                 redirectUri,
                 responseType: AuthSession.ResponseType.Token,
