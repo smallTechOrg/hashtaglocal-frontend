@@ -1,13 +1,7 @@
 import CustomText from "@/components/CustomText";
+import { DescriptionInputProps } from "@/models/DescriptionInputProps";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RefObject } from "react";
 import { TextInput, View } from "react-native";
-
-interface DescriptionInputProps {
-  description: string;
-  onChangeText: (text: string) => void;
-  inputRef: RefObject<TextInput | null>;
-}
 
 export default function DescriptionInput({
   description,

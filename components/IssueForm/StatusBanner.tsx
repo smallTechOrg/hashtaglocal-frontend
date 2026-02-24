@@ -1,14 +1,7 @@
 import CustomText from "@/components/CustomText";
+import { BannerVariant, StatusBannerProps } from "@/models/StatusBannerProps";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ActivityIndicator, View } from "react-native";
-
-type BannerVariant = "loading" | "error" | "success";
-
-interface StatusBannerProps {
-  variant: BannerVariant;
-  message: string;
-  icon?: keyof typeof MaterialIcons.glyphMap;
-}
 
 const VARIANT_STYLES: Record<
   BannerVariant,

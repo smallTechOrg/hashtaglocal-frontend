@@ -3,22 +3,10 @@ import {
   verifyIssue,
   resolveIssue,
 } from "@/api/IssueDetail";
-import { LocationMetaData } from "@/models/Location";
-import { IssueType } from "@/constants/issueTypes";
+import { IssueSubmitParams } from "@/models/IssueSubmitParams";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert } from "react-native";
-
-interface UseIssueSubmitParams {
-  selectedType: IssueType | null;
-  gcsPath: string | null;
-  latitude: string | null;
-  longitude: string | null;
-  description: string;
-  locationMetaData: LocationMetaData;
-  isUpdateMode: boolean;
-  issueId?: string;
-}
 
 export function useIssueSubmit({
   selectedType,
@@ -29,7 +17,7 @@ export function useIssueSubmit({
   locationMetaData,
   isUpdateMode,
   issueId,
-}: UseIssueSubmitParams) {
+}: IssueSubmitParams) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAction, setSelectedAction] = useState<
     "VERIFY" | "RESOLVE" | null

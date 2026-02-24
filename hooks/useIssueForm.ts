@@ -14,42 +14,42 @@ export function useIssueForm() {
   const isUpdateMode = IssueFormParams.mode === "update";
   const { imageUri, timestamp } = IssueFormParams;
 
-  const [selectedType, setSelectedType] = useState<IssueType | null>(null);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [selectedIssueType, setSelectedIssueType] = useState<IssueType | null>(null);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [description, setDescription] = useState("");
   const descriptionInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (isUpdateMode && IssueFormParams.issueType) setSelectedType(IssueFormParams.issueType as IssueType);
+    if (isUpdateMode && IssueFormParams.issueType) setSelectedIssueType(IssueFormParams.issueType as IssueType);
   }, [isUpdateMode, IssueFormParams.issueType]);
 
   useEffect(() => {
     setDescription("");
-    if (!isUpdateMode) setSelectedType(null);
+    if (!isUpdateMode) setSelectedIssueType(null);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   }, [imageUri, isUpdateMode]);
 
   const { isLoadingLocation, latitude, longitude, locationError, locationMetaData, locationString } = useLocation(imageUri);
-  const { isUploading, gcsPath, uploadError } = useImageUpload(imageUri);
+  const { isUploading: isImageUploading, gcsPath: uploadedImagePath, uploadError: imageUploadError } = useImageUpload(imageUri);
   useKeyboardScroll(scrollViewRef, descriptionInputRef);
   const { handleSubmit, isSubmitting, selectedAction } = useIssueSubmit({
-    selectedType, gcsPath, latitude, longitude, description,
+    selectedType: selectedIssueType, gcsPath: uploadedImagePath, latitude, longitude, description,
     locationMetaData, isUpdateMode, issueId: IssueFormParams.issueId,
   });
 
-  const isEnabled = !!selectedType && !isSubmitting && !isUploading && !!gcsPath && !isLoadingLocation;
-  const selectedTypeLabel = ISSUE_TYPES.find((t) => t.id === selectedType)?.label;
+  const isSubmitEnabled = !!selectedIssueType && !isSubmitting && !isImageUploading && !!uploadedImagePath && !isLoadingLocation;
+  const selectedIssueTypeLabel = ISSUE_TYPES.find((t) => t.id === selectedIssueType)?.label;
 
   return {
     imageUri, timestamp, isUpdateMode,
-    selectedType, setSelectedType,
-    dropdownVisible, setDropdownVisible,
+    selectedIssueType, setSelectedIssueType,
+    isTypeDropdownOpen, setIsTypeDropdownOpen,
     description, setDescription,
     descriptionInputRef, scrollViewRef,
     isLoadingLocation, latitude, longitude, locationError, locationMetaData, locationString,
-    isUploading, gcsPath, uploadError,
+    isImageUploading, uploadedImagePath, imageUploadError,
     handleSubmit, isSubmitting, selectedAction,
-    isEnabled, selectedTypeLabel,
+    isSubmitEnabled, selectedIssueTypeLabel,
   };
 }
