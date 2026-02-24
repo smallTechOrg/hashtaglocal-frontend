@@ -12,7 +12,7 @@ const owner = Constants.expoConfig?.owner;
 const slug = Constants.expoConfig?.slug;
 
 export function useGoogleAuth() {
-    const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI!;
+    const redirectUri = process.env.EXPO_PUBLIC_API_BASE_URL!+"/auth-handler.html";
 
     console.log("Redirect URI:", redirectUri);
 
