@@ -1,19 +1,20 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
-    createIssueFilterPredicate,
-    ISSUE_FILTER_CATEGORIES,
-    MapFilterOverlay,
-    useMapFilters,
+  createIssueFilterPredicate,
+  ISSUE_FILTER_CATEGORIES,
+  MapFilterOverlay,
+  useMapFilters,
 } from "@/components/MapFilter";
+import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { useIssues } from "@/utils/IssuesContext";
 import {
-    getFastLocationWithProgressiveWatch,
-    LocationError,
-    subscribeToBestLocation,
-    UserLocation,
+  getFastLocationWithProgressiveWatch,
+  LocationError,
+  subscribeToBestLocation,
+  UserLocation,
 } from "@/utils/LocationService";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -25,6 +26,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 type LoadingState = "loading" | "success" | "error";
 
@@ -80,7 +83,7 @@ const getIssueColor = (type: string): string => {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, setUser } = useUser();
   const { setIssues: setContextIssues } = useIssues();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -170,7 +173,7 @@ export default function MapScreen() {
     if (user) {
       loadUserLocation();
     }
-  }, [user]);
+  }, [user?.username]);
 
   useEffect(() => {
     // Subscribe to progressive updates and update map when accuracy improves
@@ -182,11 +185,15 @@ export default function MapScreen() {
     return () => unsub();
   }, []);
 
-  // Reload issues when screen comes back into focus (after delete, report, verify, etc.)
+  // Reload issues + refresh user summary when screen comes back into focus
   useFocusEffect(
     useCallback(() => {
       if (userLocation) {
-        loadNearbyIssues(userLocation.latitude, userLocation.longitude);
+        const { latitude, longitude } = userLocation;
+        Promise.all([
+          loadNearbyIssues(latitude, longitude),
+          refreshUserProfile(latitude, longitude),
+        ]);
       }
     }, [userLocation])
   );
@@ -229,6 +236,23 @@ export default function MapScreen() {
     } else {
       setError(result.error);
       setLoadingState("error");
+    }
+  };
+
+  const refreshUserProfile = async (lat?: number, lng?: number) => {
+    try {
+      let profileUrl = `${API_BASE_URL}/account/profile`;
+      if (lat !== undefined && lng !== undefined) {
+        profileUrl = `${API_BASE_URL}/account/profile?lat=${lat}&lng=${lng}`;
+      }
+      const response = await apiGet(profileUrl);
+      if (response.ok) {
+        const data = await response.json();
+        const { username, picture, hashtag, user_summary } = data.data.user;
+        setUser({ username, picture, hashtag, user_summary });
+      }
+    } catch (error) {
+      console.log("[MapScreen] Silent profile refresh failed:", error);
     }
   };
 
