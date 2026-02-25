@@ -3,7 +3,7 @@ import { apiGet } from "@/utils/apiClient";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
-import { UserProvider, useUser } from "@/utils/UserContext";
+import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   DrawerContentComponentProps,
@@ -62,9 +62,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-          const { username, picture, hashtag } = data.data.user;
+          const { username, picture, hashtag, user_summary } = data.data.user;
           console.log("Profile loaded:", username, "hashtag:", hashtag);
-          setUser({ username, picture, hashtag });
+          setUser({ username, picture, hashtag, user_summary });
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();
@@ -137,6 +137,66 @@ function NavigationContainer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function UserSummarySection({ summary }: { summary?: UserSummary }) {
+  const router = useRouter();
+
+  const issue_count = summary?.issue_count;
+
+  const stats = issue_count ? [
+    { key: "total",           label: "Reported", value: issue_count.total,           color: "#16a34a", bg: "#dcfce7" },
+    { key: "open",            label: "Open",     value: issue_count.open,            color: "#2563eb", bg: "#dbeafe" },
+    { key: "onhold",          label: "On Hold",  value: issue_count.onhold,          color: "#d97706", bg: "#fef3c7" },
+    { key: "resolved",        label: "Resolved", value: issue_count.resolved,        color: "#059669", bg: "#d1fae5" },
+    { key: "verify",          label: "Verified", value: issue_count.verify,          color: "#7c3aed", bg: "#ede9fe" },
+    { key: "resolved_others", label: "Helped",   value: issue_count.resolved_others, color: "#0891b2", bg: "#cffafe" },
+  ].filter((s) => s.value && s.value > 0) : [];
+
+  const hasActivity = stats.length > 0;
+
+  return (
+    <View style={{ marginHorizontal: 12, marginVertical: 10, padding: 12, backgroundColor: "#f9fafb", borderRadius: 14, borderWidth: 1, borderColor: "#e5e7eb" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+        <MaterialIcons name="bar-chart" size={14} color="#6b7280" />
+        <Text style={{ marginLeft: 4, fontSize: 10, color: "#6b7280", fontFamily: "Nunito-Regular", letterSpacing: 0.8, textTransform: "uppercase" }}>Your Activity</Text>
+      </View>
+
+      {hasActivity ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {stats.map((stat) => (
+            <View
+              key={stat.key}
+              style={{
+                backgroundColor: stat.bg,
+                borderColor: stat.color + "55",
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                alignItems: "center",
+                minWidth: 56,
+              }}
+            >
+              <Text style={{ color: stat.color, fontSize: 18, fontFamily: "Nunito_700Bold", lineHeight: 22 }}>{stat.value}</Text>
+              <Text style={{ color: stat.color, fontSize: 10, fontFamily: "Nunito-Regular", opacity: 0.85 }}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: 8, gap: 6 }}>
+          <Text style={{ fontSize: 22 }}>😔</Text>
+          <Text style={{ fontSize: 12, color: "#6b7280", fontFamily: "Nunito-Regular", textAlign: "center" }}>No activity yet</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/report")}
+            style={{ marginTop: 4, backgroundColor: "#256D1B", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Nunito_700Bold" }}>Report an Issue</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, setUser } = useUser();
   const router = useRouter();
@@ -163,6 +223,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           {user?.username || "Guest"}
         </Text>
       </View>
+      <UserSummarySection summary={user?.user_summary} />
       <DrawerItemList {...props} />
       {user && (
         <TouchableOpacity
@@ -245,6 +306,7 @@ export default function RootLayout() {
             headerTitleStyle: {
               fontFamily: "Nunito-Regular",
             },
+            drawerItemStyle: { display: "none" },
             headerRight: () => (
               <Image
                 source={require("../assets/logo-green.png")}

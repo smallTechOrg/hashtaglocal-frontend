@@ -1,8 +1,8 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
+    createIssueFilterPredicate,
     ISSUE_FILTER_CATEGORIES,
-    issueFilterPredicate,
     MapFilterOverlay,
     useMapFilters,
 } from "@/components/MapFilter";
@@ -57,6 +57,7 @@ interface IssueMarker {
   type: string;
   description: string;
   status?: string;
+  user?: { username?: string };
   verify_count?: number;
   created_at?: string;
   media_urls?: { url: string; url_thumbnail?: string }[];
@@ -93,6 +94,11 @@ export default function MapScreen() {
   const [checkingDistance, setCheckingDistance] = useState(false);
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
+  const issueFilterPredicate = useMemo(
+    () => createIssueFilterPredicate(user?.username),
+    [user?.username],
+  );
+
   const {
     filteredItems: filteredIssues,
     activeFilters,
@@ -109,6 +115,7 @@ export default function MapScreen() {
   // feedback about what the second filter will further narrow to.
   const filterItemCounts = useMemo(() => {
     const counts: Record<string, Record<string, number>> = {
+      reporter: {},
       issueType: {},
       status: {},
     };
@@ -116,30 +123,45 @@ export default function MapScreen() {
     // Determine which filters are active per category
     const activeType = activeFilters.issueType;
     const activeStatus = activeFilters.status;
+    const activeReporter = activeFilters.reporter;
     const hasTypeFilter = activeType && activeType.size > 0;
     const hasStatusFilter = activeStatus && activeStatus.size > 0;
+    const hasReporterFilter = activeReporter && activeReporter.has("MINE");
 
     issues.forEach((issue) => {
       const typeKey = issue.type.toUpperCase();
       const statusKey = (issue.status ?? "").toUpperCase();
+      const isMine = issue.user?.username === user?.username;
 
-      // Type counts: filtered by active *status* (cross-category)
-      if (!hasStatusFilter || activeStatus!.has(statusKey)) {
+      // Type counts: cross-filtered by active status + reporter
+      const passesStatusForType = !hasStatusFilter || activeStatus!.has(statusKey);
+      const passesReporterForType = !hasReporterFilter || isMine;
+      if (passesStatusForType && passesReporterForType) {
         counts.issueType[typeKey] = (counts.issueType[typeKey] || 0) + 1;
       }
 
-      // Status counts: filtered by active *type* (cross-category)
-      if (statusKey && (!hasTypeFilter || activeType!.has(typeKey))) {
+      // Status counts: cross-filtered by active type + reporter
+      const passesTypeForStatus = !hasTypeFilter || activeType!.has(typeKey);
+      const passesReporterForStatus = !hasReporterFilter || isMine;
+      if (statusKey && passesTypeForStatus && passesReporterForStatus) {
         counts.status[statusKey] = (counts.status[statusKey] || 0) + 1;
+      }
+
+      // Reporter counts: cross-filtered by active type + status
+      const passesTypeForReporter = !hasTypeFilter || activeType!.has(typeKey);
+      const passesStatusForReporter = !hasStatusFilter || activeStatus!.has(statusKey);
+      if (isMine && passesTypeForReporter && passesStatusForReporter) {
+        counts.reporter["MINE"] = (counts.reporter["MINE"] || 0) + 1;
       }
     });
 
-    // "All" option count = total issues that pass the *other* category's filter
+    // "All" = total passing the *other* categories' filters
     counts.issueType["ALL"] = Object.values(counts.issueType).reduce((s, n) => s + n, 0);
     counts.status["ALL"] = Object.values(counts.status).reduce((s, n) => s + n, 0);
+    counts.reporter["ALL"] = issues.length;
 
     return counts;
-  }, [issues, activeFilters]);
+  }, [issues, activeFilters, user?.username]);
 
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);

@@ -40,6 +40,16 @@ export const ALL_OPTION_ID = "ALL";
 /** Filter categories available for issues. */
 export const ISSUE_FILTER_CATEGORIES: FilterCategory[] = [
   {
+    id: "reporter",
+    label: "Reporter",
+    icon: "person",
+    multiSelect: false,
+    options: [
+      { id: ALL_OPTION_ID, label: "All", color: "#256D1B" },
+      { id: "MINE", label: "Mine", color: "#256D1B" },
+    ],
+  },
+  {
     id: "issueType",
     label: "Type",
     icon: "category",
@@ -78,29 +88,40 @@ export const ISSUE_FILTER_CATEGORIES: FilterCategory[] = [
 interface FilterableIssue {
   type: string;
   status?: string;
+  user?: { username?: string };
 }
 
 /**
- * Returns `true` when the issue passes **all** active filter categories.
- *
- * Rule: an empty set for a category means "show all" (no restriction).
+ * Factory that returns a predicate bound to the current user's username.
+ * Pass `currentUsername` to enable the "Mine" reporter filter.
  */
-export const issueFilterPredicate: FilterPredicate<FilterableIssue> = (
-  issue,
-  activeFilters,
-) => {
-  // Issue type filter
-  const typeFilter = activeFilters.issueType;
-  if (typeFilter && typeFilter.size > 0) {
-    if (!typeFilter.has(issue.type.toUpperCase())) return false;
-  }
+export function createIssueFilterPredicate(
+  currentUsername?: string,
+): FilterPredicate<FilterableIssue> {
+  return (issue, activeFilters) => {
+    // Issue type filter
+    const typeFilter = activeFilters.issueType;
+    if (typeFilter && typeFilter.size > 0) {
+      if (!typeFilter.has(issue.type.toUpperCase())) return false;
+    }
 
-  // Status filter
-  const statusFilter = activeFilters.status;
-  if (statusFilter && statusFilter.size > 0) {
-    const issueStatus = (issue.status ?? "").toUpperCase();
-    if (!statusFilter.has(issueStatus)) return false;
-  }
+    // Status filter
+    const statusFilter = activeFilters.status;
+    if (statusFilter && statusFilter.size > 0) {
+      const issueStatus = (issue.status ?? "").toUpperCase();
+      if (!statusFilter.has(issueStatus)) return false;
+    }
 
-  return true;
-};
+    // Reporter filter
+    const reporterFilter = activeFilters.reporter;
+    if (reporterFilter && reporterFilter.has("MINE")) {
+      if (!currentUsername || issue.user?.username !== currentUsername) return false;
+    }
+
+    return true;
+  };
+}
+
+/** Default predicate with no reporter restriction (backwards compat). */
+export const issueFilterPredicate: FilterPredicate<FilterableIssue> =
+  createIssueFilterPredicate();

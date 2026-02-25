@@ -6,6 +6,7 @@ export interface IssueMarker {
   description: string;
   created_at: string;
   status?: string;
+  user?: { username?: string };
   location: {
     lat: number;
     lng: number;
