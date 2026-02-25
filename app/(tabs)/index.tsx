@@ -1,13 +1,19 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
+import {
+    ISSUE_FILTER_CATEGORIES,
+    issueFilterPredicate,
+    MapFilterOverlay,
+    useMapFilters,
+} from "@/components/MapFilter";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { useIssues } from "@/utils/IssuesContext";
 import {
-  getFastLocationWithProgressiveWatch,
-  LocationError,
-  UserLocation,
-  subscribeToBestLocation,
+    getFastLocationWithProgressiveWatch,
+    LocationError,
+    subscribeToBestLocation,
+    UserLocation,
 } from "@/utils/LocationService";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -16,7 +22,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
 
@@ -56,9 +62,7 @@ interface IssueMarker {
   media_urls?: { url: string; url_thumbnail?: string }[];
 }
 
-const ISSUE_TYPES = ["All", "Pothole", "Waste", "Footpath", "Pollution", "Hygiene", "Safety", "Other"];
-
-// Color mapping for issue types 
+// Color mapping for issue types
 const ISSUE_TYPE_COLORS: Record<string, string> = {
   pothole: "#ef4444",    // Red
   waste: "#22c55e",      // Green
@@ -85,9 +89,57 @@ export default function MapScreen() {
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<string>("All");
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
+
+  // ── Map filters (extensible: swap categories/predicate for other domains) ──
+  const {
+    filteredItems: filteredIssues,
+    activeFilters,
+    activeCount: filterActiveCount,
+    toggle: filterToggle,
+    clear: filterClear,
+    clearAll: filterClearAll,
+    isSelected: filterIsSelected,
+  } = useMapFilters(issues, ISSUE_FILTER_CATEGORIES, issueFilterPredicate);
+
+  // Compute per-option counts.
+  // Counts are *dynamic*: when a type filter is active the status counts
+  // reflect only issues of that type (and vice-versa), giving users instant
+  // feedback about what the second filter will further narrow to.
+  const filterItemCounts = useMemo(() => {
+    const counts: Record<string, Record<string, number>> = {
+      issueType: {},
+      status: {},
+    };
+
+    // Determine which filters are active per category
+    const activeType = activeFilters.issueType;
+    const activeStatus = activeFilters.status;
+    const hasTypeFilter = activeType && activeType.size > 0;
+    const hasStatusFilter = activeStatus && activeStatus.size > 0;
+
+    issues.forEach((issue) => {
+      const typeKey = issue.type.toUpperCase();
+      const statusKey = (issue.status ?? "").toUpperCase();
+
+      // Type counts: filtered by active *status* (cross-category)
+      if (!hasStatusFilter || activeStatus!.has(statusKey)) {
+        counts.issueType[typeKey] = (counts.issueType[typeKey] || 0) + 1;
+      }
+
+      // Status counts: filtered by active *type* (cross-category)
+      if (statusKey && (!hasTypeFilter || activeType!.has(typeKey))) {
+        counts.status[statusKey] = (counts.status[statusKey] || 0) + 1;
+      }
+    });
+
+    // "All" option count = total issues that pass the *other* category's filter
+    counts.issueType["ALL"] = Object.values(counts.issueType).reduce((s, n) => s + n, 0);
+    counts.status["ALL"] = Object.values(counts.status).reduce((s, n) => s + n, 0);
+
+    return counts;
+  }, [issues, activeFilters]);
 
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
@@ -220,14 +272,6 @@ export default function MapScreen() {
     }
   }, [selectedIssue, router, checkingDistance]);
 
-  // Filter issues based on selected filter
-  const filteredIssues = useMemo(() => {
-    if (selectedFilter === "All") return issues;
-    return issues.filter(issue => 
-      issue.type.toLowerCase() === selectedFilter.toLowerCase()
-    );
-  }, [issues, selectedFilter]);
-
   // Check if marker is within viewport bounds
   const isMarkerInViewport = useCallback((markerLat: number, markerLng: number): boolean => {
     if (!mapRegion) return true; // Show all if no region set yet
@@ -258,46 +302,56 @@ export default function MapScreen() {
     setMapRegion(region);
   }, []);
 
-  // Handle filter change and adjust map zoom
-  const handleFilterChange = useCallback((filter: string) => {
-    setSelectedFilter(filter);
-    setSelectedIssue(null); // Close any open issue card
+  // Auto-zoom map to fit filtered markers when a filter is active
+  useEffect(() => {
+    if (filterActiveCount === 0) {
+      // No filter active → zoom back to user locality
+      if (mapRef.current && userLocation) {
+        mapRef.current.animateToRegion(
+          {
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          },
+          500,
+        );
+      }
+      return;
+    }
 
-    if (mapRef.current && filteredIssues.length > 0) {
-      const issuesToShow = filter === "All" ? issues : issues.filter(issue => 
-        issue.type.toLowerCase() === filter.toLowerCase()
-      );
+    if (!mapRef.current || filteredIssues.length === 0) return;
 
-      if (issuesToShow.length === 0) return;
+    let minLat = filteredIssues[0].location.lat;
+    let maxLat = filteredIssues[0].location.lat;
+    let minLng = filteredIssues[0].location.lng;
+    let maxLng = filteredIssues[0].location.lng;
 
-      // Calculate bounds for all filtered markers
-      let minLat = issuesToShow[0].location.lat;
-      let maxLat = issuesToShow[0].location.lat;
-      let minLng = issuesToShow[0].location.lng;
-      let maxLng = issuesToShow[0].location.lng;
+    filteredIssues.forEach((issue) => {
+      minLat = Math.min(minLat, issue.location.lat);
+      maxLat = Math.max(maxLat, issue.location.lat);
+      minLng = Math.min(minLng, issue.location.lng);
+      maxLng = Math.max(maxLng, issue.location.lng);
+    });
 
-      issuesToShow.forEach(issue => {
-        minLat = Math.min(minLat, issue.location.lat);
-        maxLat = Math.max(maxLat, issue.location.lat);
-        minLng = Math.min(minLng, issue.location.lng);
-        maxLng = Math.max(maxLng, issue.location.lng);
-      });
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.005);
+    const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.005);
 
-      const centerLat = (minLat + maxLat) / 2;
-      const centerLng = (minLng + maxLng) / 2;
-      const latDelta = Math.max((maxLat - minLat) * 1.5, 0.005);
-      const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.005);
-
-      const region: Region = {
+    mapRef.current.animateToRegion(
+      {
         latitude: centerLat,
         longitude: centerLng,
         latitudeDelta: latDelta,
         longitudeDelta: lngDelta,
-      };
+      },
+      500,
+    );
 
-      mapRef.current.animateToRegion(region, 500);
-    }
-  }, [issues, filteredIssues]);
+    // Close any open issue card
+    setSelectedIssue(null);
+  }, [filterActiveCount, filteredIssues, userLocation]);
 
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
@@ -346,38 +400,17 @@ export default function MapScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-      {/* Filter Chips */}
-      <View style={styles.filterContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-        >
-          {ISSUE_TYPES.map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.filterChip,
-                selectedFilter === type && styles.filterChipActive
-              ]}
-              onPress={() => handleFilterChange(type)}
-            >
-              <CustomText 
-                className={selectedFilter === type ? "text-white font-semibold" : "text-gray-700"}
-              >
-                {type}
-              </CustomText>
-              {type !== "All" && (
-                <View style={styles.filterBadge}>
-                  <CustomText className="text-xs text-white font-bold">
-                    {issues.filter(i => i.type.toLowerCase() === type.toLowerCase()).length}
-                  </CustomText>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Floating filter overlay */}
+      <MapFilterOverlay
+        categories={ISSUE_FILTER_CATEGORIES}
+        isSelected={filterIsSelected}
+        onToggle={filterToggle}
+        onClear={filterClear}
+        onClearAll={filterClearAll}
+        activeCount={filterActiveCount}
+        activeFilters={activeFilters}
+        itemCounts={filterItemCounts}
+      />
 
       <MapView
         ref={mapRef}
@@ -544,45 +577,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
-  },
-  filterContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: "white",
-    paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f3f4f6",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    gap: 6,
-  },
-  filterChipActive: {
-    backgroundColor: "#256D1B",
-  },
-  filterBadge: {
-    backgroundColor: "rgba(0,0,0,0.2)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: "center",
   },
   map: {
     width: "100%",
