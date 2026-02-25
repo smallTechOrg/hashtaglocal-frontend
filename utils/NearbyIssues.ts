@@ -2,7 +2,7 @@ import { IssueMarker } from "./IssuesContext";
 import { calculateHaversineDistance } from "./LocationService";
 
 /** Radius used for the "nearby issues" pre-check before reporting. */
-export const NEARBY_RADIUS_METERS = 80;
+export const NEARBY_RADIUS_METERS = 100;
 
 export interface IssueWithDistance extends IssueMarker {
   distanceMeters: number;

@@ -3,7 +3,6 @@ import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
-    getBestKnownLocation,
     getFastLocationWithProgressiveWatch,
     UserLocation,
 } from "@/utils/LocationService";
@@ -31,8 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const LOCATION_ACCURACY_THRESHOLD = 20; // metres
-const LOCATION_CACHE_FRESHNESS_MS = 30_000; // 30 s
+const LOCATION_ACCURACY_THRESHOLD = 30; // metres
 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
   pothole: "#ef4444",
@@ -203,38 +201,26 @@ export default function NearbyIssuesCheck() {
   useEffect(() => {
     (async () => {
       try {
-        // 1. Try cached location first (< LOCATION_ACCURACY_THRESHOLD m, fresh < 30 s)
-        const cached = getBestKnownLocation();
-        let location: UserLocation | null = null;
+        // Fetch location (getFastLocationWithProgressiveWatch handles cache internally)
+        const result = await getFastLocationWithProgressiveWatch({
+          instantLoad: false,
+          accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
+          timeoutMs: 20_000,
+        });
 
-        if (
-          cached &&
-          cached.accuracy !== null &&
-          cached.accuracy < LOCATION_ACCURACY_THRESHOLD &&
-          Date.now() - cached.timestamp < LOCATION_CACHE_FRESHNESS_MS
-        ) {
-          location = cached;
-        } else {
-          // 2. Fetch fresh accurate location
-          const result = await getFastLocationWithProgressiveWatch({
-            instantLoad: false,
-            accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
-            timeoutMs: 20_000,
-          });
-
-          if (!result.success) {
-            setLocationError(
-              result.error.message ?? "Unable to get your location."
-            );
-            setScreenState("error");
-            return;
-          }
-          location = result.location;
+        if (!result.success) {
+          setLocationError(
+            result.error.message ?? "Unable to get your location."
+          );
+          setScreenState("error");
+          return;
         }
+
+        const location = result.location;
 
         setUserLocation(location);
 
-        // 3. Filter nearby issues from context
+        // Filter nearby issues from context
         const nearby = getNearbyIssues(
           location.latitude,
           location.longitude,
@@ -346,7 +332,7 @@ export default function NearbyIssuesCheck() {
               >
                 <View style={styles.reportNewCardInner}>
                   <View style={styles.reportNewIcon}>
-                    <MaterialIcons name="add-circle-outline" size={28} color="#256D1B" />
+                    <MaterialIcons name="camera-alt" size={28} color="#256D1B" />
                   </View>
                   <View style={styles.reportNewText}>
                     <CustomText className="text-[#256D1B] font-bold text-base">
@@ -399,9 +385,9 @@ export default function NearbyIssuesCheck() {
                   onPress={handleReportNew}
                   activeOpacity={0.85}
                 >
-                  <MaterialIcons name="add" size={20} color="#fff" />
+                  <MaterialIcons name="camera-alt" size={20} color="#fff" />
                   <CustomText className="ml-2 text-white font-bold text-base">
-                    Still Report New Issue
+                    Report New Issue
                   </CustomText>
                 </TouchableOpacity>
               </View>

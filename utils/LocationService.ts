@@ -278,7 +278,7 @@ export async function getFastLocationWithProgressiveWatch(
 
     // Step 2: Check if cached best location is fresh and meets threshold
     const now = Date.now();
-    const isCacheFresh = now - _lastBestLocationTime < 30000; // 30 seconds
+    const isCacheFresh = now - _lastBestLocationTime < 15000; // 15 seconds
 
     if (
       _bestLocation &&
