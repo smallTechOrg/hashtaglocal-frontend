@@ -1,8 +1,8 @@
 import { IssueMarker } from "@/utils/IssuesContext";
 import {
-  formatDistance,
-  getNearbyIssues,
-  NEARBY_RADIUS_METERS,
+    formatDistance,
+    getNearbyIssues,
+    NEARBY_RADIUS_METERS,
 } from "@/utils/NearbyIssues";
 
 // ─────────────────────────────────────────────────────────────
