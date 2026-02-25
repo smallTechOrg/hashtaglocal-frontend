@@ -36,6 +36,11 @@ interface MapFilterOverlayProps {
   activeFilters: Record<string, Set<string>>;
   /** Per-category per-option item counts: categoryId → optionId → count. */
   itemCounts?: Record<string, Record<string, number>>;
+  /**
+   * When true, renders as a normal inline bar (e.g. on the Issues list page)
+   * instead of a floating overlay anchored absolutely on top of a map.
+   */
+  inline?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,9 +68,12 @@ function MapFilterOverlayInner({
   activeCount,
   activeFilters,
   itemCounts,
+  inline = false,
 }: MapFilterOverlayProps) {
   // Which category dropdown is currently open (null = all collapsed)
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  // Height of bar content (row1+row2) measured when inline so dropdown can float below it
+  const [barHeight, setBarHeight] = useState(96);
 
   const typeCat = categories.find((c) => c.id === "issueType");
   const statusCat = categories.find((c) => c.id === "status");
@@ -219,22 +227,27 @@ function MapFilterOverlayInner({
     Dimensions.get("window");
 
   return (
-    <View style={styles.wrapper} pointerEvents="box-none">
+    <View style={inline ? styles.wrapperInline : styles.wrapper} pointerEvents="box-none">
       {/* Full-screen dismiss overlay */}
       {openCategory != null && (
         <TouchableWithoutFeedback onPress={closeDropdown}>
           <View
             style={{
               position: "absolute",
-              top: -(Platform.OS === "ios" ? 54 : 12),
-              left: -12,
-              width: screenWidth,
+              top: inline ? -barHeight : -(Platform.OS === "ios" ? 54 : 12),
+              left: inline ? -screenWidth : -12,
+              width: screenWidth * 3,
               height: screenHeight,
             }}
           />
         </TouchableWithoutFeedback>
       )}
 
+      {/* Bar content wrapper — measured (inline only) so the dropdown can be placed absolutely below it */}
+      <View
+        pointerEvents="box-none"
+        onLayout={inline ? (e) => setBarHeight(e.nativeEvent.layout.height) : undefined}
+      >
       {/* ── Row 1: Tune button (left) + Summary (right, leaves space for map btn) ── */}
       <View style={styles.row1} pointerEvents="box-none">
         <TouchableOpacity
@@ -262,7 +275,7 @@ function MapFilterOverlayInner({
           onPress={() =>
             openCategory ? closeDropdown() : toggleCategory("issueType")
           }
-          style={styles.summaryCard}
+          style={[styles.summaryCard, inline && styles.summaryCardInline]}
         >
           <CustomText
             className="font-semibold"
@@ -414,9 +427,11 @@ function MapFilterOverlayInner({
         )}
       </View>
 
+      </View>{/* end bar content wrapper */}
+
       {/* ── Dropdown panel (right-aligned, below row 2) ── */}
       {openCat != null && (
-        <View style={styles.dropdown}>
+        <View style={[styles.dropdown, inline && { position: "absolute", top: barHeight + 4, left: 12, zIndex: 30 }]}>
           <ScrollView
             contentContainerStyle={styles.dropdownInner}
             showsVerticalScrollIndicator={false}
@@ -476,6 +491,15 @@ const styles = StyleSheet.create({
     zIndex: 20,
     paddingHorizontal: 12,
   },
+  wrapperInline: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
+    zIndex: 20,
+  },
   // ── Row 1: summary + tune ──
   row1: {
     flexDirection: "row",
@@ -495,6 +519,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 5,
     elevation: 3,
+  },
+  summaryCardInline: {
+    marginRight: 8,
   },
   summaryTitle: {
     fontSize: 12,
@@ -549,6 +576,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "transparent",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -560,7 +589,6 @@ const styles = StyleSheet.create({
   },
   catPillFiltered: {
     backgroundColor: "#dcfce7",
-    borderWidth: 1,
     borderColor: "#86efac",
   },
   // ── Dropdown ──

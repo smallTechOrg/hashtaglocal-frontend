@@ -138,20 +138,20 @@ function NavigationContainer({ children }: { children: React.ReactNode }) {
 }
 
 function UserSummarySection({ summary }: { summary?: UserSummary }) {
-  if (!summary?.issue_count) return null;
+  const router = useRouter();
 
-  const { issue_count } = summary;
+  const issue_count = summary?.issue_count;
 
-  const stats = [
+  const stats = issue_count ? [
     { key: "total",           label: "Reported", value: issue_count.total,           color: "#16a34a", bg: "#dcfce7" },
     { key: "open",            label: "Open",     value: issue_count.open,            color: "#2563eb", bg: "#dbeafe" },
     { key: "onhold",          label: "On Hold",  value: issue_count.onhold,          color: "#d97706", bg: "#fef3c7" },
     { key: "resolved",        label: "Resolved", value: issue_count.resolved,        color: "#059669", bg: "#d1fae5" },
     { key: "verify",          label: "Verified", value: issue_count.verify,          color: "#7c3aed", bg: "#ede9fe" },
     { key: "resolved_others", label: "Helped",   value: issue_count.resolved_others, color: "#0891b2", bg: "#cffafe" },
-  ].filter((s) => s.value && s.value > 0);
+  ].filter((s) => s.value && s.value > 0) : [];
 
-  if (stats.length === 0) return null;
+  const hasActivity = stats.length > 0;
 
   return (
     <View style={{ marginHorizontal: 12, marginVertical: 10, padding: 12, backgroundColor: "#f9fafb", borderRadius: 14, borderWidth: 1, borderColor: "#e5e7eb" }}>
@@ -159,26 +159,40 @@ function UserSummarySection({ summary }: { summary?: UserSummary }) {
         <MaterialIcons name="bar-chart" size={14} color="#6b7280" />
         <Text style={{ marginLeft: 4, fontSize: 10, color: "#6b7280", fontFamily: "Nunito-Regular", letterSpacing: 0.8, textTransform: "uppercase" }}>Your Activity</Text>
       </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        {stats.map((stat) => (
-          <View
-            key={stat.key}
-            style={{
-              backgroundColor: stat.bg,
-              borderColor: stat.color + "55",
-              borderWidth: 1,
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              alignItems: "center",
-              minWidth: 56,
-            }}
+
+      {hasActivity ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {stats.map((stat) => (
+            <View
+              key={stat.key}
+              style={{
+                backgroundColor: stat.bg,
+                borderColor: stat.color + "55",
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                alignItems: "center",
+                minWidth: 56,
+              }}
+            >
+              <Text style={{ color: stat.color, fontSize: 18, fontFamily: "Nunito_700Bold", lineHeight: 22 }}>{stat.value}</Text>
+              <Text style={{ color: stat.color, fontSize: 10, fontFamily: "Nunito-Regular", opacity: 0.85 }}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={{ alignItems: "center", paddingVertical: 8, gap: 6 }}>
+          <Text style={{ fontSize: 22 }}>😔</Text>
+          <Text style={{ fontSize: 12, color: "#6b7280", fontFamily: "Nunito-Regular", textAlign: "center" }}>No activity yet</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/report")}
+            style={{ marginTop: 4, backgroundColor: "#256D1B", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 }}
           >
-            <Text style={{ color: stat.color, fontSize: 18, fontFamily: "Nunito_700Bold", lineHeight: 22 }}>{stat.value}</Text>
-            <Text style={{ color: stat.color, fontSize: 10, fontFamily: "Nunito-Regular", opacity: 0.85 }}>{stat.label}</Text>
-          </View>
-        ))}
-      </View>
+            <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Nunito_700Bold" }}>Report an Issue</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
