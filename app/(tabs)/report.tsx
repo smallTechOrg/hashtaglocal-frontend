@@ -66,7 +66,7 @@ export default function Index() {
 
       {/* Create Issue Button */}
       <TouchableOpacity
-        onPress={() => router.push("/CameraCapture")}
+        onPress={() => router.push("/NearbyIssuesCheck")}
         className="bg-[#256D1B] py-4 rounded-xl flex-row items-center justify-center"
       >
         <MaterialIcons name="camera-alt" size={28} color="white" />
