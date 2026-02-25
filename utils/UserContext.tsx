@@ -1,10 +1,24 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { authEvents } from "./authEvents";
 
+export interface IssueCount {
+  total?: number;
+  onhold?: number;
+  open?: number;
+  resolved?: number;
+  verify?: number;
+  resolved_others?: number;
+}
+
+export interface UserSummary {
+  issue_count: IssueCount;
+}
+
 export interface UserProfile {
   username: string;
   picture: string;
   hashtag?: string;
+  user_summary?: UserSummary;
 }
 
 interface UserContextType {

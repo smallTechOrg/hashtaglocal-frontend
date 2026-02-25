@@ -1,13 +1,13 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
-    Dimensions,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Dimensions,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 import CustomText from "@/components/CustomText";
@@ -69,6 +69,7 @@ function MapFilterOverlayInner({
 
   const typeCat = categories.find((c) => c.id === "issueType");
   const statusCat = categories.find((c) => c.id === "status");
+  const reporterCat = categories.find((c) => c.id === "reporter");
 
   // ── Dropdown toggle ───────────────────────────────────────────────────
   const toggleCategory = useCallback((catId: string) => {
@@ -112,6 +113,8 @@ function MapFilterOverlayInner({
     activeFilters.issueType && activeFilters.issueType.size > 0;
   const statusHasFilter =
     activeFilters.status && activeFilters.status.size > 0;
+  const reporterIsMine =
+    activeFilters.reporter && activeFilters.reporter.has("MINE");
 
   // ── Rich summary ──────────────────────────────────────────────────────
   const summaryLines = useMemo(() => {
@@ -119,8 +122,11 @@ function MapFilterOverlayInner({
       activeFilters.issueType && activeFilters.issueType.size > 0;
     const hasStatusFilter =
       activeFilters.status && activeFilters.status.size > 0;
+    const hasReporterFilter =
+      activeFilters.reporter && activeFilters.reporter.has("MINE");
 
-    if (!hasTypeFilter && !hasStatusFilter) {
+    // ── No filters: total + type breakdown ──
+    if (!hasTypeFilter && !hasStatusFilter && !hasReporterFilter) {
       const typeCounts = itemCounts?.issueType ?? {};
       const total = typeCounts[ALL_OPTION_ID] ?? 0;
       const breakdown = Object.entries(typeCounts)
@@ -135,12 +141,13 @@ function MapFilterOverlayInner({
 
       return {
         title: `${total} issues nearby`,
-        detail: breakdown.length > 0 ? breakdown.join(" · ") : null,
+        detail: breakdown.length > 0 ? breakdown.join(" · ") : "\u00a0",
       };
     }
 
-    // Active filters → show names + count + breakdown
+    // ── Active filters: build title parts ──
     const parts: string[] = [];
+    if (hasReporterFilter) parts.push("Your issues");
     if (hasTypeFilter) {
       const optId = [...activeFilters.issueType][0];
       const opt = typeCat?.options.find((o) => o.id === optId);
@@ -152,33 +159,27 @@ function MapFilterOverlayInner({
       if (opt) parts.push(opt.label);
     }
 
-    // Compute filtered total
+    // ── filteredTotal: count items matching ALL active filters ──
+    // Use the cross-filtered count from the most-restricting active filter
     let filteredTotal = 0;
     if (hasTypeFilter) {
+      // issueType counts are already cross-filtered by status + reporter
       const optId = [...activeFilters.issueType][0];
       filteredTotal = itemCounts?.issueType?.[optId] ?? 0;
     } else if (hasStatusFilter) {
+      // status counts are already cross-filtered by type + reporter
       const optId = [...activeFilters.status][0];
       filteredTotal = itemCounts?.status?.[optId] ?? 0;
+    } else if (hasReporterFilter) {
+      // reporter counts are already cross-filtered by type + status
+      filteredTotal = itemCounts?.reporter?.["MINE"] ?? 0;
     }
 
-    // Build breakdown from the *other* dimension's counts
-    // e.g. type selected → show status breakdown; status selected → show type breakdown
+    // ── Breakdown line: show the "other" dimension(s) ──
+    // Rule: if type is NOT selected → show type breakdown; else show status breakdown
     let breakdownStr: string | null = null;
-    if (hasTypeFilter && !hasStatusFilter) {
-      // Show status breakdown for the selected type
-      const statusCounts = itemCounts?.status ?? {};
-      const breakdown = Object.entries(statusCounts)
-        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => {
-          const opt = statusCat?.options.find((o) => o.id === k);
-          return opt ? `${opt.label} ${v}` : null;
-        })
-        .filter(Boolean) as string[];
-      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
-    } else if (hasStatusFilter && !hasTypeFilter) {
-      // Show type breakdown for the selected status
+    if (!hasTypeFilter) {
+      // Show type breakdown (relevant for Mine-only, Status-only, Mine+Status)
       const typeCounts = itemCounts?.issueType ?? {};
       const breakdown = Object.entries(typeCounts)
         .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
@@ -190,13 +191,28 @@ function MapFilterOverlayInner({
         })
         .filter(Boolean) as string[];
       if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
+    } else if (!hasStatusFilter) {
+      // Type is selected, status is free → show status breakdown
+      // (relevant for Type-only, Mine+Type)
+      const statusCounts = itemCounts?.status ?? {};
+      const breakdown = Object.entries(statusCounts)
+        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => {
+          const opt = statusCat?.options.find((o) => o.id === k);
+          return opt ? `${opt.label} ${v}` : null;
+        })
+        .filter(Boolean) as string[];
+      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
     }
+    // Both type + status active: no useful breakdown, but keep two lines
 
     return {
       title: `${parts.join(" · ")} · ${filteredTotal}`,
-      detail: breakdownStr,
+      // Always provide a detail string so card height stays constant
+      detail: breakdownStr ?? "\u00a0",
     };
-  }, [activeFilters, itemCounts, typeCat, statusCat]);
+  }, [activeFilters, itemCounts, typeCat, statusCat, reporterCat]);
 
   // ── Dismiss overlay dimensions ────────────────────────────────────────
   const { height: screenHeight, width: screenWidth } =
@@ -257,17 +273,15 @@ function MapFilterOverlayInner({
           >
             {summaryLines.title}
           </CustomText>
-          {summaryLines.detail && (
-            <CustomText
-              style={[
-                styles.summaryDetail,
-                activeCount > 0 && { color: "#256D1B90" },
-              ]}
-              numberOfLines={1}
-            >
-              {summaryLines.detail}
-            </CustomText>
-          )}
+          <CustomText
+            style={[
+              styles.summaryDetail,
+              activeCount > 0 && { color: "#256D1B90" },
+            ]}
+            numberOfLines={1}
+          >
+            {summaryLines.detail ?? "\u00a0"}
+          </CustomText>
         </TouchableOpacity>
       </View>
 
@@ -374,6 +388,30 @@ function MapFilterOverlayInner({
             }
           />
         </TouchableOpacity>
+
+        {/* Mine toggle pill – direct toggle, no dropdown */}
+        {reporterCat && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onToggle("reporter", reporterIsMine ? ALL_OPTION_ID : "MINE")}
+            style={[
+              styles.catPill,
+              reporterIsMine && styles.catPillFiltered,
+            ]}
+          >
+            <MaterialIcons
+              name="person"
+              size={13}
+              color={reporterIsMine ? "#256D1B" : "#374151"}
+            />
+            <CustomText
+              className="font-semibold"
+              style={{ fontSize: 11, color: reporterIsMine ? "#256D1B" : "#374151" }}
+            >
+              Mine
+            </CustomText>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Dropdown panel (right-aligned, below row 2) ── */}

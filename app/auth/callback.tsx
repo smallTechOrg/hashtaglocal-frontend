@@ -81,9 +81,9 @@ export default function AuthCallbackScreen() {
 
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          const { username, picture, hashtag } = profileData.data.user;
+          const { username, picture, hashtag, user_summary } = profileData.data.user;
           console.log("User profile:", username, picture, "hashtag:", hashtag);
-          setUser({ username, picture, hashtag });
+          setUser({ username, picture, hashtag, user_summary });
           setIsLoading(false);
         } else {
           console.error("Failed to fetch profile:", profileResponse.status);
