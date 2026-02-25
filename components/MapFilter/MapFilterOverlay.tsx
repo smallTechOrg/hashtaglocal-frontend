@@ -1,9 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
-    Animated,
     Dimensions,
-    Easing,
     Platform,
     ScrollView,
     StyleSheet,
@@ -13,7 +11,7 @@ import {
 } from "react-native";
 
 import CustomText from "@/components/CustomText";
-import { FilterCategorySection } from "./FilterCategorySection";
+import { FilterChip } from "./FilterChip";
 import { ALL_OPTION_ID } from "./filterConfig";
 import type { FilterCategory } from "./types";
 
@@ -45,12 +43,16 @@ interface MapFilterOverlayProps {
 // ---------------------------------------------------------------------------
 
 /**
- * Floating filter panel anchored to the top-right of the map.
+ * Floating filter bar anchored to the top-right of the map.
  *
- * **Collapsed** – Rich summary card + tune button.
- * **Expanded** – Accordion sections for Type and Status. Picking a type
- * collapses its section and reveals a collapsed Status section. Picking a
- * status collapses the entire panel.  Tapping outside dismisses the panel.
+ * Layout:
+ *  ┌─────────────────────────────────────────────┐
+ *  │  [Summary card ···]              [tune btn]  │  ← row 1
+ *  │         [Type ▾] [Status ▾] [Pothole ×] …   │  ← row 2 (right-aligned)
+ *  │                              ┌────────────┐  │
+ *  │                              │  dropdown   │  │  ← below row 2
+ *  │                              └────────────┘  │
+ *  └─────────────────────────────────────────────┘
  */
 function MapFilterOverlayInner({
   categories,
@@ -62,117 +64,56 @@ function MapFilterOverlayInner({
   activeFilters,
   itemCounts,
 }: MapFilterOverlayProps) {
-  const [expanded, setExpanded] = useState(false);
+  // Which category dropdown is currently open (null = all collapsed)
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
 
-  // Per-section accordion state
-  const [typeExpanded, setTypeExpanded] = useState(false);
-  const [statusVisible, setStatusVisible] = useState(false);
-  const [statusExpanded, setStatusExpanded] = useState(false);
-
-  // Animated values
-  const expandAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(expandAnim, {
-      toValue: expanded ? 1 : 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [expanded, expandAnim]);
-
-  // ── Open / close helpers ──────────────────────────────────────────────
-  const openPanel = useCallback(() => {
-    const hasActiveType =
-      activeFilters.issueType && activeFilters.issueType.size > 0;
-    const hasActiveStatus =
-      activeFilters.status && activeFilters.status.size > 0;
-
-    if (hasActiveType || hasActiveStatus) {
-      // Filters active → both sections collapsed so user sees the overview
-      setTypeExpanded(false);
-      setStatusVisible(true);
-      setStatusExpanded(false);
-    } else {
-      // No filters → start with type expanded
-      setTypeExpanded(true);
-      setStatusVisible(false);
-      setStatusExpanded(false);
-    }
-    setExpanded(true);
-  }, [activeFilters]);
-
-  const collapse = useCallback(() => {
-    setExpanded(false);
-  }, []);
-
-  const toggleExpanded = useCallback(() => {
-    if (expanded) collapse();
-    else openPanel();
-  }, [expanded, collapse, openPanel]);
-
-  // ── Section header press (accordion) ──────────────────────────────────
-  const handleTypeHeaderPress = useCallback(() => {
-    setTypeExpanded((prev) => {
-      if (!prev) setStatusExpanded(false); // opening type → close status
-      return !prev;
-    });
-  }, []);
-
-  const handleStatusHeaderPress = useCallback(() => {
-    setStatusExpanded((prev) => {
-      if (!prev) setTypeExpanded(false); // opening status → close type
-      return !prev;
-    });
-  }, []);
-
-  // ── Toggle handler ────────────────────────────────────────────────────
-  const handleToggle = useCallback(
-    (categoryId: string, optionId: string) => {
-      onToggle(categoryId, optionId);
-
-      if (categoryId === "issueType") {
-        // Collapse type section, reveal status section (collapsed)
-        setTypeExpanded(false);
-        setStatusVisible(true);
-        setStatusExpanded(false);
-      } else {
-        // Picked a status → collapse entire panel
-        collapse();
-      }
-    },
-    [onToggle, collapse],
-  );
-
-  // ── Categories ────────────────────────────────────────────────────────
   const typeCat = categories.find((c) => c.id === "issueType");
   const statusCat = categories.find((c) => c.id === "status");
 
-  // ── Selected labels (shown inline when section is collapsed) ─────────
-  const typeSelectedLabel = useMemo(() => {
-    const active = activeFilters.issueType;
-    if (!active || active.size === 0) return "All";
-    const optId = [...active][0];
-    return typeCat?.options.find((o) => o.id === optId)?.label ?? "All";
-  }, [activeFilters, typeCat]);
+  // ── Dropdown toggle ───────────────────────────────────────────────────
+  const toggleCategory = useCallback((catId: string) => {
+    setOpenCategory((prev) => (prev === catId ? null : catId));
+  }, []);
 
-  const statusSelectedLabel = useMemo(() => {
-    const active = activeFilters.status;
-    if (!active || active.size === 0) return "All";
-    const optId = [...active][0];
-    return statusCat?.options.find((o) => o.id === optId)?.label ?? "All";
-  }, [activeFilters, statusCat]);
+  const closeDropdown = useCallback(() => {
+    setOpenCategory(null);
+  }, []);
 
-  // ── Hide "All" option in status when ≤1 real option visible ──────────
-  const hideStatusAll = useMemo(() => {
-    if (!statusCat || !itemCounts?.status) return false;
-    const nonAllVisible = statusCat.options.filter(
-      (o) => o.id !== ALL_OPTION_ID && (itemCounts.status[o.id] ?? 0) > 0,
+  // ── Select an option → collapse dropdown ──────────────────────────────
+  const handleSelect = useCallback(
+    (categoryId: string, optionId: string) => {
+      onToggle(categoryId, optionId);
+      setOpenCategory(null);
+    },
+    [onToggle],
+  );
+
+  // ── Currently-open category object ────────────────────────────────────
+  const openCat = openCategory
+    ? categories.find((c) => c.id === openCategory)
+    : null;
+
+  // ── Visible options for the open dropdown ─────────────────────────────
+  const visibleOptions = useMemo(() => {
+    if (!openCat) return [];
+    const counts = itemCounts?.[openCat.id] ?? {};
+    const realOptions = openCat.options.filter(
+      (o) => o.id !== ALL_OPTION_ID && (counts[o.id] ?? 0) > 0,
     );
-    return nonAllVisible.length <= 1;
-  }, [statusCat, itemCounts]);
+    const hideAll = realOptions.length <= 1;
+    return openCat.options.filter((o) => {
+      if (o.id === ALL_OPTION_ID) return !hideAll;
+      return (counts[o.id] ?? 0) > 0;
+    });
+  }, [openCat, itemCounts]);
 
-  // ── Rich summary content ─────────────────────────────────────────────
+  // ── Per-pill: has active (non-All) filter? ────────────────────────────
+  const typeHasFilter =
+    activeFilters.issueType && activeFilters.issueType.size > 0;
+  const statusHasFilter =
+    activeFilters.status && activeFilters.status.size > 0;
+
+  // ── Rich summary ──────────────────────────────────────────────────────
   const summaryLines = useMemo(() => {
     const hasTypeFilter =
       activeFilters.issueType && activeFilters.issueType.size > 0;
@@ -180,7 +121,6 @@ function MapFilterOverlayInner({
       activeFilters.status && activeFilters.status.size > 0;
 
     if (!hasTypeFilter && !hasStatusFilter) {
-      // Default: generous breakdown
       const typeCounts = itemCounts?.issueType ?? {};
       const total = typeCounts[ALL_OPTION_ID] ?? 0;
       const breakdown = Object.entries(typeCounts)
@@ -199,7 +139,7 @@ function MapFilterOverlayInner({
       };
     }
 
-    // Active filter labels
+    // Active filters → show names + count
     const parts: string[] = [];
     if (hasTypeFilter) {
       const optId = [...activeFilters.issueType][0];
@@ -212,9 +152,8 @@ function MapFilterOverlayInner({
       if (opt) parts.push(opt.label);
     }
 
-    const filteredTotal = Object.entries(itemCounts?.issueType ?? {})
-      .filter(([k]) => k !== ALL_OPTION_ID)
-      .reduce((s, [, n]) => s + n, 0);
+    // Use the ALL count from issueType which already reflects cross-category filtering
+    const filteredTotal = itemCounts?.issueType?.[ALL_OPTION_ID] ?? 0;
 
     return {
       title: parts.join(" · "),
@@ -222,29 +161,20 @@ function MapFilterOverlayInner({
     };
   }, [activeFilters, itemCounts, typeCat, statusCat]);
 
-  // ── Animated interpolations ──────────────────────────────────────────
-  const panelMaxHeight = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 420],
-  });
-
-  const panelOpacity = expandAnim.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [0, 0.7, 1],
-  });
-
-  const { height: screenHeight, width: screenWidth } = Dimensions.get("window");
+  // ── Dismiss overlay dimensions ────────────────────────────────────────
+  const { height: screenHeight, width: screenWidth } =
+    Dimensions.get("window");
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
       {/* Full-screen dismiss overlay */}
-      {expanded && (
-        <TouchableWithoutFeedback onPress={collapse}>
+      {openCategory != null && (
+        <TouchableWithoutFeedback onPress={closeDropdown}>
           <View
             style={{
               position: "absolute",
               top: -(Platform.OS === "ios" ? 54 : 12),
-              right: -12,
+              left: -12,
               width: screenWidth,
               height: screenHeight,
             }}
@@ -252,102 +182,190 @@ function MapFilterOverlayInner({
         </TouchableWithoutFeedback>
       )}
 
-      <View style={styles.container} pointerEvents="box-none">
-        {/* ──── Summary card + tune button ──── */}
-        <View style={styles.triggerRow}>
-          {!expanded && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={openPanel}
-              style={styles.summaryCard}
-            >
-              <CustomText
-                className="font-semibold"
-                style={[
-                  styles.summaryTitle,
-                  activeCount > 0 && { color: "#256D1B" },
-                ]}
-              >
-                {summaryLines.title}
-              </CustomText>
-              {summaryLines.detail && (
-                <CustomText
-                  style={[
-                    styles.summaryDetail,
-                    activeCount > 0 && { color: "#256D1B90" },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {summaryLines.detail}
-                </CustomText>
-              )}
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={toggleExpanded}
+      {/* ── Row 1: Summary (left) + Tune button (right) ── */}
+      <View style={styles.row1} pointerEvents="box-none">
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() =>
+            openCategory ? closeDropdown() : toggleCategory("issueType")
+          }
+          style={styles.summaryCard}
+        >
+          <CustomText
+            className="font-semibold"
             style={[
-              styles.triggerBtn,
-              expanded && styles.triggerBtnExpanded,
+              styles.summaryTitle,
+              activeCount > 0 && { color: "#256D1B" },
             ]}
           >
-            <MaterialIcons
-              name={expanded ? "close" : "tune"}
-              size={20}
-              color={expanded ? "#fff" : "#374151"}
-            />
-            {!expanded && activeCount > 0 && (
-              <View style={styles.activeDot} />
-            )}
-          </TouchableOpacity>
-        </View>
+            {summaryLines.title}
+          </CustomText>
+          {summaryLines.detail && (
+            <CustomText
+              style={[
+                styles.summaryDetail,
+                activeCount > 0 && { color: "#256D1B90" },
+              ]}
+              numberOfLines={1}
+            >
+              {summaryLines.detail}
+            </CustomText>
+          )}
+        </TouchableOpacity>
 
-        {/* ──── Expandable panel ──── */}
-        <Animated.View
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() =>
+            openCategory ? closeDropdown() : toggleCategory("issueType")
+          }
           style={[
-            styles.panel,
-            { maxHeight: panelMaxHeight, opacity: panelOpacity },
+            styles.tuneBtn,
+            openCategory != null && styles.tuneBtnActive,
           ]}
-          pointerEvents={expanded ? "auto" : "none"}
         >
+          <MaterialIcons
+            name={openCategory != null ? "close" : "tune"}
+            size={20}
+            color={openCategory != null ? "#fff" : "#374151"}
+          />
+          {openCategory == null && activeCount > 0 && (
+            <View style={styles.activeDot} />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Row 2: Category pills + active filter tags (right-aligned) ── */}
+      <View style={styles.row2} pointerEvents="box-none">
+        {/* Type pill */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => toggleCategory("issueType")}
+          style={[
+            styles.catPill,
+            openCategory === "issueType" && styles.catPillActive,
+            openCategory !== "issueType" &&
+              typeHasFilter &&
+              styles.catPillFiltered,
+          ]}
+        >
+          <MaterialIcons
+            name="category"
+            size={13}
+            color={
+              openCategory === "issueType"
+                ? "#fff"
+                : typeHasFilter
+                  ? "#256D1B"
+                  : "#374151"
+            }
+          />
+          <CustomText
+            className="font-semibold"
+            style={{
+              fontSize: 11,
+              color:
+                openCategory === "issueType"
+                  ? "#fff"
+                  : typeHasFilter
+                    ? "#256D1B"
+                    : "#374151",
+            }}
+          >
+            Type
+          </CustomText>
+          <MaterialIcons
+            name={
+              openCategory === "issueType" ? "expand-less" : "expand-more"
+            }
+            size={14}
+            color={
+              openCategory === "issueType"
+                ? "#fff"
+                : typeHasFilter
+                  ? "#256D1B"
+                  : "#9ca3af"
+            }
+          />
+        </TouchableOpacity>
+
+        {/* Status pill */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => toggleCategory("status")}
+          style={[
+            styles.catPill,
+            openCategory === "status" && styles.catPillActive,
+            openCategory !== "status" &&
+              statusHasFilter &&
+              styles.catPillFiltered,
+          ]}
+        >
+          <MaterialIcons
+            name="flag"
+            size={13}
+            color={
+              openCategory === "status"
+                ? "#fff"
+                : statusHasFilter
+                  ? "#256D1B"
+                  : "#374151"
+            }
+          />
+          <CustomText
+            className="font-semibold"
+            style={{
+              fontSize: 11,
+              color:
+                openCategory === "status"
+                  ? "#fff"
+                  : statusHasFilter
+                    ? "#256D1B"
+                    : "#374151",
+            }}
+          >
+            Status
+          </CustomText>
+          <MaterialIcons
+            name={openCategory === "status" ? "expand-less" : "expand-more"}
+            size={14}
+            color={
+              openCategory === "status"
+                ? "#fff"
+                : statusHasFilter
+                  ? "#256D1B"
+                  : "#9ca3af"
+            }
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Dropdown panel (right-aligned, below row 2) ── */}
+      {openCat != null && (
+        <View style={styles.dropdown}>
           <ScrollView
-            contentContainerStyle={styles.panelInner}
+            contentContainerStyle={styles.dropdownInner}
             showsVerticalScrollIndicator={false}
             bounces={false}
-            style={{ maxHeight: 400 }}
+            style={{ maxHeight: 340 }}
           >
-            {/* Type section – always visible when panel open */}
-            {typeCat && (
-              <FilterCategorySection
-                category={typeCat}
-                isSelected={isSelected}
-                onToggle={handleToggle}
-                itemCounts={itemCounts?.[typeCat.id]}
-                expanded={typeExpanded}
-                onHeaderPress={handleTypeHeaderPress}
-                selectedLabel={typeSelectedLabel}
+            {visibleOptions.map((option) => (
+              <FilterChip
+                key={option.id}
+                label={option.label}
+                selected={isSelected(openCat.id, option.id)}
+                color={option.color}
+                count={itemCounts?.[openCat.id]?.[option.id]}
+                onPress={() => handleSelect(openCat.id, option.id)}
               />
-            )}
+            ))}
 
-            {/* Status section – appears after user picks a type */}
-            {statusVisible && statusCat && (
-              <FilterCategorySection
-                category={statusCat}
-                isSelected={isSelected}
-                onToggle={handleToggle}
-                itemCounts={itemCounts?.[statusCat.id]}
-                expanded={statusExpanded}
-                onHeaderPress={handleStatusHeaderPress}
-                hideAllOption={hideStatusAll}
-                selectedLabel={statusSelectedLabel}
-              />
-            )}
-
-            {/* Clear all */}
+            {/* Clear all – shown when any filter is active */}
             {activeCount > 0 && (
               <TouchableOpacity
-                onPress={() => { onClearAll(); collapse(); }}
+                onPress={() => {
+                  onClearAll();
+                  closeDropdown();
+                }}
                 style={styles.clearAllBtn}
                 activeOpacity={0.7}
               >
@@ -360,8 +378,8 @@ function MapFilterOverlayInner({
               </TouchableOpacity>
             )}
           </ScrollView>
-        </Animated.View>
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -372,34 +390,30 @@ export const MapFilterOverlay = memo(MapFilterOverlayInner);
 // Styles
 // ---------------------------------------------------------------------------
 
-const PANEL_WIDTH = 190;
+const DROPDOWN_WIDTH = 180;
 
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
     top: Platform.OS === "ios" ? 54 : 12,
     right: 0,
+    left: 0,
     zIndex: 20,
-    alignItems: "flex-end",
-    paddingRight: 12,
+    paddingHorizontal: 12,
   },
-  container: {
-    alignItems: "flex-end",
-    width: PANEL_WIDTH + 48,
-  },
-  triggerRow: {
+  // ── Row 1: summary + tune ──
+  row1: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 8,
+    justifyContent: "space-between",
   },
-  // ── Summary card ──
   summaryCard: {
     backgroundColor: "#fff",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
-    maxWidth: PANEL_WIDTH,
+    flex: 1,
+    marginRight: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -415,8 +429,7 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     marginTop: 1,
   },
-  // ── Trigger button ──
-  triggerBtn: {
+  tuneBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -429,7 +442,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  triggerBtnExpanded: {
+  tuneBtnActive: {
     backgroundColor: "#256D1B",
   },
   activeDot: {
@@ -443,11 +456,42 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#fff",
   },
-  // ── Panel ──
-  panel: {
-    overflow: "hidden",
-    width: PANEL_WIDTH,
+  // ── Row 2: pills + tags ──
+  row2: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 6,
     marginTop: 8,
+  },
+  catPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  catPillActive: {
+    backgroundColor: "#256D1B",
+  },
+  catPillFiltered: {
+    backgroundColor: "#dcfce7",
+    borderWidth: 1,
+    borderColor: "#86efac",
+  },
+  // ── Dropdown ──
+  dropdown: {
+    width: DROPDOWN_WIDTH,
+    marginTop: 6,
+    alignSelf: "flex-end",
     backgroundColor: "#fff",
     borderRadius: 14,
     shadowColor: "#000",
@@ -455,9 +499,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 6,
+    overflow: "hidden",
   },
-  panelInner: {
-    paddingVertical: 8,
+  dropdownInner: {
+    paddingVertical: 6,
     paddingHorizontal: 4,
   },
   clearAllBtn: {
