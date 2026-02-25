@@ -139,7 +139,7 @@ function MapFilterOverlayInner({
       };
     }
 
-    // Active filters → show names + count
+    // Active filters → show names + count + breakdown
     const parts: string[] = [];
     if (hasTypeFilter) {
       const optId = [...activeFilters.issueType][0];
@@ -152,12 +152,49 @@ function MapFilterOverlayInner({
       if (opt) parts.push(opt.label);
     }
 
-    // Use the ALL count from issueType which already reflects cross-category filtering
-    const filteredTotal = itemCounts?.issueType?.[ALL_OPTION_ID] ?? 0;
+    // Compute filtered total
+    let filteredTotal = 0;
+    if (hasTypeFilter) {
+      const optId = [...activeFilters.issueType][0];
+      filteredTotal = itemCounts?.issueType?.[optId] ?? 0;
+    } else if (hasStatusFilter) {
+      const optId = [...activeFilters.status][0];
+      filteredTotal = itemCounts?.status?.[optId] ?? 0;
+    }
+
+    // Build breakdown from the *other* dimension's counts
+    // e.g. type selected → show status breakdown; status selected → show type breakdown
+    let breakdownStr: string | null = null;
+    if (hasTypeFilter && !hasStatusFilter) {
+      // Show status breakdown for the selected type
+      const statusCounts = itemCounts?.status ?? {};
+      const breakdown = Object.entries(statusCounts)
+        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => {
+          const opt = statusCat?.options.find((o) => o.id === k);
+          return opt ? `${opt.label} ${v}` : null;
+        })
+        .filter(Boolean) as string[];
+      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
+    } else if (hasStatusFilter && !hasTypeFilter) {
+      // Show type breakdown for the selected status
+      const typeCounts = itemCounts?.issueType ?? {};
+      const breakdown = Object.entries(typeCounts)
+        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([k, v]) => {
+          const opt = typeCat?.options.find((o) => o.id === k);
+          return opt ? `${opt.label} ${v}` : null;
+        })
+        .filter(Boolean) as string[];
+      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
+    }
 
     return {
-      title: parts.join(" · "),
-      detail: `${filteredTotal} matching`,
+      title: `${parts.join(" · ")} · ${filteredTotal}`,
+      detail: breakdownStr,
     };
   }, [activeFilters, itemCounts, typeCat, statusCat]);
 
@@ -182,8 +219,28 @@ function MapFilterOverlayInner({
         </TouchableWithoutFeedback>
       )}
 
-      {/* ── Row 1: Summary (left) + Tune button (right) ── */}
+      {/* ── Row 1: Tune button (left) + Summary (right, leaves space for map btn) ── */}
       <View style={styles.row1} pointerEvents="box-none">
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() =>
+            openCategory ? closeDropdown() : toggleCategory("issueType")
+          }
+          style={[
+            styles.tuneBtn,
+            openCategory != null && styles.tuneBtnActive,
+          ]}
+        >
+          <MaterialIcons
+            name={openCategory != null ? "close" : "tune"}
+            size={20}
+            color={openCategory != null ? "#fff" : "#374151"}
+          />
+          {openCategory == null && activeCount > 0 && (
+            <View style={styles.activeDot} />
+          )}
+        </TouchableOpacity>
+
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() =>
@@ -210,26 +267,6 @@ function MapFilterOverlayInner({
             >
               {summaryLines.detail}
             </CustomText>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() =>
-            openCategory ? closeDropdown() : toggleCategory("issueType")
-          }
-          style={[
-            styles.tuneBtn,
-            openCategory != null && styles.tuneBtnActive,
-          ]}
-        >
-          <MaterialIcons
-            name={openCategory != null ? "close" : "tune"}
-            size={20}
-            color={openCategory != null ? "#fff" : "#374151"}
-          />
-          {openCategory == null && activeCount > 0 && (
-            <View style={styles.activeDot} />
           )}
         </TouchableOpacity>
       </View>
@@ -413,7 +450,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 14,
     flex: 1,
-    marginRight: 8,
+    marginLeft: 8,
+    marginRight: 52,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -461,7 +499,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     gap: 6,
     marginTop: 8,
   },
@@ -491,7 +529,7 @@ const styles = StyleSheet.create({
   dropdown: {
     width: DROPDOWN_WIDTH,
     marginTop: 6,
-    alignSelf: "flex-end",
+    alignSelf: "flex-start",
     backgroundColor: "#fff",
     borderRadius: 14,
     shadowColor: "#000",
