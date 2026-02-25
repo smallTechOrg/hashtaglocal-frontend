@@ -1,7 +1,7 @@
 import { Alert } from "react-native";
 import { calculateHaversineDistance, getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 
-const DISTANCE_THRESHOLD = 50; // meters
+const DISTANCE_THRESHOLD = 100; // meters
 
 export async function ensureUserIsNearIssue(
   issueLat: number,
@@ -9,7 +9,8 @@ export async function ensureUserIsNearIssue(
 ): Promise<boolean> {
   const result = await getFastLocationWithProgressiveWatch({
     instantLoad: false,
-    accuracyThresholdMeters: 15,
+    accuracyThresholdMeters: 30,
+    timeoutMs: 15000,
   });
 
   if (!result.success) {

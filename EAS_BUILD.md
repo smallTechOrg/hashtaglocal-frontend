@@ -45,12 +45,14 @@ npx eas-cli build -p android --profile production
 
 ## Environment Variables & Secrets
 
-**List environment variables:**
+**List environment variables** (must specify environment):
 ```bash
-npx eas-cli env:list
+npx eas-cli env:list --environment development
+npx eas-cli env:list --environment preview
+npx eas-cli env:list --environment production
 ```
 
-**List secrets:**
+**List secrets (deprecated, use env:list):**
 ```bash
 npx eas-cli secret:list
 ```
@@ -59,6 +61,9 @@ npx eas-cli secret:list
 ```bash
 npx eas-cli env:create --scope project --name SECRET_NAME --value "value" --type string
 ```
+
+Example:
+npx eas-cli env:create --scope project --name EXPO_PUBLIC_GOOGLE_CLIENT_ID --value "xyz.apps.googleusercontent.com" --type string --environment preview
 
 **Update secret:**
 ```bash
@@ -70,9 +75,11 @@ npx eas-cli env:update SECRET_NAME --value "new-value"
 npx eas-cli env:delete SECRET_NAME
 ```
 
-**Current secrets:**
-- `GOOGLE_MAPS_API_KEY` - Google Maps Android API key
-- `EXPO_PUBLIC_API_BASE_URL` - API endpoint (preview: `https://staging.api.smalltech.in/local`)
+**Current environment variables:**
+- `EXPO_PUBLIC_API_BASE_URL`
+- `EXPO_PUBLIC_GOOGLE_AUTH_REDIRECT_URI`
+- `EXPO_PUBLIC_GOOGLE_CLIENT_ID`
+- `GOOGLE_MAPS_API_KEY` (secret)
 
 > **Note:** Local `.env` file is NOT used in EAS builds - only for `expo start`
 

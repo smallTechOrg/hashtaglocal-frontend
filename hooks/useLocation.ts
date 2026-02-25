@@ -29,8 +29,8 @@ export function useLocation(imageUri: string) {
 
         const result = await getFastLocationWithProgressiveWatch({
           instantLoad: false,
-          accuracyThresholdMeters: 15,
-          timeoutMs: 20000,
+          accuracyThresholdMeters: 30,
+          timeoutMs: 15000,
         });
 
         if (!result.success) {

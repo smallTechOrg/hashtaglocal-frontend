@@ -372,6 +372,19 @@ export default function RootLayout() {
           })}
         />
         <Drawer.Screen
+          name="NearbyIssuesCheck"
+          options={({ navigation }) => ({
+            title: "Nearby Issues",
+            headerTitleStyle: {
+              fontFamily: "Nunito-Regular",
+            },
+            headerLeft: (props) => (
+              <HeaderBackButton {...props} onPress={() => navigation.goBack()} />
+            ),
+            drawerItemStyle: { display: "none" },
+          })}
+        />
+        <Drawer.Screen
           name="auth"
           options={{
             headerShown: false,
