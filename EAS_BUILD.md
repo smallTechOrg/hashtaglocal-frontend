@@ -45,9 +45,14 @@ npx eas-cli build -p android --profile production
 
 ## Environment Variables & Secrets
 
-**List all:**
+**List environment variables:**
 ```bash
 npx eas-cli env:list
+```
+
+**List secrets:**
+```bash
+npx eas-cli secret:list
 ```
 
 **Create secret:**
