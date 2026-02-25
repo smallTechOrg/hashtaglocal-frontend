@@ -1,18 +1,17 @@
 import { useGoogleAuth } from "@/api/GoogleAuth";
 import CustomText from "@/components/CustomText";
-import { useRouter } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image, ImageBackground, Pressable, View } from "react-native";
 
 export default function LoginScreen() {
-  const router = useRouter();
-const { signIn } = useGoogleAuth();
+  const { signIn } = useGoogleAuth();
   
 
   return (
     <ImageBackground
-      source={require("../assets/bg.png")}
+      source={require("../assets/bg.jpg")}
       resizeMode="fill"
-      imageStyle={{ opacity: 0.3 }}
+      imageStyle={{ opacity: 0.4 }}
       className="flex-1"
     >
       <View className="items-center justify-center px-6 pt-40">
@@ -22,10 +21,27 @@ const { signIn } = useGoogleAuth();
           resizeMode="contain"
         />
 
-        <CustomText className="h1 font-[500] mb-2 mt-20">#local</CustomText>
-        <CustomText className="h3 font-[300] text-center mb-12">
+        <CustomText className="h1 font-[600] mb-2 mt-18">#local</CustomText>
+        <CustomText className="h3 font-[500] text-center mb-8">
           a location based community platform
         </CustomText>
+
+        <View className="mb-12 gap-4">
+          {[
+            { icon: "alert-circle-outline", label: "report and track issues" },
+            { icon: "calendar-month-outline", label: "find events" },
+            { icon: "account-group-outline", label: "join local groups" },
+          ].map(({ icon, label }) => (
+            <View key={label} className="flex-row items-center gap-3">
+              <MaterialCommunityIcons
+                name={icon as any}
+                size={22}
+                color="#4B5563"
+              />
+              <CustomText className="h3 font-[400]">{label}</CustomText>
+            </View>
+          ))}
+        </View>
 
         <Pressable
           onPress={() => {

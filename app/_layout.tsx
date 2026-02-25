@@ -6,14 +6,13 @@ import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
-    DrawerContentComponentProps,
-    DrawerContentScrollView,
-    DrawerItemList,
+  DrawerContentComponentProps,
+  DrawerContentScrollView,
+  DrawerItemList,
 } from "@react-navigation/drawer";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
-import * as Location from "expo-location";
 import { useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
@@ -181,6 +180,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     "Nunito-Regular": require("../assets/fonts/Nunito-Regular.ttf"),
+    "Nunito_200ExtraLight": require("@expo-google-fonts/nunito/200ExtraLight/Nunito_200ExtraLight.ttf"),
+    "Nunito_300Light": require("@expo-google-fonts/nunito/300Light/Nunito_300Light.ttf"),
+    "Nunito_400Regular": require("@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf"),
+    "Nunito_500Medium": require("@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf"),
+    "Nunito_600SemiBold": require("@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf"),
+    "Nunito_700Bold": require("@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf"),
+    "Nunito_800ExtraBold": require("@expo-google-fonts/nunito/800ExtraBold/Nunito_800ExtraBold.ttf"),
   });
 
   useEffect(() => {
