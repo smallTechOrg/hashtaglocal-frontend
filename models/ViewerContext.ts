@@ -1,3 +1,4 @@
 export interface ViewerContext {
-  hasVoted: boolean;
+  upvote: boolean;
+  is_owner: boolean;
 }

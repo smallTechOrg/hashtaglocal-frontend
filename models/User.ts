@@ -1,5 +1,5 @@
 export interface User {
   username: string;
-  profilePictureUrl: string;
+  profile_photo: string;
   hashtag?: string;
 }

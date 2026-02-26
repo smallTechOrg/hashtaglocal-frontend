@@ -21,6 +21,12 @@ npx expo login
 npx expo start
 ```
 
+To use remotely, when not on same network:
+```bash
+npx expo start --tunnel
+```
+
+
 ###  Run Backend
 
 Create .env file.

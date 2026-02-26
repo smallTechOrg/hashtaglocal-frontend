@@ -3,27 +3,27 @@ import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
-    getFastLocationWithProgressiveWatch,
-    UserLocation,
+  getFastLocationWithProgressiveWatch,
+  UserLocation,
 } from "@/utils/LocationService";
 import {
-    formatDistance,
-    getNearbyIssues,
-    IssueWithDistance,
-    NEARBY_RADIUS_METERS,
+  formatDistance,
+  getNearbyIssues,
+  IssueWithDistance,
+  NEARBY_RADIUS_METERS,
 } from "@/utils/NearbyIssues";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -226,6 +226,13 @@ export default function NearbyIssuesCheck() {
           location.longitude,
           issues
         );
+
+        // No nearby issues → skip straight to camera
+        if (nearby.length === 0) {
+          router.replace("/CameraCapture");
+          return;
+        }
+
         setNearbyIssues(nearby);
         setScreenState("ready");
 

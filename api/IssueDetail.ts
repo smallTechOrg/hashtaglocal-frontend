@@ -87,19 +87,7 @@ export async function fetchIssue(issueId: number): Promise<APIResponse> {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUE(issueId)}`;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    const response = await apiGet(url, { timeout: TIME_OUT });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -446,12 +434,7 @@ export async function uploadImage(
 export async function getIssuesByLocation(lat: number, lng: number) {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUES_BY_LOCATION}?lat=${lat}&lng=${lng}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await apiGet(url, { timeout: 15_000 });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch issues: ${response.statusText}`);
