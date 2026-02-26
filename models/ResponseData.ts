@@ -3,5 +3,5 @@ import { ViewerContext } from './ViewerContext';
 
 export interface ResponseData {
   issue: Issue;
-  viewerContext: ViewerContext;
+  viewer_context: ViewerContext;
 }

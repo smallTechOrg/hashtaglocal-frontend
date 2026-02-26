@@ -1,3 +1,4 @@
+import { apiGet } from "@/utils/apiClient";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
@@ -69,15 +70,7 @@ export default function AuthCallbackScreen() {
           console.log("Location not available for profile API, using without location");
         }
 
-        const profileResponse = await fetch(
-          profileUrl,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
-          }
-        );
+        const profileResponse = await apiGet(profileUrl);
 
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();

@@ -118,7 +118,7 @@ const IssueDetailScreen = () => {
         url_thumbnail: media.url_thumbnail,
         description: media.description || (index === 0 ? issue.description : undefined),
         username: media.username || (index === 0 ? issue.user.username : undefined),
-        profile_photo: media.profile_photo || (index === 0 ? issue.user.profilePictureUrl : undefined),
+        profile_photo: media.profile_photo || (index === 0 ? issue.user.profile_photo : undefined),
         created_at: media.created_at ? formatDate(media.created_at) : undefined,
         days_active: media.created_at ? calculateDaysActive(media.created_at) : undefined,
     }));
@@ -186,22 +186,24 @@ const IssueDetailScreen = () => {
                 />
             </View>
 
-            {/* Update Button */}
-            <TouchableOpacity
-                onPress={handleUpdate}
-                disabled={checkingDistance}
-                className="flex-row items-center justify-center gap-2 bg-[#2563EB] mx-3 mt-3 py-3 rounded-xl"
-                style={{ elevation: 2 }}
-            >
-                {checkingDistance ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                    <MaterialIcons name="camera-alt" size={20} color="#fff" />
-                )}
-                <CustomText className="text-white font-semibold p">
-                    Update Issue
-                </CustomText>
-            </TouchableOpacity>
+            {/* Update Button — hidden for RESOLVED and REJECTED issues */}
+            {issue.status !== 'RESOLVED' && issue.status !== 'REJECTED' && (
+                <TouchableOpacity
+                    onPress={handleUpdate}
+                    disabled={checkingDistance}
+                    className="flex-row items-center justify-center gap-2 bg-[#2563EB] mx-3 mt-3 py-3 rounded-xl"
+                    style={{ elevation: 2 }}
+                >
+                    {checkingDistance ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                        <MaterialIcons name="camera-alt" size={20} color="#fff" />
+                    )}
+                    <CustomText className="text-white font-semibold p">
+                        Update Issue
+                    </CustomText>
+                </TouchableOpacity>
+            )}
 
 
             {/* Issue Details Card */}
