@@ -58,7 +58,6 @@ export async function saveTokens(
   refreshToken: string,
   refreshTokenExpiry: number
 ): Promise<void> {
-    // Store multiple key-value pairs in a single atomic operation
   await AsyncStorage.multiSet([
     [KEYS.ACCESS_TOKEN, accessToken],
     [KEYS.ACCESS_TOKEN_EXPIRY, accessTokenExpiry.toString()],
