@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "702783810690",
+    "project_id": "hashtaglocal-d9b67",
+    "storage_bucket": "hashtaglocal-d9b67.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:702783810690:android:4c3e95d1b6c4292c7c189b",
+        "android_client_info": {
+          "package_name": "com.madhyamakist.hashtaglocalfrontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQcQPrJX9A0vKH5C4NvEE8QaRdJKlkRf8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
