@@ -13,7 +13,7 @@ import {
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
-import { useRouter, useSegments } from "expo-router";
+import { router, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -256,16 +256,31 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Debug: Log all incoming deep links
+  // Handle all incoming deep links – including auth callbacks
   useEffect(() => {
-    const subscription = Linking.addEventListener("url", ({ url }) => {
+    function handleUrl(url: string) {
       console.log("Deep link received:", url);
-    });
 
-    // Check if app was opened via deep link
+      // If this is an auth-callback URL, route to the callback screen explicitly.
+      // This is a safety net for cases where expo-router's automatic routing
+      // doesn't fire in time (e.g. after Google's cross-device verification flow).
+      if (url.includes("auth/callback") && url.includes("access_token")) {
+        const queryString = url.split("?")[1];
+        if (queryString) {
+          const params = Object.fromEntries(new URLSearchParams(queryString).entries());
+          console.log("[Linking] Auth callback detected – routing explicitly to /auth/callback");
+          router.replace({ pathname: "/auth/callback", params });
+        }
+      }
+    }
+
+    const subscription = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+
+    // Handle the case where the app was opened cold via an auth deep link
     Linking.getInitialURL().then((url) => {
       if (url) {
         console.log("App opened with URL:", url);
+        handleUrl(url);
       }
     });
 
