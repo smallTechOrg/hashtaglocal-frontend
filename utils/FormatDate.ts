@@ -16,6 +16,29 @@ export const formatDate = (dateString: string): string => {
     }).replace(/,/g, '');
 };
   
+export const formatEventDate = (dateStr: string): string => {
+    if (!dateStr) return "";
+    const utc = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
+    const date = new Date(utc);
+    return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
+
+export const formatEventTime = (dateStr: string): string => {
+    if (!dateStr) return "";
+    const utc = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
+    const date = new Date(utc);
+    return date.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "UTC",
+    });
+};
+
 export const calculateDaysActive = (dateString: string): string => {
     if (!dateString) return "";
 

@@ -45,3 +45,9 @@ Re-start the app after you've made this change.
 ## Config Setup
 
 Add EXPO_PUBLIC_GOOGLE_CLIENT_ID to the .env file. Get it from a team member.
+
+// Feature flags — set to "true" to enable events tab, anything else to disable
+
+EXPO_PUBLIC_FEATURE_EVENTS=true     
+
+
