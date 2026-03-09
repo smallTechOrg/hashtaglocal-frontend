@@ -6,6 +6,8 @@ import { Tabs } from 'expo-router';
 import { useMemo } from 'react';
 import { Image } from 'react-native';
 
+const EVENTS_ENABLED = process.env.EXPO_PUBLIC_FEATURE_EVENTS === "true";
+
 export default function TabsLayout() {
   const { user } = useUser();
   
@@ -101,6 +103,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="events"
         options={{
+          href: EVENTS_ENABLED ? undefined : null,
           title: 'Events',
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",

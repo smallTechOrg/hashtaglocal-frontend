@@ -1,6 +1,6 @@
 import { Event, fetchEvents } from "@/api/events";
 // --- MOCK: remove this import (and the if-block below) when backend is ready ---
-import { MOCK_EVENTS, USE_MOCK_EVENTS } from "@/api/events.mock";
+// import { MOCK_EVENTS, USE_MOCK_EVENTS } from "@/api/events.mock";
 // ------------------------------------------------------------------------------
 import EventCard from "@/components/EventCard";
 import { useEffect, useState } from "react";
@@ -12,13 +12,6 @@ export default function EventsScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // --- MOCK: remove this if-block when backend is ready ---
-    if (USE_MOCK_EVENTS) {
-      setEvents(MOCK_EVENTS);
-      setLoading(false);
-      return;
-    }
-    // --------------------------------------------------------
     fetchEvents()
       .then(setEvents)
       .catch((e) => setError(e.message))
