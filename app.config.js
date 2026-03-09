@@ -11,6 +11,7 @@ export default {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      googleServicesFile: "./GoogleService-Info.plist",
       bundleIdentifier: "com.madhyamakist.hashtaglocalfrontend",
       associatedDomains: [
         "applinks:hashtaglocal.app",
@@ -24,6 +25,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
+      googleServicesFile: "./google-services.json",
       package: "com.madhyamakist.hashtaglocalfrontend",
       config: {
         googleMaps: {
@@ -59,6 +61,8 @@ export default {
     },
     plugins: [
       "expo-dev-client",
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
       "expo-router",
       [
         "expo-splash-screen",
