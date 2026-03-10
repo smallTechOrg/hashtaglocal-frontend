@@ -260,9 +260,13 @@ export default function RootLayout() {
   // Enable Crashlytics in debug builds + send test log
   // TODO: Remove recordError line after confirming GCP logs are working
   useEffect(() => {
-    const c = getCrashlytics();
-    setCrashlyticsCollectionEnabled(c, true);
-    recordCrashError(c, new Error("[hashtaglocal] App opened - GCP logging test"));
+    const initCrashlytics = async () => {
+      const c = getCrashlytics();
+      await setCrashlyticsCollectionEnabled(c, true);
+      recordCrashError(c, new Error("[hashtaglocal] App opened - GCP logging test"));
+      console.log("[Crashlytics] recordError sent");
+    };
+    initCrashlytics();
   }, []);
 
   // Handle all incoming deep links – including auth callbacks
