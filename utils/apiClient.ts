@@ -10,6 +10,7 @@ import {
 import { router } from "expo-router";
 import { Alert } from "react-native";
 import { authEvents } from "./authEvents";
+import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 type RequestOptions = Omit<RequestInit, "headers"> & {
@@ -48,7 +49,7 @@ async function refreshAccessToken(): Promise<string | null> {
       // Check if refresh token itself is expired
       const isRefreshExpired = await isRefreshTokenExpired();
       if (isRefreshExpired) {
-        console.log("[ApiClient] Refresh token expired - user must login again");
+        recordCrashError(getCrashlytics(), new Error("[ApiClient] Refresh token expired - user must login again"));
         await clearTokens();
         authEvents.emitSessionExpired(); // Clear user state in UserContext
         Alert.alert(
@@ -74,7 +75,7 @@ async function refreshAccessToken(): Promise<string | null> {
       console.log("[ApiClient] Token refreshed successfully");
       return access_token.value;
     } catch (error) {
-      console.error("[ApiClient] Failed to refresh token:", error);
+      recordCrashError(getCrashlytics(), error instanceof Error ? error : new Error(String(error)), "[ApiClient] Failed to refresh token");
       await clearTokens();
       authEvents.emitSessionExpired();
       Alert.alert(
@@ -99,7 +100,6 @@ async function refreshAccessToken(): Promise<string | null> {
  */
 export async function getValidAccessToken(): Promise<string | null> {
   const token = await getAccessToken();
-  console.log("[ApiClient] Access token:", token);
 
   if (!token) {
     return null;
@@ -181,7 +181,7 @@ export async function apiRequest(
 
         // If still 401 after retry, redirect to login
         if (response.status === 401) {
-          console.log("[ApiClient] Still 401 after token refresh, redirecting to login");
+          recordCrashError(getCrashlytics(), new Error("[ApiClient] Still 401 after token refresh, redirecting to login"));
           await clearTokens();
           authEvents.emitSessionExpired();
           Alert.alert(

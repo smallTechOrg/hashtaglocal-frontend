@@ -1,5 +1,6 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
+import { getCrashlytics, recordError as recordCrashError, setCrashlyticsCollectionEnabled } from "@react-native-firebase/crashlytics";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
@@ -75,7 +76,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         if (error.message?.includes("Authentication required")) {
           console.log("No valid token available");
         } else {
-          console.error("Failed to load user profile:", error);
+          recordCrashError(getCrashlytics(), error instanceof Error ? error : new Error(String(error)));
           await clearTokens();
         }
         setUser(null);
@@ -255,6 +256,14 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Enable Crashlytics in debug builds + send test log
+  // TODO: Remove recordError line after confirming GCP logs are working
+  useEffect(() => {
+    const c = getCrashlytics();
+    setCrashlyticsCollectionEnabled(c, true);
+    recordCrashError(c, new Error("[hashtaglocal] App opened - GCP logging test"));
+  }, []);
 
   // Handle all incoming deep links – including auth callbacks
   useEffect(() => {
