@@ -31,6 +31,7 @@ const IssueDetailScreen = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [checkingDistance, setCheckingDistance] = useState(false);
     const [showStatusDetails, setShowStatusDetails] = useState(false);
+    const [showPortalStatusDetails, setShowPortalStatusDetails] = useState(false);
 
     useEffect(() => {
         const loadIssue = async () => {
@@ -113,7 +114,7 @@ const IssueDetailScreen = () => {
     const getPortalDurationText = (portal: any) => {
         if (!portal.updated_at) return "";
 
-        const start = new Date(issue.created_at);
+        const start = new Date(portal.created_at);
         const end = new Date(portal.updated_at);
 
         const diffDays = Math.floor(
@@ -129,6 +130,12 @@ const IssueDetailScreen = () => {
         }
 
         return "";
+    };
+
+    const formatMetaKey = (key: string) => {
+        return key
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
     };
 
     // Sort media by created_at ascending (oldest first) so the original report is at index 0
@@ -361,21 +368,45 @@ const IssueDetailScreen = () => {
 
             </View>
 
-            {/* Status + Duration */}
-            <View className="flex-row justify-between items-center mb-2">
+            {/* Status */}
+            <TouchableOpacity
+                onPress={() => setShowPortalStatusDetails(!showPortalStatusDetails)}
+                className="mb-2"
+                activeOpacity={0.7}
+            >
 
-            <View className="flex-row items-center">
-            <MaterialIcons name="info-outline" size={18} color="#256D1B" />
-            <CustomText className="ml-2 text-gray-700">
-            Status: {portal.status}
+            <View className="flex-row items-center gap-2 bg-blue-50 px-4 py-3 rounded-lg border border-blue-200">
+
+            <MaterialIcons name="info" size={18} color="#2563EB" />
+
+            <CustomText className="text-blue-900 font-bold uppercase">
+            {portal.status}
             </CustomText>
+
             </View>
 
-            <CustomText className="text-gray-700 text-sm ml-6 mb-2">
+            {showPortalStatusDetails && (
+
+            <CustomText className="text-gray-600 text-sm mt-2">
+
+            {portal.status === "OPEN"
+            ? "The complaint has been registered on the government portal and is currently open."
+
+            : portal.status === "CLOSED"
+            ? "The government portal says issue has been resolved. Click a Image to veriy"
+
+            : `Current status: ${portal.status}`}
+
+            </CustomText>
+
+            )}
+
+            </TouchableOpacity>
+
+            {/* Duration */}
+            <CustomText className="text-gray-700 text-sm mb-2">
             {getPortalDurationText(portal)}
             </CustomText>
-
-            </View>
 
             {/* Metadata */}
             {portal.meta_data &&
@@ -388,7 +419,7 @@ const IssueDetailScreen = () => {
             <View key={i} className="flex-row mb-1">
 
             <CustomText className="font-semibold text-gray-700">
-            {key}:
+            {formatMetaKey(key)}:
             </CustomText>
 
             <CustomText className="ml-2 text-gray-600">

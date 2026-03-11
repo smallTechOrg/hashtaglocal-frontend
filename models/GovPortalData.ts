@@ -5,4 +5,5 @@ export interface GovPortalData {
   portal_track_link: string;
   meta_data?: Record<string, any>;
   updated_at?: string;
+  created_at?: string;
 }
