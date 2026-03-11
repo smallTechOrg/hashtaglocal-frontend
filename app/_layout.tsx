@@ -1,11 +1,11 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
-import { getCrashlytics, recordError as recordCrashError, setCrashlyticsCollectionEnabled } from "@react-native-firebase/crashlytics";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
+import { crash, getCrashlytics, recordError as recordCrashError, setCrashlyticsCollectionEnabled } from "@react-native-firebase/crashlytics";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -261,13 +261,16 @@ export default function RootLayout() {
   // TODO: Remove recordError line after confirming GCP logs are working
   useEffect(() => {
     const initCrashlytics = async () => {
-      const c = getCrashlytics();
-      await setCrashlyticsCollectionEnabled(c, true);
-      recordCrashError(c, new Error("[hashtaglocal] App opened - GCP logging test"));
+      const crashlyticsInstance = getCrashlytics();
+      await setCrashlyticsCollectionEnabled(crashlyticsInstance, true);
+      recordCrashError(crashlyticsInstance, new Error("[hashtaglocal] App opened - GCP logging test"));
       console.log("[Crashlytics] recordError sent");
+      crash(crashlyticsInstance);
     };
     initCrashlytics();
   }, []);
+
+
 
   // Handle all incoming deep links – including auth callbacks
   useEffect(() => {
