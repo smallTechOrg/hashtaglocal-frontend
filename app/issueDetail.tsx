@@ -10,6 +10,7 @@ import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
 
@@ -106,6 +107,30 @@ const IssueDetailScreen = () => {
 
     const { issue } = issueData.data;
 
+    const portalData = issue.gov_portal_data || [];
+    
+    // helper for portal duration text
+    const getPortalDurationText = (portal: any) => {
+        if (!portal.updated_at) return "";
+
+        const start = new Date(issue.created_at);
+        const end = new Date(portal.updated_at);
+
+        const diffDays = Math.floor(
+            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (portal.status === "OPEN") {
+            return `Open for ${diffDays} days`;
+        }
+
+        if (portal.status === "CLOSED") {
+            return `Closed in ${diffDays} days`;
+        }
+
+        return "";
+    };
+
     // Sort media by created_at ascending (oldest first) so the original report is at index 0
     const sortedMedia = [...issue.media_urls].sort((a, b) => {
         if (!a.created_at || !b.created_at) return 0;
@@ -171,6 +196,14 @@ const IssueDetailScreen = () => {
             const msg = err instanceof Error ? err.message : "Failed to delete issue";
             Alert.alert("Error", msg);
             setIsDeleting(false);
+        }
+    };
+
+    const openPortalLink = async (url: string) => {
+        try {
+            await WebBrowser.openBrowserAsync(url);
+        } catch (err) {
+            Alert.alert("Error", "Unable to open portal link.");
         }
     };
 
@@ -296,6 +329,101 @@ const IssueDetailScreen = () => {
                     </CustomText>
                 </View>
             </View>
+
+            {/* Government Portal Tracking */}
+            {portalData.length > 0 && (
+            <View className="bg-white p-5 mt-3 mx-3 rounded-xl shadow-md" style={{ elevation: 3 }}>
+
+            <View className="flex-row items-center mb-3">
+            <MaterialIcons name="account-balance" size={20} color="#2563EB" />
+            <CustomText className="ml-2 font-bold text-lg">
+            Government Portal Tracking
+            </CustomText>
+            </View>
+
+            {portalData.map((portal, index) => (
+
+            <View key={index} className="border-t border-gray-200 pt-3 mb-4">
+
+            {/* Tracking ID + Portal name */}
+            <View className="flex-row justify-between items-center mb-2">
+
+            <View className="flex-row items-center">
+            <MaterialIcons name="confirmation-number" size={18} color="#256D1B" />
+            <CustomText className="ml-2 text-gray-700">
+            Tracking ID: {portal.tracking_id}
+            </CustomText>
+            </View>
+
+            <CustomText className="text-green-700 font-semibold">
+            {portal.portal_name}
+            </CustomText>
+
+            </View>
+
+            {/* Status + Duration */}
+            <View className="flex-row justify-between items-center mb-2">
+
+            <View className="flex-row items-center">
+            <MaterialIcons name="info-outline" size={18} color="#256D1B" />
+            <CustomText className="ml-2 text-gray-700">
+            Status: {portal.status}
+            </CustomText>
+            </View>
+
+            <CustomText className="text-gray-700 text-sm ml-6 mb-2">
+            {getPortalDurationText(portal)}
+            </CustomText>
+
+            </View>
+
+            {/* Metadata */}
+            {portal.meta_data &&
+            Object.keys(portal.meta_data).length > 0 && (
+
+            <View className="mt-2 bg-gray-50 rounded p-3">
+
+            {Object.entries(portal.meta_data).map(([key, value], i) => (
+
+            <View key={i} className="flex-row mb-1">
+
+            <CustomText className="font-semibold text-gray-700">
+            {key}:
+            </CustomText>
+
+            <CustomText className="ml-2 text-gray-600">
+            {typeof value === "object"
+            ? JSON.stringify(value)
+            : String(value)}
+            </CustomText>
+
+            </View>
+
+            ))}
+
+            </View>
+
+            )}
+
+            {/* Portal link */}
+            {portal.portal_track_link && (
+            <TouchableOpacity
+            onPress={() => openPortalLink(portal.portal_track_link)}
+            className="flex-row items-center justify-end mt-2 mb-2"
+            >
+            <MaterialIcons name="open-in-new" size={18} color="#2563EB" />
+            <CustomText className="ml-2 text-blue-600 underline">
+            Check issue status on portal
+            </CustomText>
+            </TouchableOpacity>
+            )}
+
+            </View>
+
+            ))}
+
+            </View>
+            )}
 
             {/* Delete Button - only visible to the original reporter */}
             {user?.username === issue.user.username && (
