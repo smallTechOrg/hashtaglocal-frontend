@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "702783810690",
-    "project_id": "hashtaglocal-d9b67",
-    "storage_bucket": "hashtaglocal-d9b67.firebasestorage.app"
+    "project_number": "870371939888",
+    "project_id": "ai-agent-boilerplate0",
+    "storage_bucket": "ai-agent-boilerplate0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:702783810690:android:4c3e95d1b6c4292c7c189b",
+        "mobilesdk_app_id": "1:870371939888:android:c9b25c8d3f85e1914a3ff5",
         "android_client_info": {
           "package_name": "com.madhyamakist.hashtaglocalfrontend"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "870371939888-dtnniua1oc41pd9mlnluo16mjbfhb83r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCQcQPrJX9A0vKH5C4NvEE8QaRdJKlkRf8"
+          "current_key": "AIzaSyBm8mlQ1q7-UK06HNl7qt9f0RnIXJFfU0Y"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870371939888-dtnniua1oc41pd9mlnluo16mjbfhb83r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
