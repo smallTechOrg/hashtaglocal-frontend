@@ -1,5 +1,6 @@
 
 import { fetchIssue, rejectIssue } from "@/api/IssueDetail";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
@@ -54,6 +55,9 @@ const IssueDetailScreen = () => {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to load issue';
                 setError(errorMessage);
                 console.error('Error loading issue:', err);
+                const crashlytics = getCrashlytics();
+                log(crashlytics, `Issue detail load failed (id: ${params.issueId ?? params.id})`);
+                recordCrashError(crashlytics, err instanceof Error ? err : new Error(errorMessage));
             } finally {
                 setLoading(false);
             }
@@ -155,6 +159,9 @@ const IssueDetailScreen = () => {
             });
         } catch (err) {
             console.error("Distance check error:", err);
+            const crashlytics = getCrashlytics();
+            log(crashlytics, `Distance check failed on issue detail (id: ${issueId})`);
+            recordCrashError(crashlytics, err instanceof Error ? err : new Error(String(err)));
             Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
         } finally {
             setCheckingDistance(false);
@@ -169,6 +176,9 @@ const IssueDetailScreen = () => {
             router.replace("/(tabs)");
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Failed to delete issue";
+            const crashlytics = getCrashlytics();
+            log(crashlytics, `Issue delete failed (id: ${issueId})`);
+            recordCrashError(crashlytics, err instanceof Error ? err : new Error(msg));
             Alert.alert("Error", msg);
             setIsDeleting(false);
         }

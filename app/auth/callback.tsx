@@ -2,6 +2,7 @@ import { apiGet } from "@/utils/apiClient";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -99,6 +100,9 @@ export default function AuthCallbackScreen() {
 
         router.replace("/");
       } catch (error) {
+        const crashlytics = getCrashlytics();
+        log(crashlytics, "Login failed during auth callback");
+        recordCrashError(crashlytics, error instanceof Error ? error : new Error(String(error)));
         setIsLoading(false);
         router.replace("/login");
       }
