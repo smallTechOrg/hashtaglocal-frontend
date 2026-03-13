@@ -74,13 +74,6 @@ function NearbyIssueCard({
     issue.location?.locality?.city ??
     issue.location?.locality?.district ??
     "Location unknown";
-  
-  const isFocused = useIsFocused();
-  const isFocusedRef = useRef(isFocused);
-
-  useEffect(() => {
-    isFocusedRef.current = isFocused;
-  }, [isFocused]);
 
   return (
     <View style={styles.card}>
@@ -204,10 +197,18 @@ export default function NearbyIssuesCheck() {
   const [nearbyIssues, setNearbyIssues] = useState<IssueWithDistance[]>([]);
   const [updatingIssueId, setUpdatingIssueId] = useState<number | null>(null);
 
+  // Track screen focus for async operations
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+
   // Fade-in animation for content
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // ── Location + filter on mount ────────────────────────────
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+
   useEffect(() => {
     (async () => {
       try {
