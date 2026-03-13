@@ -23,7 +23,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useIsFocused } from '@react-navigation/native';
+import { ActivityIndicator, Alert, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
 
@@ -95,6 +96,8 @@ export default function MapScreen() {
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
+  const [imageVisible, setImageVisible] = useState(false);
+  const prefetchedThumbs = useRef(new Set<string>());
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -169,6 +172,13 @@ export default function MapScreen() {
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
 
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+
   useEffect(() => {
     if (user) {
       loadUserLocation();
@@ -201,6 +211,8 @@ export default function MapScreen() {
   // Open/close bottom sheet when issue is selected/deselected
   useEffect(() => {
     if (selectedIssue) {
+      setImageVisible(false);
+
       // Use setTimeout to ensure the bottom sheet is ready for interaction
       const timer = setTimeout(() => {
         try {
@@ -267,7 +279,10 @@ export default function MapScreen() {
       // Prefetch thumbnails so they're cached before a marker is tapped
       issuesData.forEach((issue: IssueMarker) => {
         const thumb = issue.media_urls?.[0]?.url_thumbnail;
-        if (thumb) Image.prefetch(thumb);
+        if (thumb && !prefetchedThumbs.current.has(thumb)){
+          prefetchedThumbs.current.add(thumb);
+          Image.prefetch(thumb);
+        } 
       });
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
@@ -277,6 +292,13 @@ export default function MapScreen() {
   };
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
+    const thumb = issue.media_urls?.[0]?.url_thumbnail;
+
+    // Prioritize this thumbnail
+    if (thumb && !prefetchedThumbs.current.has(thumb)) {
+      prefetchedThumbs.current.add(thumb);
+      Image.prefetch(thumb);
+    }
     setSelectedIssue(issue);
   }, []);
 
@@ -300,6 +322,7 @@ export default function MapScreen() {
     try {
       setCheckingDistance(true);
       const isNear = await ensureUserIsNearIssue(selectedIssue.location.lat, selectedIssue.location.lng);
+      if (!isFocusedRef.current) return;
       if (!isNear) return;
 
       bottomSheetRef.current?.close();
@@ -312,7 +335,10 @@ export default function MapScreen() {
         },
       });
     } catch (e) {
-      console.error("Distance check failed", e);      
+      if (isFocusedRef.current) {
+        console.error("Distance check failed", e);
+        Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
+      }
     } finally {
       setCheckingDistance(false);
     }
@@ -512,13 +538,15 @@ export default function MapScreen() {
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
+                  key={selectedIssue.id}
                   source={{ uri: selectedIssue.media_urls[0].url }}
                   placeholder={selectedIssue.media_urls[0].url_thumbnail ? { uri: selectedIssue.media_urls[0].url_thumbnail } : undefined}
                   placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
-                  transition={300}
+                  transition={0}
                   cachePolicy="memory-disk"
+                  onLoad={() => setImageVisible(true)}
                 />
               </View>
             ) : (

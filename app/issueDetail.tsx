@@ -14,7 +14,8 @@ import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from 'react';
-
+import { useIsFocused } from '@react-navigation/native';
+import { useRef } from "react";
 import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,6 +34,12 @@ const IssueDetailScreen = () => {
     const [checkingDistance, setCheckingDistance] = useState(false);
     const [showStatusDetails, setShowStatusDetails] = useState(false);
     const [showPortalStatusDetails, setShowPortalStatusDetails] = useState(false);
+    const isFocused = useIsFocused();
+    const isFocusedRef = useRef(isFocused);
+
+    useEffect(() => {
+        isFocusedRef.current = isFocused;
+    }, [isFocused]);
 
     useEffect(() => {
         const loadIssue = async () => {
@@ -176,6 +183,10 @@ const IssueDetailScreen = () => {
         try {
             setCheckingDistance(true);
             const isNear = await ensureUserIsNearIssue(issue.location.lat, issue.location.lng);
+
+            // If user left the screen, stop here
+            if (!isFocusedRef.current) return;
+
             if (!isNear) {
                 return;
             }
@@ -190,11 +201,13 @@ const IssueDetailScreen = () => {
                 },
             });
         } catch (err) {
-            console.error("Distance check error:", err);
-            const crashlytics = getCrashlytics();
-            log(crashlytics, `Distance check failed on issue detail (id: ${issueId})`);
-            recordCrashError(crashlytics, err instanceof Error ? err : new Error(String(err)));
-            Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
+            if (isFocusedRef.current) {
+                console.error("Distance check error:", err);
+                const crashlytics = getCrashlytics();
+                log(crashlytics, `Distance check failed on issue detail (id: ${issueId})`);
+                recordCrashError(crashlytics, err instanceof Error ? err : new Error(String(err)));
+                Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
+            }
         } finally {
             setCheckingDistance(false);
         }
