@@ -96,6 +96,8 @@ export default function MapScreen() {
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
+  const [imageVisible, setImageVisible] = useState(false);
+  const prefetchedThumbs = useRef(new Set<string>());
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -209,6 +211,8 @@ export default function MapScreen() {
   // Open/close bottom sheet when issue is selected/deselected
   useEffect(() => {
     if (selectedIssue) {
+      setImageVisible(false);
+
       // Use setTimeout to ensure the bottom sheet is ready for interaction
       const timer = setTimeout(() => {
         try {
@@ -275,7 +279,10 @@ export default function MapScreen() {
       // Prefetch thumbnails so they're cached before a marker is tapped
       issuesData.forEach((issue: IssueMarker) => {
         const thumb = issue.media_urls?.[0]?.url_thumbnail;
-        if (thumb) Image.prefetch(thumb);
+        if (thumb && !prefetchedThumbs.current.has(thumb)){
+          prefetchedThumbs.current.add(thumb);
+          Image.prefetch(thumb);
+        } 
       });
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
@@ -285,6 +292,13 @@ export default function MapScreen() {
   };
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
+    const thumb = issue.media_urls?.[0]?.url_thumbnail;
+
+    // Prioritize this thumbnail
+    if (thumb && !prefetchedThumbs.current.has(thumb)) {
+      prefetchedThumbs.current.add(thumb);
+      Image.prefetch(thumb);
+    }
     setSelectedIssue(issue);
   }, []);
 
@@ -529,8 +543,9 @@ export default function MapScreen() {
                   placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
-                  transition={300}
+                  transition={0}
                   cachePolicy="memory-disk"
+                  onLoad={() => setImageVisible(true)}
                 />
               </View>
             ) : (
