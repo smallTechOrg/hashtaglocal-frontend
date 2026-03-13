@@ -538,6 +538,7 @@ export default function MapScreen() {
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
                 <Image
+                  key={selectedIssue.id}
                   source={{ uri: selectedIssue.media_urls[0].url }}
                   placeholder={selectedIssue.media_urls[0].url_thumbnail ? { uri: selectedIssue.media_urls[0].url_thumbnail } : undefined}
                   placeholderContentFit="cover"
