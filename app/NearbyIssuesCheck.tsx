@@ -17,6 +17,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { useIsFocused } from '@react-navigation/native';
+
 import {
   ActivityIndicator,
   Alert,
@@ -195,10 +197,18 @@ export default function NearbyIssuesCheck() {
   const [nearbyIssues, setNearbyIssues] = useState<IssueWithDistance[]>([]);
   const [updatingIssueId, setUpdatingIssueId] = useState<number | null>(null);
 
+  // Track screen focus for async operations
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+
   // Fade-in animation for content
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // ── Location + filter on mount ────────────────────────────
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -267,6 +277,8 @@ export default function NearbyIssuesCheck() {
         issue.location.lat,
         issue.location.lng
       );
+      // If user left the screen, stop here
+      if (!isFocusedRef.current) return;
       if (!isNear) return; // ensureUserIsNearIssue already shows an alert
       router.push({
         pathname: "/CameraCapture",
@@ -277,11 +289,14 @@ export default function NearbyIssuesCheck() {
         },
       });
     } catch (e) {
-      console.error("Distance check failed", e);
-      const crashlytics = getCrashlytics();
-      log(crashlytics, `Distance check failed for issue ${issue.id}`);
-      recordCrashError(crashlytics, e instanceof Error ? e : new Error(String(e)));
-      Alert.alert("Error", "Could not verify your location. Please try again.");
+      if (isFocusedRef.current) {
+        console.error("Distance check failed", e);
+        const crashlytics = getCrashlytics();
+        log(crashlytics, `Distance check failed for issue ${issue.id}`);
+        recordCrashError(crashlytics, e instanceof Error ? e : new Error(String(e)));
+        Alert.alert("Error", "Could not verify your location. Please try again.");
+      }
+      
     } finally {
       setUpdatingIssueId(null);
     }
