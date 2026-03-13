@@ -17,6 +17,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { useIsFocused } from '@react-navigation/native';
+
 import {
   ActivityIndicator,
   Alert,
@@ -72,6 +74,13 @@ function NearbyIssueCard({
     issue.location?.locality?.city ??
     issue.location?.locality?.district ??
     "Location unknown";
+  
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
 
   return (
     <View style={styles.card}>
@@ -267,6 +276,8 @@ export default function NearbyIssuesCheck() {
         issue.location.lat,
         issue.location.lng
       );
+      // If user left the screen, stop here
+      if (!isFocusedRef.current) return;
       if (!isNear) return; // ensureUserIsNearIssue already shows an alert
       router.push({
         pathname: "/CameraCapture",
@@ -277,11 +288,14 @@ export default function NearbyIssuesCheck() {
         },
       });
     } catch (e) {
-      console.error("Distance check failed", e);
-      const crashlytics = getCrashlytics();
-      log(crashlytics, `Distance check failed for issue ${issue.id}`);
-      recordCrashError(crashlytics, e instanceof Error ? e : new Error(String(e)));
-      Alert.alert("Error", "Could not verify your location. Please try again.");
+      if (isFocusedRef.current) {
+        console.error("Distance check failed", e);
+        const crashlytics = getCrashlytics();
+        log(crashlytics, `Distance check failed for issue ${issue.id}`);
+        recordCrashError(crashlytics, e instanceof Error ? e : new Error(String(e)));
+        Alert.alert("Error", "Could not verify your location. Please try again.");
+      }
+      
     } finally {
       setUpdatingIssueId(null);
     }
