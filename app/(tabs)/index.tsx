@@ -23,7 +23,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useIsFocused } from '@react-navigation/native';
+import { ActivityIndicator, Alert, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
 
@@ -169,6 +170,13 @@ export default function MapScreen() {
   // Bottom sheet snap points
   const snapPoints = useMemo(() => ['45%', '50%', '90%'], []);
 
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+
   useEffect(() => {
     if (user) {
       loadUserLocation();
@@ -300,6 +308,7 @@ export default function MapScreen() {
     try {
       setCheckingDistance(true);
       const isNear = await ensureUserIsNearIssue(selectedIssue.location.lat, selectedIssue.location.lng);
+      if (!isFocusedRef.current) return;
       if (!isNear) return;
 
       bottomSheetRef.current?.close();
@@ -312,7 +321,10 @@ export default function MapScreen() {
         },
       });
     } catch (e) {
-      console.error("Distance check failed", e);      
+      if (isFocusedRef.current) {
+        console.error("Distance check failed", e);
+        Alert.alert("Error", "Unable to check your distance from the issue. Please try again.");
+      }
     } finally {
       setCheckingDistance(false);
     }
