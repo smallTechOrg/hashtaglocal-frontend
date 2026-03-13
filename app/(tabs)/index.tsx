@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: "row",
-    gap: 2,
+    gap: 1,
     marginVertical:16,
   },
   viewDetailsButton: {

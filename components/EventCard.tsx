@@ -21,6 +21,7 @@ export default function EventCard({ event }: { event: Event }) {
   const color = getEventColor(event.type);
   const hashtag = event.location.locality.hashtags[0] ?? "";
   const time = formatEventTime(event.start_time);
+  const endTime = event.end_time ? formatEventTime(event.end_time) : null;
   const [imgSource, setImgSource] = useState<{ uri: string } | number>({ uri: event.image_url });
 
   return (
@@ -56,6 +57,7 @@ export default function EventCard({ event }: { event: Event }) {
             <CustomText className="text-xs text-gray-500">
               {formatEventDate(event.start_time)}
               {time ? `  •  ${time}` : ""}
+              {endTime ? ` – ${endTime}` : ""}
             </CustomText>
           </View>
           <CustomText className="text-xs text-gray-400" numberOfLines={1}>
