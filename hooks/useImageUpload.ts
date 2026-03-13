@@ -1,4 +1,5 @@
 import { uploadImage } from "@/api/IssueDetail";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
@@ -29,6 +30,10 @@ export function useImageUpload(imageUri: string) {
         if (errorMessage.includes("Authentication required")) {
           return;
         }
+
+        const crashlytics = getCrashlytics();
+        log(crashlytics, `Image upload failed: ${errorMessage}`);
+        recordCrashError(crashlytics, error instanceof Error ? error : new Error(errorMessage));
 
         setUploadError(errorMessage);
         Alert.alert(

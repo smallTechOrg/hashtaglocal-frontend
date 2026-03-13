@@ -12,6 +12,7 @@ import {
   IssueWithDistance,
   NEARBY_RADIUS_METERS,
 } from "@/utils/NearbyIssues";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -209,9 +210,11 @@ export default function NearbyIssuesCheck() {
         });
 
         if (!result.success) {
-          setLocationError(
-            result.error.message ?? "Unable to get your location."
-          );
+          const locErrMsg = result.error.message ?? "Unable to get your location.";
+          const crashlytics = getCrashlytics();
+          log(crashlytics, "Location fetch failed on NearbyIssuesCheck");
+          recordCrashError(crashlytics, new Error(locErrMsg));
+          setLocationError(locErrMsg);
           setScreenState("error");
           return;
         }
@@ -242,6 +245,9 @@ export default function NearbyIssuesCheck() {
           useNativeDriver: true,
         }).start();
       } catch (err: any) {
+        const crashlytics = getCrashlytics();
+        log(crashlytics, "Unexpected error on NearbyIssuesCheck location fetch");
+        recordCrashError(crashlytics, err instanceof Error ? err : new Error(String(err)));
         setLocationError(err?.message ?? "Something went wrong.");
         setScreenState("error");
       }
@@ -272,6 +278,9 @@ export default function NearbyIssuesCheck() {
       });
     } catch (e) {
       console.error("Distance check failed", e);
+      const crashlytics = getCrashlytics();
+      log(crashlytics, `Distance check failed for issue ${issue.id}`);
+      recordCrashError(crashlytics, e instanceof Error ? e : new Error(String(e)));
       Alert.alert("Error", "Could not verify your location. Please try again.");
     } finally {
       setUpdatingIssueId(null);

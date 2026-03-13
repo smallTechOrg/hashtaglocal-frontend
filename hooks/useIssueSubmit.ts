@@ -4,6 +4,7 @@ import {
   resolveIssue,
 } from "@/api/IssueDetail";
 import { IssueSubmitParams } from "@/models/IssueSubmitParams";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert } from "react-native";
@@ -105,6 +106,10 @@ export function useIssueSubmit({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update issue";
       if (!errorMessage.includes("Authentication required")) {
+        const crashlytics = getCrashlytics();
+        const context = isUpdateMode ? (action === "VERIFY" ? "verify_issue" : "resolve_issue") : "report_issue";
+        log(crashlytics, `Issue submission failed [${context}]: ${errorMessage}`);
+        recordCrashError(crashlytics, error instanceof Error ? error : new Error(errorMessage));
         Alert.alert("Error", errorMessage);
       }
     } finally {

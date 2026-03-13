@@ -257,18 +257,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Enable Crashlytics in debug builds + send test log
-  // TODO: Remove recordError line after confirming GCP logs are working
-  useEffect(() => {
-    const initCrashlytics = async () => {
-      const crashlyticsInstance = getCrashlytics();
-      await setCrashlyticsCollectionEnabled(crashlyticsInstance, true);
-      recordCrashError(crashlyticsInstance, new Error("[hashtaglocal] App opened - GCP logging test"));
-      console.log("[Crashlytics] recordError sent");
-      crash(crashlyticsInstance);
-    };
-    initCrashlytics();
-  }, []);
+
 
 
 

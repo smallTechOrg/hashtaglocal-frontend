@@ -1,4 +1,5 @@
 import CustomText from "@/components/CustomText";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "@react-navigation/native";
@@ -49,6 +50,9 @@ export default function CameraCapture() {
       }
     } catch (error) {
       console.error("Error capturing photo:", error);
+      const crashlytics = getCrashlytics();
+      log(crashlytics, "Camera capture failed");
+      recordCrashError(crashlytics, error instanceof Error ? error : new Error(String(error)));
       Alert.alert(
         "Capture Failed",
         "Failed to capture the image. Please try again."
