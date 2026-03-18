@@ -91,8 +91,8 @@ export default function AuthCallbackScreen() {
 
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          const { username, picture, hashtag, user_summary } = profileData.data.user;
-          setUser({ username, picture, hashtag, user_summary });
+          const { username, picture, user_role, hashtag, user_summary } = profileData.data.user;
+          setUser({ username, picture, user_role, hashtag, user_summary });
           setIsLoading(false);
         } else {
           setIsLoading(false);

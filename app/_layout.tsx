@@ -5,7 +5,7 @@ import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { crash, getCrashlytics, recordError as recordCrashError, setCrashlyticsCollectionEnabled } from "@react-native-firebase/crashlytics";
+import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -63,9 +63,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-          const { username, picture, hashtag, user_summary } = data.data.user;
+          const { username, picture, user_role, hashtag, user_summary } = data.data.user;
           console.log("Profile loaded:", username, "hashtag:", hashtag);
-          setUser({ username, picture, hashtag, user_summary });
+          setUser({ username, picture, user_role, hashtag, user_summary });
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();

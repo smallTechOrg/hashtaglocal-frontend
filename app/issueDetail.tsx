@@ -1,6 +1,5 @@
 
 import { fetchIssue, rejectIssue } from "@/api/IssueDetail";
-import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
 import { APIResponse } from "@/models/APIResponse";
@@ -10,12 +9,12 @@ import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import * as WebBrowser from "expo-web-browser";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useIsFocused } from '@react-navigation/native';
-import { useRef } from "react";
+import { Image } from "expo-image";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -479,8 +478,8 @@ const IssueDetailScreen = () => {
             </View>
             )}
 
-            {/* Delete Button - only visible to the original reporter */}
-            {user?.username === issue.user.username && (
+            {/* Delete Button - visible to original reporter or admins */}
+            {(user?.username === issue.user.username || user?.user_role === "ADMIN") && (
                 <TouchableOpacity
                     onPress={handleDelete}
                     disabled={isDeleting}

@@ -14,11 +14,14 @@ export interface UserSummary {
   issue_count: IssueCount;
 }
 
+export type UserRole = "ADMIN" | "USER";
+
 export interface UserProfile {
   username: string;
   picture: string;
   hashtag?: string;
   user_summary?: UserSummary;
+  user_role?: UserRole;
 }
 
 interface UserContextType {
