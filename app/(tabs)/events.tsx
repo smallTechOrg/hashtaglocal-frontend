@@ -20,12 +20,17 @@ export default function EventsScreen() {
   const userHashtag = user?.hashtag?.toLowerCase();
 
   const filteredEvents = useMemo(() => {
-    if (!userHashtag) return events;
-    return events.filter((e) =>
-      e.location.locality.hashtags.some(
+    const now = Date.now();
+    return events.filter((e) => {
+      const endStr = e.end_time ?? e.start_time;
+      const utc = endStr.endsWith("Z") ? endStr : `${endStr}Z`;
+      const eventEnd = new Date(utc).getTime();
+      if (eventEnd < now) return false;
+      if (!userHashtag) return true;
+      return e.location.locality.hashtags.some(
         (tag) => tag.toLowerCase() === userHashtag
-      )
-    );
+      );
+    });
   }, [events, userHashtag]);
 
   if (loading) {
