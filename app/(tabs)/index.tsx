@@ -19,11 +19,10 @@ import {
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useIsFocused } from '@react-navigation/native';
 import { ActivityIndicator, Alert, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
@@ -260,8 +259,8 @@ export default function MapScreen() {
       const response = await apiGet(profileUrl);
       if (response.ok) {
         const data = await response.json();
-        const { username, picture, hashtag, user_summary } = data.data.user;
-        setUser({ username, picture, hashtag, user_summary });
+        const { username, picture, user_role, hashtag, user_summary } = data.data.user;
+        setUser({ username, picture, user_role, hashtag, user_summary });
       }
     } catch (error) {
       console.log("[MapScreen] Silent profile refresh failed:", error);
