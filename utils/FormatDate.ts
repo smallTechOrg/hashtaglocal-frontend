@@ -24,6 +24,7 @@ export const formatEventDate = (dateStr: string): string => {
         day: "2-digit",
         month: "short",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
     });
 };
 
@@ -35,7 +36,7 @@ export const formatEventTime = (dateStr: string): string => {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-        timeZone: "UTC",
+        timeZone: "Asia/Kolkata",
     });
 };
 
