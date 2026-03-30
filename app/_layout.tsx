@@ -1,5 +1,6 @@
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
+import { EventsProvider } from "@/utils/EventsContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
@@ -298,6 +299,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <EventsProvider>
       <IssuesProvider>
         <AuthLoader>
           <NavigationContainer>
@@ -415,6 +417,7 @@ export default function RootLayout() {
         </NavigationContainer>
       </AuthLoader>
       </IssuesProvider>
+      </EventsProvider>
     </UserProvider>
   );
 }
