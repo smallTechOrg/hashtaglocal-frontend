@@ -1,7 +1,7 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
 import { Dimensions, ImageSourcePropType, Modal, ScrollView, TouchableOpacity, View } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import PaginationDots from './PaginationDots';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -21,6 +21,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const scrollViewRef = React.useRef<ScrollView>(null);
+  const loadStartTimesRef = React.useRef<Record<number, number>>({});
 
   React.useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -89,6 +90,17 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                   style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
                   contentFit="contain"
                   transition={200}
+                  onLoadStart={() => {
+                    loadStartTimesRef.current[index] = Date.now();
+                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage load started`);
+                  }}
+                  onLoad={(event) => {
+                    const start = loadStartTimesRef.current[index];
+                    const duration = start != null ? Date.now() - start : -1;
+                    const { width: w, height: h } = event.source;
+                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage loaded in ${duration}ms  (${w}×${h})`);
+                    delete loadStartTimesRef.current[index];
+                  }}
                 />
               </View>
             );

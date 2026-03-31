@@ -2,6 +2,7 @@ import { calculateDaysActive } from "@/utils/FormatDate";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useRef } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import CustomText from "./CustomText";
 
@@ -65,6 +66,8 @@ export default function IssueListItem({
 
   const daysActive = calculateDaysActive(created_at);
   const thumbnailUrl = media_urls?.[0]?.url_thumbnail || media_urls?.[0]?.url;
+  const isThumbnail = !!media_urls?.[0]?.url_thumbnail;
+  const loadStartRef = useRef<number | null>(null);
 
   return (
     <TouchableOpacity
@@ -78,6 +81,21 @@ export default function IssueListItem({
           source={{ uri: thumbnailUrl }}
           style={styles.image}
           contentFit="cover"
+          onLoadStart={() => {
+            loadStartRef.current = Date.now();
+            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  load started`);
+          }}
+          onLoad={(event) => {
+            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
+            const { width: w, height: h } = event.source;
+            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  loaded in ${duration}ms  (${w}×${h})`);
+            loadStartRef.current = null;
+          }}
+          onError={() => {
+            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
+            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  error after ${duration}ms`);
+            loadStartRef.current = null;
+          }}
         />
       ) : (
         <View style={[styles.imagePlaceholder, { backgroundColor: getIssueColor(type) + "20" }]}>
