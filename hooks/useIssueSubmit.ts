@@ -4,6 +4,7 @@ import {
   resolveIssue,
 } from "@/api/IssueDetail";
 import { IssueSubmitParams } from "@/models/IssueSubmitParams";
+import { useKarma } from "@/utils/KarmaContext";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -23,6 +24,7 @@ export function useIssueSubmit({
   const [selectedAction, setSelectedAction] = useState<
     "VERIFY" | "RESOLVE" | null
   >(null);
+  const { addPendingKarma } = useKarma();
 
   const handleSubmit = async (action?: "VERIFY" | "RESOLVE") => {
     if (!selectedType || !gcsPath) return;
@@ -75,12 +77,19 @@ export function useIssueSubmit({
         });
       }
 
+      const karmaAwarded = response.data.karma_awarded;
+      if (karmaAwarded && karmaAwarded > 0) {
+        addPendingKarma(karmaAwarded);
+      }
+
+      const karmaText = karmaAwarded ? `\n\n⭐ +${karmaAwarded} Karma Points!` : "";
+
       const successMessage =
         action === "VERIFY"
-          ? "Issue verified successfully!"
+          ? "Issue verified successfully!" + karmaText
           : action === "RESOLVE"
-            ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others."
-            : "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public.";
+            ? "Thank you for resolving this issue!\n\nOnce our community reviews the status will be updated. Till then, the status will show as Pending and will be visible to others." + karmaText
+            : "Issue reported successfully!\n\nThe issue is currently on hold and will be reviewed by our admin before it is made public." + karmaText;
 
       setIsSubmitting(false);
       Alert.alert("Success", successMessage, [
