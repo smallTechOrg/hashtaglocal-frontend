@@ -1,5 +1,7 @@
+import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { calculateDaysActive } from "@/utils/FormatDate";
 import { MaterialIcons } from "@expo/vector-icons";
+import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useRef } from "react";
@@ -89,12 +91,20 @@ export default function IssueListItem({
             const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
             const { width: w, height: h } = event.source;
             console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  loaded in ${duration}ms  (${w}×${h})`);
+            if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
+              const crashlytics = getCrashlytics();
+              log(crashlytics, `Slow list thumbnail load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} duration=${duration}ms — list item blank during load`);
+              recordCrashError(crashlytics, new Error(`[ImagePerf] IssueListItem slow load issueId=${id}: ${duration}ms`));
+            }
             loadStartRef.current = null;
           }}
           onError={() => {
             const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
             console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  error after ${duration}ms`);
             loadStartRef.current = null;
+            const crashlytics = getCrashlytics();
+            log(crashlytics, `List item image failed to load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} — image area blank`);
+            recordCrashError(crashlytics, new Error(`[ImagePerf] IssueListItem image error issueId=${id} after ${duration}ms`));
           }}
         />
       ) : (

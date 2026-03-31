@@ -1,4 +1,6 @@
+import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { MaterialIcons } from '@expo/vector-icons';
+import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from 'expo-image';
 import React from 'react';
 import { Dimensions, ImageSourcePropType, Modal, ScrollView, TouchableOpacity, View } from 'react-native';
@@ -99,7 +101,21 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                     const duration = start != null ? Date.now() - start : -1;
                     const { width: w, height: h } = event.source;
                     console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage loaded in ${duration}ms  (${w}×${h})`);
+                    if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
+                      const crashlytics = getCrashlytics();
+                      log(crashlytics, `Slow fullscreen image load: index=${index} duration=${duration}ms (${w}×${h})`);
+                      recordCrashError(crashlytics, new Error(`[ImagePerf] Fullscreen slow load at index ${index}: ${duration}ms`));
+                    }
                     delete loadStartTimesRef.current[index];
+                  }}
+                  onError={() => {
+                    const start = loadStartTimesRef.current[index];
+                    const duration = start != null ? Date.now() - start : -1;
+                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage error after ${duration}ms`);
+                    delete loadStartTimesRef.current[index];
+                    const crashlytics = getCrashlytics();
+                    log(crashlytics, `Fullscreen image failed to load at index ${index}`);
+                    recordCrashError(crashlytics, new Error(`[ImagePerf] Fullscreen image error at index ${index} after ${duration}ms`));
                   }}
                 />
               </View>
