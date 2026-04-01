@@ -97,6 +97,7 @@ export default function MapScreen() {
   const [checkingDistance, setCheckingDistance] = useState(false);
   const [imageVisible, setImageVisible] = useState(false);
   const prefetchedThumbs = useRef(new Set<string>());
+  const bottomSheetLoadStart = useRef<number | null>(null);
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -280,7 +281,15 @@ export default function MapScreen() {
         const thumb = issue.media_urls?.[0]?.url_thumbnail;
         if (thumb && !prefetchedThumbs.current.has(thumb)){
           prefetchedThumbs.current.add(thumb);
-          Image.prefetch(thumb);
+          const prefetchStart = Date.now();
+          Image.prefetch(thumb)
+            .then((success) => {
+              const duration = Date.now() - prefetchStart;
+              console.log(`[ImageTiming] prefetch  mapBatch  issueId=${issue.id}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
+            })
+            .catch(() => {
+              console.log(`[ImageTiming] prefetch  mapBatch  issueId=${issue.id}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
+            });
         } 
       });
     } catch (error) {
@@ -296,7 +305,15 @@ export default function MapScreen() {
     // Prioritize this thumbnail
     if (thumb && !prefetchedThumbs.current.has(thumb)) {
       prefetchedThumbs.current.add(thumb);
-      Image.prefetch(thumb);
+      const prefetchStart = Date.now();
+      Image.prefetch(thumb)
+        .then((success) => {
+          const duration = Date.now() - prefetchStart;
+          console.log(`[ImageTiming] prefetch  markerTap  issueId=${issue.id}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
+        })
+        .catch(() => {
+          console.log(`[ImageTiming] prefetch  markerTap  issueId=${issue.id}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
+        });
     }
     setSelectedIssue(issue);
   }, []);
@@ -538,14 +555,29 @@ export default function MapScreen() {
               <View style={styles.imageContainer}>
                 <Image
                   key={selectedIssue.id}
-                  source={{ uri: selectedIssue.media_urls[0].url }}
-                  placeholder={selectedIssue.media_urls[0].url_thumbnail ? { uri: selectedIssue.media_urls[0].url_thumbnail } : undefined}
-                  placeholderContentFit="cover"
+                  source={{ uri: selectedIssue.media_urls[0].url_thumbnail }}
+                  // placeholder={selectedIssue.media_urls[0].url_thumbnail}
+                  // placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
                   transition={0}
                   cachePolicy="memory-disk"
-                  onLoad={() => setImageVisible(true)}
+                  onLoadStart={() => {
+                    bottomSheetLoadStart.current = Date.now();
+                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  load started  hasThumbnail=${!!selectedIssue.media_urls![0].url_thumbnail}`);
+                  }}
+                  onLoad={(event) => {
+                    const duration = bottomSheetLoadStart.current != null ? Date.now() - bottomSheetLoadStart.current : -1;
+                    const { width: w, height: h } = event.source;
+                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  mainImage loaded in ${duration}ms  (${w}×${h})`);
+                    bottomSheetLoadStart.current = null;
+                    setImageVisible(true);
+                  }}
+                  onError={() => {
+                    const duration = bottomSheetLoadStart.current != null ? Date.now() - bottomSheetLoadStart.current : -1;
+                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  error after ${duration}ms`);
+                    bottomSheetLoadStart.current = null;
+                  }}
                 />
               </View>
             ) : (

@@ -12,12 +12,12 @@ import {
   IssueWithDistance,
   NEARBY_RADIUS_METERS,
 } from "@/utils/NearbyIssues";
-import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { MaterialIcons } from "@expo/vector-icons";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
+import { useIsFocused } from '@react-navigation/native';
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { useIsFocused } from '@react-navigation/native';
 
 import {
   ActivityIndicator,
@@ -63,9 +63,11 @@ function NearbyIssueCard({
   onView,
   isUpdating,
 }: NearbyIssueCardProps) {
+  const loadStartRef = useRef<number | null>(null);
   const thumbnailUrl =
     (issue.media_urls?.[0] as { url: string; url_thumbnail?: string } | undefined)
       ?.url_thumbnail ?? issue.media_urls?.[0]?.url;
+  const isThumbnail = !!(issue.media_urls?.[0] as { url: string; url_thumbnail?: string } | undefined)?.url_thumbnail;
   const color = getIssueColor(issue.type);
   const daysActive = calculateDaysActive(issue.created_at);
   const locationText =
@@ -83,6 +85,21 @@ function NearbyIssueCard({
           source={{ uri: thumbnailUrl }}
           style={styles.cardImage}
           contentFit="cover"
+          onLoadStart={() => {
+            loadStartRef.current = Date.now();
+            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  load started`);
+          }}
+          onLoad={(event) => {
+            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
+            const { width: w, height: h } = event.source;
+            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  loaded in ${duration}ms  (${w}×${h})`);
+            loadStartRef.current = null;
+          }}
+          onError={() => {
+            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
+            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  error after ${duration}ms`);
+            loadStartRef.current = null;
+          }}
         />
       ) : (
         <View style={[styles.cardImagePlaceholder, { backgroundColor: color + "20" }]}>
