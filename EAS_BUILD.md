@@ -20,9 +20,9 @@ npx eas-cli build -p android --profile production
 ```
 
 ## Project Info
-- Account: `madhyamakist`
+- Account: `smalltech`
 - Project ID: `567a7bdf-fc21-4a5f-b83b-8d6d2262b3d2`
-- Package: `com.madhyamakist.hashtaglocalfrontend`
+- Package: `com.smalltech.hashtaglocalfrontend`
 
 ## Build Profiles
 
