@@ -1,36 +1,36 @@
 export default {
   expo: {
     name: "#local",
-    slug: "hashtaglocal-frontend",
-    owner: "madhyamakist",
+    slug: "hashtaglocal",
+    owner: "smalltech",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/app-icon.png",
-    scheme: "hashtaglocalfrontend",
+    scheme: "hashtaglocal",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
-      bundleIdentifier: "com.madhyamakist.hashtaglocalfrontend",
+      bundleIdentifier: "com.smalltech.hashtaglocal",
       associatedDomains: [
         "applinks:hashtaglocal.app",
-        "applinks:www.hashtaglocal.app"
-      ]
+        "applinks:www.hashtaglocal.app",
+      ],
     },
     android: {
       adaptiveIcon: {
         backgroundColor: "#ffffff",
-        foregroundImage: "./assets/app-icon.png"
+        foregroundImage: "./assets/app-icon.png",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       googleServicesFile: "./google-services.json",
-      package: "com.madhyamakist.hashtaglocalfrontend",
+      package: "com.smalltech.hashtaglocal",
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY
-        }
+          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+        },
       },
       intentFilters: [
         {
@@ -40,24 +40,21 @@ export default {
             {
               scheme: "https",
               host: "hashtaglocal.app",
-              pathPrefix: "/"
+              pathPrefix: "/",
             },
             {
               scheme: "https",
               host: "www.hashtaglocal.app",
-              pathPrefix: "/"
-            }
+              pathPrefix: "/",
+            },
           ],
-          category: [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
-      ]
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     web: {
       output: "static",
-      favicon: "./assets/images/favicon.png"
+      favicon: "./assets/images/favicon.png",
     },
     plugins: [
       "expo-dev-client",
@@ -72,20 +69,20 @@ export default {
           resizeMode: "contain",
           backgroundColor: "#ffffff",
           dark: {
-            backgroundColor: "#000000"
-          }
-        }
-      ]
+            backgroundColor: "#000000",
+          },
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
-      reactCompiler: true
+      reactCompiler: true,
     },
     extra: {
       router: {},
       eas: {
-        projectId: "567a7bdf-fc21-4a5f-b83b-8d6d2262b3d2"
-      }
-    }
-  }
+        projectId: "18f89762-0ed6-4b80-9076-c91679fc6eb4",
+      },
+    },
+  },
 };
