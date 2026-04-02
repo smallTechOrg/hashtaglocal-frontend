@@ -1,12 +1,22 @@
 import EventCard from "@/components/EventCard";
 import { useEvents } from "@/utils/EventsContext";
+import { calculateHaversineDistance } from "@/utils/LocationService";
 import { useUser } from "@/utils/UserContext";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import * as Location from "expo-location";
 
 export default function EventsScreen() {
   const { user } = useUser();
   const { events, loading } = useEvents();
+
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    Location.getLastKnownPositionAsync().then((loc) => {
+      if (loc) setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+    }).catch(() => {});
+  }, []);
 
   const userHashtag = user?.hashtag?.toLowerCase();
 
@@ -36,7 +46,16 @@ export default function EventsScreen() {
     <FlatList
       data={filteredEvents}
       keyExtractor={(item) => String(item.id)}
-      renderItem={({ item }) => <EventCard event={item} />}
+      renderItem={({ item }) => (
+        <EventCard
+          event={item}
+          distanceMeters={
+            userCoords
+              ? calculateHaversineDistance(userCoords.lat, userCoords.lng, item.location.lat, item.location.lng)
+              : undefined
+          }
+        />
+      )}
       contentContainerStyle={{ paddingVertical: 12, flexGrow: 1 }}
       className="bg-gray-50"
       ListHeaderComponent={

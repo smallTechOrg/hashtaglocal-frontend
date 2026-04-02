@@ -13,11 +13,13 @@ import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/F
 import { useIssues } from "@/utils/IssuesContext";
 import { useEvents } from "@/utils/EventsContext";
 import {
+  calculateHaversineDistance,
   getFastLocationWithProgressiveWatch,
   LocationError,
   subscribeToBestLocation,
   UserLocation,
 } from "@/utils/LocationService";
+import { formatDistance } from "@/utils/NearbyIssues";
 import { useKarma } from "@/utils/KarmaContext";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -445,6 +447,13 @@ export default function MapScreen() {
           minLng = Math.min(minLng, e.location.lng);
           maxLng = Math.max(maxLng, e.location.lng);
         });
+        // Include user location in the bounding box
+        if (userLocation) {
+          minLat = Math.min(minLat, userLocation.latitude);
+          maxLat = Math.max(maxLat, userLocation.latitude);
+          minLng = Math.min(minLng, userLocation.longitude);
+          maxLng = Math.max(maxLng, userLocation.longitude);
+        }
         mapRef.current.animateToRegion(
           {
             latitude: (minLat + maxLat) / 2,
@@ -708,12 +717,27 @@ export default function MapScreen() {
             </View>
 
             {/* Location */}
-            <View className="flex-row items-start mb-4">
+            <View className="flex-row items-start mb-2">
               <MaterialIcons name="location-on" size={15} color="#256D1B" style={{ marginTop: 1 }} />
               <CustomText className="text-sm text-gray-600 ml-2 flex-1">
                 {selectedEvent.location.name}
               </CustomText>
             </View>
+
+            {/* Distance from user */}
+            {userLocation && (
+              <View className="flex-row items-center mb-4">
+                <MaterialIcons name="directions-walk" size={15} color="#6b7280" />
+                <CustomText className="text-sm text-gray-500 ml-2">
+                  {formatDistance(calculateHaversineDistance(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                    selectedEvent.location.lat,
+                    selectedEvent.location.lng,
+                  ))} away
+                </CustomText>
+              </View>
+            )}
 
             {/* Open link button */}
             <TouchableOpacity
