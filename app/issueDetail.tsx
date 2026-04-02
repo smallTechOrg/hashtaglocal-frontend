@@ -2,6 +2,7 @@
 import { fetchIssue, rejectIssue } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import IssueImage from "@/components/IssueImage/IssueImage";
+import KarmaBadge from "@/components/KarmaBadge";
 import { APIResponse } from "@/models/APIResponse";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
@@ -94,11 +95,13 @@ const IssueDetailScreen = () => {
             
             navigation.setOptions({
                 title: headerTitle,
+                headerRight: () => <KarmaBadge />,
             });
         } else {
             // Fallback title while loading or if no hashtags
             navigation.setOptions({
                 title: 'Issue Detail',
+                headerRight: () => <KarmaBadge />,
             });
         }
     }, [issueData, navigation]);

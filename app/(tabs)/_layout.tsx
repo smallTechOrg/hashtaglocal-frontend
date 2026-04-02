@@ -33,6 +33,7 @@ export default function TabsLayout() {
       fontFamily: "Nunito-Regular",
     },
     headerLeft: () => <DrawerToggleButton />,
+    headerRight: () => <KarmaBadge />,
     tabBarLabel: 'Map',
     tabBarLabelStyle: {
       fontFamily: "Nunito-Regular",

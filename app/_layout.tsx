@@ -67,10 +67,10 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
         if (response.ok) {
           const data = await response.json();
-          const { username, picture, user_role, hashtag, user_summary, karma_earned, karma_pending } = data.data.user;
+          const { username, picture, user_role, hashtag, user_summary } = data.data.user;
           console.log("Profile loaded:", username, "hashtag:", hashtag);
           setUser({ username, picture, user_role, hashtag, user_summary });
-          setKarma(karma_earned ?? 0, karma_pending ?? 0);
+          setKarma(user_summary?.karma_earned ?? 0, user_summary?.karma_pending ?? 0);
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();

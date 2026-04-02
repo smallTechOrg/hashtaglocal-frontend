@@ -3,4 +3,4 @@
  * Slow thumbnail loads are especially impactful — the image area stays blank until
  * the thumbnail (placeholder) resolves.
  */
-export const IMAGE_SLOW_LOAD_THRESHOLD_MS = 10_000;
+export const IMAGE_SLOW_LOAD_THRESHOLD_MS = 30_000;

@@ -16,6 +16,7 @@ import {
   subscribeToBestLocation,
   UserLocation,
 } from "@/utils/LocationService";
+import { useKarma } from "@/utils/KarmaContext";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -84,6 +85,7 @@ const getIssueColor = (type: string): string => {
 export default function MapScreen() {
   const router = useRouter();
   const { user, setUser } = useUser();
+  const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -262,6 +264,7 @@ export default function MapScreen() {
         const data = await response.json();
         const { username, picture, user_role, hashtag, user_summary } = data.data.user;
         setUser({ username, picture, user_role, hashtag, user_summary });
+        setKarma(user_summary?.karma_earned ?? 0, user_summary?.karma_pending ?? 0);
       }
     } catch (error) {
       console.log("[MapScreen] Silent profile refresh failed:", error);
