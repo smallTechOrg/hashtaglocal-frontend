@@ -48,6 +48,7 @@ export interface ReportIssuePayload {
 export interface ReportIssueResponse {
   data: {
     issue_id: number;
+    karma_awarded?: number;
   };
 }
 

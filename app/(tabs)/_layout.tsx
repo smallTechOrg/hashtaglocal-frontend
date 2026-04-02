@@ -1,11 +1,11 @@
 // app/(tabs)/_layout.tsx
+import KarmaBadge from '@/components/KarmaBadge';
 import { useEvents } from '@/utils/EventsContext';
 import { useUser } from '@/utils/UserContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DrawerToggleButton } from '@react-navigation/drawer';
 import { Tabs } from 'expo-router';
 import { useMemo } from 'react';
-import { Image } from 'react-native';
 
 export default function TabsLayout() {
   const { user } = useUser();
@@ -33,6 +33,7 @@ export default function TabsLayout() {
       fontFamily: "Nunito-Regular",
     },
     headerLeft: () => <DrawerToggleButton />,
+    headerRight: () => <KarmaBadge />,
     tabBarLabel: 'Map',
     tabBarLabelStyle: {
       fontFamily: "Nunito-Regular",
@@ -67,13 +68,7 @@ export default function TabsLayout() {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => (
-            <Image
-              source={require("../../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
+          headerRight: () => <KarmaBadge />,
           tabBarLabel: 'Issues',
           tabBarLabelStyle: {
             fontFamily: "Nunito-Regular",
@@ -95,13 +90,7 @@ export default function TabsLayout() {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => (
-            <Image
-              source={require("../../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
+          headerRight: () => <KarmaBadge />,
           tabBarLabel: 'Issues',
           tabBarLabelStyle: {
             fontFamily: "Nunito-Regular",
@@ -124,13 +113,7 @@ export default function TabsLayout() {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => (
-            <Image
-              source={require("../../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
+          headerRight: () => <KarmaBadge />,
           tabBarLabel: 'Events',
           tabBarLabelStyle: {
             fontFamily: "Nunito-Regular",
@@ -152,13 +135,7 @@ export default function TabsLayout() {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => (
-            <Image
-              source={require("../../assets/logo-green.png")}
-              style={{ width: 32, height: 40, marginRight: 16 }}
-              resizeMode="contain"
-            />
-          ),
+          headerRight: () => <KarmaBadge />,
           tabBarLabel: 'Report Issue',
           tabBarLabelStyle: {
             fontFamily: "Nunito-Regular",

@@ -4,7 +4,9 @@ import { EventsProvider } from "@/utils/EventsContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
+import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
+import KarmaBadge from "@/components/KarmaBadge";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
@@ -29,6 +31,7 @@ SplashScreen.preventAutoHideAsync();
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const { setUser, setIsLoading } = useUser();
+  const { setKarma } = useKarma();
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -67,6 +70,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           const { username, picture, user_role, hashtag, user_summary } = data.data.user;
           console.log("Profile loaded:", username, "hashtag:", hashtag);
           setUser({ username, picture, user_role, hashtag, user_summary });
+          setKarma(user_summary?.karma_earned ?? 0, user_summary?.karma_pending ?? 0);
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();
@@ -87,7 +91,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     }
 
     loadUserProfile();
-  }, [setUser, setIsLoading]);
+  }, [setUser, setIsLoading, setKarma]);
 
   return <>{children}</>;
 }
@@ -201,6 +205,7 @@ function UserSummarySection({ summary }: { summary?: UserSummary }) {
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, setUser } = useUser();
+  const { karma } = useKarma();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -224,6 +229,21 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <Text className="ml-3 font-nunito p">
           {user?.username || "Guest"}
         </Text>
+      </View>
+      {/* Karma Summary */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 12, marginTop: 8, padding: 10, backgroundColor: "#f0fdf4", borderRadius: 12, borderWidth: 1, borderColor: "#bbf7d0" }}>
+        <MaterialIcons name="stars" size={20} color="#16a34a" />
+        <Text style={{ marginLeft: 6, fontSize: 16, fontFamily: "Nunito_700Bold", color: "#15803d" }}>
+          {karma.earned + karma.pending}
+        </Text>
+        <Text style={{ marginLeft: 4, fontSize: 11, fontFamily: "Nunito-Regular", color: "#6b7280" }}>
+          Karma
+        </Text>
+        {karma.pending > 0 && (
+          <Text style={{ marginLeft: "auto", fontSize: 10, fontFamily: "Nunito-Regular", color: "#d97706" }}>
+            {karma.pending} pending
+          </Text>
+        )}
       </View>
       <UserSummarySection summary={user?.user_summary} />
       <DrawerItemList {...props} />
@@ -299,6 +319,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <KarmaProvider>
       <EventsProvider>
       <IssuesProvider>
         <AuthLoader>
@@ -329,13 +350,7 @@ export default function RootLayout() {
               fontFamily: "Nunito-Regular",
             },
             drawerItemStyle: { display: "none" },
-            headerRight: () => (
-              <Image
-                source={require("../assets/logo-green.png")}
-                style={{ width: 32, height: 40, marginRight: 16 }}
-                resizeMode="contain"
-              />
-            ),
+            headerRight: () => <KarmaBadge />,
           }}
         />
         <Drawer.Screen
@@ -418,6 +433,7 @@ export default function RootLayout() {
       </AuthLoader>
       </IssuesProvider>
       </EventsProvider>
+      </KarmaProvider>
     </UserProvider>
   );
 }
