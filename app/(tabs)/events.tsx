@@ -1,21 +1,12 @@
-import { Event, fetchEvents } from "@/api/events";
 import EventCard from "@/components/EventCard";
+import { useEvents } from "@/utils/EventsContext";
 import { useUser } from "@/utils/UserContext";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 
 export default function EventsScreen() {
   const { user } = useUser();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchEvents()
-      .then(setEvents)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { events, loading } = useEvents();
 
   const userHashtag = user?.hashtag?.toLowerCase();
 
@@ -37,16 +28,6 @@ export default function EventsScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
         <ActivityIndicator size="large" color="#256D1B" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <Text className="text-sm text-red-500 text-center px-6" style={{ fontFamily: "Nunito-Regular" }}>
-          {error}
-        </Text>
       </View>
     );
   }

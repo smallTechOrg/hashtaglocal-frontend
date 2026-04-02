@@ -45,9 +45,11 @@ Re-start the app after you've made this change.
 ## Config Setup
 
 Add EXPO_PUBLIC_GOOGLE_CLIENT_ID to the .env file. Get it from a team member.
+   
+## Map API Key 
+Can be accessed through these links
+https://console.cloud.google.com/google/maps-apis/api-list?project=ai-agent-boilerplate0
 
-// Feature flags — set to "true" to enable events tab, anything else to disable
-
-EXPO_PUBLIC_FEATURE_EVENTS=true     
-
+#local-app
+https://console.cloud.google.com/google/maps-apis/credentials?project=ai-agent-boilerplate0
 

@@ -56,8 +56,18 @@ const IssueDetailScreen = () => {
                 const data = await fetchIssue(issueId);
                 setIssueData(data);
                 // Prefetch thumbnails so they're cached before the carousel renders
-                data?.data?.issue?.media_urls?.forEach((m: { url_thumbnail?: string }) => {
-                    if (m.url_thumbnail) Image.prefetch(m.url_thumbnail);
+                data?.data?.issue?.media_urls?.forEach((m: { url_thumbnail?: string }, i: number) => {
+                    if (m.url_thumbnail) {
+                        const prefetchStart = Date.now();
+                        Image.prefetch(m.url_thumbnail)
+                            .then((success) => {
+                                const duration = Date.now() - prefetchStart;
+                                console.log(`[ImageTiming] prefetch  issueDetail  index=${i}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
+                            })
+                            .catch(() => {
+                                console.log(`[ImageTiming] prefetch  issueDetail  index=${i}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
+                            });
+                    }
                 });
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to load issue';
