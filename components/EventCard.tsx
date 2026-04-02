@@ -2,6 +2,7 @@ import { Event } from "@/api/events";
 import { EVENT_TYPE_COLORS } from "@/constants/eventTypes";
 import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { formatEventDate, formatEventTime } from "@/utils/FormatDate";
+import { formatDistance } from "@/utils/NearbyIssues";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from "expo-image";
@@ -19,7 +20,7 @@ const formatEventType = (type: string): string =>
   type.replace(/_/g, " ").replace(/([A-Z])/g, " $1").trim();
 
 
-export default function EventCard({ event }: { event: Event }) {
+export default function EventCard({ event, distanceMeters }: { event: Event; distanceMeters?: number }) {
   const color = getEventColor(event.type);
   const hashtag = event.location.locality.hashtags[0] ?? "";
   const time = formatEventTime(event.start_time);
@@ -75,26 +76,37 @@ export default function EventCard({ event }: { event: Event }) {
         </CustomText>
       </View>
 
-      <View className="p-3 gap-1.5">
-        {/* date + time  |  organisation */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1">
-            <MaterialIcons name="event" size={13} color="#256D1B" />
-            <CustomText className="text-xs text-gray-500">
-              {formatEventDate(event.start_time)}
-              {time ? `  •  ${time}` : ""}
-              {endTime ? ` – ${endTime}` : ""}
-            </CustomText>
-          </View>
-          <CustomText className="text-xs text-gray-400" numberOfLines={1}>
+      <View className="p-3 gap-2">
+        {/* event name */}
+        <CustomText className="text-base text-gray-900" numberOfLines={2} style={{ fontFamily: "Nunito-Bold" }}>
+          {event.name}
+        </CustomText>
+
+        {/* organisation */}
+        <View className="flex-row items-center gap-1">
+          <MaterialIcons name="business" size={13} color="#6b7280" />
+          <CustomText className="text-xs text-gray-500 flex-1" numberOfLines={1}>
             {event.organisation}
           </CustomText>
         </View>
 
-        {/* event name */}
-        <CustomText className="p text-gray-900" numberOfLines={2} style={{ fontFamily: "Nunito-Bold" }}>
-          {event.name}
-        </CustomText>
+        {/* date */}
+        <View className="flex-row items-center gap-1">
+          <MaterialIcons name="event" size={13} color="#256D1B" />
+          <CustomText className="text-xs text-gray-500 flex-1">
+            {formatEventDate(event.start_time)}
+          </CustomText>
+        </View>
+
+        {/* time */}
+        {time && (
+          <View className="flex-row items-center gap-1">
+            <MaterialIcons name="schedule" size={13} color="#256D1B" />
+            <CustomText className="text-xs text-gray-500">
+              {time}{endTime ? ` – ${endTime}` : ""}
+            </CustomText>
+          </View>
+        )}
 
         {/* address */}
         <View className="flex-row items-start gap-1">
@@ -103,6 +115,16 @@ export default function EventCard({ event }: { event: Event }) {
             {event.location.name}
           </CustomText>
         </View>
+
+        {/* distance */}
+        {distanceMeters != null && (
+          <View className="flex-row items-center gap-1">
+            <MaterialIcons name="directions-walk" size={13} color="#6b7280" />
+            <CustomText className="text-xs text-gray-500">
+              {formatDistance(distanceMeters)} away
+            </CustomText>
+          </View>
+        )}
 
         {/* view event — right aligned */}
         <View className="flex-row items-center justify-end gap-1 mt-0.5">
