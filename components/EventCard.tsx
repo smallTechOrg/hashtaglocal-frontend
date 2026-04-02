@@ -75,26 +75,37 @@ export default function EventCard({ event }: { event: Event }) {
         </CustomText>
       </View>
 
-      <View className="p-3 gap-1.5">
-        {/* date + time  |  organisation */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1">
-            <MaterialIcons name="event" size={13} color="#256D1B" />
-            <CustomText className="text-xs text-gray-500">
-              {formatEventDate(event.start_time)}
-              {time ? `  •  ${time}` : ""}
-              {endTime ? ` – ${endTime}` : ""}
-            </CustomText>
-          </View>
-          <CustomText className="text-xs text-gray-400" numberOfLines={1}>
+      <View className="p-3 gap-2">
+        {/* event name */}
+        <CustomText className="text-base text-gray-900" numberOfLines={2} style={{ fontFamily: "Nunito-Bold" }}>
+          {event.name}
+        </CustomText>
+
+        {/* organisation */}
+        <View className="flex-row items-center gap-1">
+          <MaterialIcons name="business" size={13} color="#6b7280" />
+          <CustomText className="text-xs text-gray-500 flex-1" numberOfLines={1}>
             {event.organisation}
           </CustomText>
         </View>
 
-        {/* event name */}
-        <CustomText className="p text-gray-900" numberOfLines={2} style={{ fontFamily: "Nunito-Bold" }}>
-          {event.name}
-        </CustomText>
+        {/* date */}
+        <View className="flex-row items-center gap-1">
+          <MaterialIcons name="event" size={13} color="#256D1B" />
+          <CustomText className="text-xs text-gray-500 flex-1">
+            {formatEventDate(event.start_time)}
+          </CustomText>
+        </View>
+
+        {/* time */}
+        {time && (
+          <View className="flex-row items-center gap-1">
+            <MaterialIcons name="schedule" size={13} color="#256D1B" />
+            <CustomText className="text-xs text-gray-500">
+              {time}{endTime ? ` – ${endTime}` : ""}
+            </CustomText>
+          </View>
+        )}
 
         {/* address */}
         <View className="flex-row items-start gap-1">

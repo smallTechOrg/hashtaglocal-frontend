@@ -1,4 +1,5 @@
 import { getIssuesByLocation } from "@/api/IssueDetail";
+import { Event } from "@/api/events";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -8,8 +9,9 @@ import {
 } from "@/components/MapFilter";
 import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
-import { calculateDaysActive } from "@/utils/FormatDate";
+import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
 import { useIssues } from "@/utils/IssuesContext";
+import { useEvents } from "@/utils/EventsContext";
 import {
   getFastLocationWithProgressiveWatch,
   LocationError,
@@ -87,6 +89,7 @@ export default function MapScreen() {
   const { user, setUser } = useUser();
   const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
+  const { events } = useEvents();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -95,9 +98,11 @@ export default function MapScreen() {
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [checkingDistance, setCheckingDistance] = useState(false);
   const [imageVisible, setImageVisible] = useState(false);
+  const [showEventsOnly, setShowEventsOnly] = useState(false);
   const prefetchedThumbs = useRef(new Set<string>());
   const bottomSheetLoadStart = useRef<number | null>(null);
 
@@ -302,7 +307,16 @@ export default function MapScreen() {
     }
   };
 
+  const handleEventMarkerPress = useCallback((event: Event) => {
+    setSelectedIssue(null);
+    setSelectedEvent(event);
+    setTimeout(() => {
+      try { bottomSheetRef.current?.snapToIndex(0); } catch {}
+    }, 50);
+  }, []);
+
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
+    setSelectedEvent(null);
     const thumb = issue.media_urls?.[0]?.url_thumbnail;
 
     // Prioritize this thumbnail
@@ -323,6 +337,7 @@ export default function MapScreen() {
 
   const handleCloseBottomSheet = useCallback(() => {
     setSelectedIssue(null);
+    setSelectedEvent(null);
   }, []);
 
   const handleViewDetails = useCallback(() => {
@@ -389,9 +404,72 @@ export default function MapScreen() {
     );
   }, [filteredIssues, isMarkerInViewport]);
 
+  // All future events filtered to user's hashtag
+  const futureEvents = useMemo(() => {
+    const now = Date.now();
+    const userHashtag = user?.hashtag?.toLowerCase();
+    return events.filter((event) => {
+      const endStr = event.end_time ?? event.start_time;
+      const utc = endStr.endsWith("Z") ? endStr : `${endStr}Z`;
+      if (new Date(utc).getTime() < now) return false;
+      if (!userHashtag) return true;
+      return event.location.locality.hashtags.some(
+        (tag) => tag.toLowerCase() === userHashtag
+      );
+    });
+  }, [events, user?.hashtag]);
+
+  // Future events visible in the current viewport
+  const visibleEventMarkers = useMemo(() => {
+    return futureEvents.filter((event) =>
+      isMarkerInViewport(event.location.lat, event.location.lng)
+    );
+  }, [futureEvents, isMarkerInViewport]);
+
   const handleMapRegionChange = useCallback((region: Region) => {
     setMapRegion(region);
   }, []);
+
+  // Toggle events-only mode + zoom to fit event markers
+  const handleToggleEvents = useCallback(() => {
+    setShowEventsOnly((prev) => {
+      const next = !prev;
+      if (next && futureEvents.length > 0 && mapRef.current) {
+        let minLat = futureEvents[0].location.lat;
+        let maxLat = futureEvents[0].location.lat;
+        let minLng = futureEvents[0].location.lng;
+        let maxLng = futureEvents[0].location.lng;
+        futureEvents.forEach((e) => {
+          minLat = Math.min(minLat, e.location.lat);
+          maxLat = Math.max(maxLat, e.location.lat);
+          minLng = Math.min(minLng, e.location.lng);
+          maxLng = Math.max(maxLng, e.location.lng);
+        });
+        mapRef.current.animateToRegion(
+          {
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLng + maxLng) / 2,
+            latitudeDelta: Math.max((maxLat - minLat) * 1.5, 0.01),
+            longitudeDelta: Math.max((maxLng - minLng) * 1.5, 0.01),
+          },
+          500,
+        );
+      } else if (!next && mapRef.current && userLocation) {
+        mapRef.current.animateToRegion(
+          {
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          },
+          500,
+        );
+      }
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return next;
+    });
+  }, [futureEvents, userLocation]);
 
   // Auto-zoom map to fit filtered markers when a filter is active
   useEffect(() => {
@@ -516,8 +594,8 @@ export default function MapScreen() {
         onRegionChange={handleMapRegionChange}
         onRegionChangeComplete={handleMapRegionChange}
       >
-        {/* Viewport-based Issue Markers */}
-        {visibleMarkers.map((issue) => (
+        {/* Viewport-based Issue Markers (hidden in events-only mode) */}
+        {!showEventsOnly && visibleMarkers.map((issue) => (
           <Marker
             key={`marker-${issue.id}`}
             coordinate={{
@@ -529,7 +607,42 @@ export default function MapScreen() {
             tracksViewChanges={false}
           />
         ))}
+
+        {/* Event Markers */}
+        {visibleEventMarkers.map((event) => (
+          <Marker
+            key={`event-${event.id}`}
+            coordinate={{
+              latitude: event.location.lat,
+              longitude: event.location.lng,
+            }}
+            pinColor="#FF6B35"
+            onPress={() => handleEventMarkerPress(event)}
+            tracksViewChanges={false}
+          />
+        ))}
       </MapView>
+
+      {/* Events callout banner */}
+      {futureEvents.length > 0 && (
+        <TouchableOpacity
+          style={[styles.eventsBanner, showEventsOnly && styles.eventsBannerActive]}
+          activeOpacity={0.85}
+          onPress={handleToggleEvents}
+        >
+          <MaterialIcons name="event" size={18} color={showEventsOnly ? "#fff" : "#FF6B35"} />
+          <CustomText
+            style={{ fontFamily: "Nunito-Bold", color: showEventsOnly ? "#fff" : "#FF6B35", fontSize: 13, marginLeft: 6 }}
+          >
+            {showEventsOnly
+              ? `Showing ${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`
+              : `${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`}
+          </CustomText>
+          {showEventsOnly && (
+            <MaterialIcons name="close" size={16} color="#fff" style={{ marginLeft: 6 }} />
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Loading Indicator for Issues */}
       {issuesLoading && (
@@ -548,6 +661,70 @@ export default function MapScreen() {
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetIndicator}
       >
+        {selectedEvent && (
+          <BottomSheetScrollView
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Event Image */}
+            <View style={styles.imageContainer}>
+              <Image
+                source={{ uri: selectedEvent.image_url }}
+                style={styles.previewImage}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+            </View>
+
+            {/* Event type badge */}
+            <View className="flex-row items-center mb-2">
+              <View className="px-3 py-1 rounded-md" style={{ backgroundColor: "#FF6B35" }}>
+                <CustomText className="text-white text-xs font-bold uppercase">
+                  {selectedEvent.type.replace(/_/g, " ")}
+                </CustomText>
+              </View>
+            </View>
+
+            {/* Event name */}
+            <CustomText className="text-lg text-gray-900 mb-3" style={{ fontFamily: "Nunito-Bold" }}>
+              {selectedEvent.name}
+            </CustomText>
+
+            {/* Organisation */}
+            <View className="flex-row items-center mb-2">
+              <MaterialIcons name="business" size={15} color="#6b7280" />
+              <CustomText className="text-sm text-gray-600 ml-2">{selectedEvent.organisation}</CustomText>
+            </View>
+
+            {/* Date & time */}
+            <View className="flex-row items-center mb-2">
+              <MaterialIcons name="event" size={15} color="#256D1B" />
+              <CustomText className="text-sm text-gray-600 ml-2">
+                {formatEventDate(selectedEvent.start_time)}
+                {formatEventTime(selectedEvent.start_time) ? `  •  ${formatEventTime(selectedEvent.start_time)}` : ""}
+                {selectedEvent.end_time ? ` – ${formatEventTime(selectedEvent.end_time)}` : ""}
+              </CustomText>
+            </View>
+
+            {/* Location */}
+            <View className="flex-row items-start mb-4">
+              <MaterialIcons name="location-on" size={15} color="#256D1B" style={{ marginTop: 1 }} />
+              <CustomText className="text-sm text-gray-600 ml-2 flex-1">
+                {selectedEvent.location.name}
+              </CustomText>
+            </View>
+
+            {/* Open link button */}
+            <TouchableOpacity
+              style={styles.viewDetailsButton}
+              onPress={() => Linking.openURL(selectedEvent.link)}
+            >
+              <CustomText className="text-white font-semibold text-base">View Event</CustomText>
+              <MaterialIcons name="open-in-new" size={18} color="#fff" />
+            </TouchableOpacity>
+          </BottomSheetScrollView>
+        )}
         {selectedIssue && (
           <BottomSheetScrollView
             contentContainerStyle={styles.bottomSheetContent}
@@ -702,6 +879,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  eventsBanner: {
+    position: "absolute",
+    bottom: 24,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: "#FF6B3540",
+  },
+  eventsBannerActive: {
+    backgroundColor: "#FF6B35",
+    borderColor: "#FF6B35",
   },
   // Bottom Sheet Styles
   bottomSheetBackground: {
