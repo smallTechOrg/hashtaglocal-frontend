@@ -2,7 +2,7 @@ import { useGoogleAuth } from "@/api/GoogleAuth";
 import CustomText from "@/components/CustomText";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
-import { Animated, Dimensions, Image, Pressable, View } from "react-native";
+import { Animated, Dimensions, Image, Linking, Pressable, View } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 const SCALE = 1.25; // enough headroom for larger pan distances
@@ -81,6 +81,15 @@ export default function LoginScreen() {
           />
           <CustomText className="text-gray-700 h3">
             Sign In with Google
+          </CustomText>
+        </Pressable>
+      </View>
+
+      <View className="absolute bottom-8 w-full items-center">
+        <Pressable onPress={() => Linking.openURL("https://local.smalltech.in/privacy")}>
+          <CustomText className="text-gray-500 text-xs">
+            By signing in, you agree to our{" "}
+            <CustomText className="text-green-700 text-xs underline">Privacy Policy</CustomText>
           </CustomText>
         </Pressable>
       </View>
