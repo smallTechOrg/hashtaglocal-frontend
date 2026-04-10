@@ -9,7 +9,6 @@ import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
-import { getPerformance } from "@react-native-firebase/perf";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -29,13 +28,6 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // Prevent auto-hiding splash screen
 SplashScreen.preventAutoHideAsync();
-
-// Ensure Firebase Performance collection is enabled (off by default in debug builds)
-try {
-  const perfInstance = getPerformance();
-  perfInstance.dataCollectionEnabled = true;
-  perfInstance.instrumentationEnabled = true;
-} catch (_) {}
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const { setUser, setIsLoading } = useUser();
