@@ -1,14 +1,15 @@
+import KarmaBadge from "@/components/KarmaBadge";
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
+import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
-import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
-import KarmaBadge from "@/components/KarmaBadge";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
+import { getPerformance } from "@react-native-firebase/perf";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -28,6 +29,13 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // Prevent auto-hiding splash screen
 SplashScreen.preventAutoHideAsync();
+
+// Ensure Firebase Performance collection is enabled (off by default in debug builds)
+try {
+  const perfInstance = getPerformance();
+  perfInstance.dataCollectionEnabled = true;
+  perfInstance.instrumentationEnabled = true;
+} catch (_) {}
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const { setUser, setIsLoading } = useUser();
