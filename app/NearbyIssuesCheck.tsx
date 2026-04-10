@@ -1,6 +1,7 @@
 import CustomText from "@/components/CustomText";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
+import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
   getFastLocationWithProgressiveWatch,
@@ -63,6 +64,7 @@ function NearbyIssueCard({
   onView,
   isUpdating,
 }: NearbyIssueCardProps) {
+  const traceRef = useRef<ImageTraceHandle | null>(null);
   const thumbnailUrl =
     issue.media_urls?.[0]?.url_thumbnail ?? issue.media_urls?.[0]?.url;
   const color = getIssueColor(issue.type);
@@ -82,6 +84,23 @@ function NearbyIssueCard({
           source={{ uri: thumbnailUrl }}
           style={styles.cardImage}
           contentFit="cover"
+          onLoadStart={() => {
+            traceRef.current = startImageTrace({
+              component: 'nearbyIssueCard',
+              imageType: 'thumbnail',
+              renderer: 'expo-image',
+              id: String(issue.id),
+            });
+          }}
+          onLoad={(event) => {
+            const { width: w, height: h } = event.source;
+            traceRef.current?.stop(true, w, h);
+            traceRef.current = null;
+          }}
+          onError={() => {
+            traceRef.current?.stop(false);
+            traceRef.current = null;
+          }}
         />
       ) : (
         <View style={[styles.cardImagePlaceholder, { backgroundColor: color + "20" }]}>
