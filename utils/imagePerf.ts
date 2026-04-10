@@ -1,4 +1,4 @@
-import perf from '@react-native-firebase/perf';
+import { trace as createTrace, getPerformance } from '@react-native-firebase/perf';
 
 interface ImageTraceAttrs {
   component: string;
@@ -22,13 +22,14 @@ export function startImageTrace(attrs: ImageTraceAttrs): ImageTraceHandle {
 
   // Fire-and-forget async trace — we don't want to block rendering
   const tracePromise = (async () => {
-    const trace = await perf().startTrace(traceName);
-    trace.putAttribute('component', attrs.component);
-    trace.putAttribute('imageType', attrs.imageType);
-    trace.putAttribute('renderer', attrs.renderer);
-    if (attrs.id != null) trace.putAttribute('id', String(attrs.id));
-    if (attrs.index != null) trace.putAttribute('index', String(attrs.index));
-    return trace;
+    const t = createTrace(getPerformance(), traceName);
+    await t.start();
+    t.putAttribute('component', attrs.component);
+    t.putAttribute('imageType', attrs.imageType);
+    t.putAttribute('renderer', attrs.renderer);
+    if (attrs.id != null) t.putAttribute('id', String(attrs.id));
+    if (attrs.index != null) t.putAttribute('index', String(attrs.index));
+    return t;
   })();
 
   return {
