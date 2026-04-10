@@ -1,4 +1,5 @@
 import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
+import { ImageTraceHandle, startImageTrace } from '@/utils/imagePerf';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from 'expo-image';
@@ -24,6 +25,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const loadStartTimesRef = React.useRef<Record<number, number>>({});
+  const traceHandlesRef = React.useRef<Record<number, ImageTraceHandle>>({});
 
   React.useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -94,13 +96,17 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                   transition={200}
                   onLoadStart={() => {
                     loadStartTimesRef.current[index] = Date.now();
-                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage load started`);
+                    traceHandlesRef.current[index] = startImageTrace({
+                      component: 'fullscreen',
+                      imageType: 'mainImage',
+                      renderer: 'expo-image',
+                      index,
+                    });
                   }}
                   onLoad={(event) => {
-                    const start = loadStartTimesRef.current[index];
-                    const duration = start != null ? Date.now() - start : -1;
                     const { width: w, height: h } = event.source;
-                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage loaded in ${duration}ms  (${w}×${h})`);
+                    const duration = traceHandlesRef.current[index]?.stop(true, w, h) ?? -1;
+                    delete traceHandlesRef.current[index];
                     if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
                       const crashlytics = getCrashlytics();
                       log(crashlytics, `Slow fullscreen image load: index=${index} duration=${duration}ms (${w}×${h})`);
@@ -109,13 +115,12 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                     delete loadStartTimesRef.current[index];
                   }}
                   onError={() => {
-                    const start = loadStartTimesRef.current[index];
-                    const duration = start != null ? Date.now() - start : -1;
-                    console.log(`[ImageTiming] fullscreen  index=${index}  renderer=expo-image  mainImage error after ${duration}ms`);
+                    traceHandlesRef.current[index]?.stop(false);
+                    delete traceHandlesRef.current[index];
                     delete loadStartTimesRef.current[index];
                     const crashlytics = getCrashlytics();
                     log(crashlytics, `Fullscreen image failed to load at index ${index}`);
-                    recordCrashError(crashlytics, new Error(`[ImagePerf] Fullscreen image error at index ${index} after ${duration}ms`));
+                    recordCrashError(crashlytics, new Error(`[ImagePerf] Fullscreen image error at index ${index}`));
                   }}
                 />
               </View>
