@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useMemo, useState } from "react";
 
 export interface IssueMarker {
   id: number;
@@ -16,7 +16,7 @@ export interface IssueMarker {
     };
     address?: string;
   };
-  media_urls?: Array<{ url: string }>;
+  media_urls?: { url: string; url_thumbnail?: string }[];
   vote_count?: number;
   verify_count?: number;
 }
@@ -24,6 +24,8 @@ export interface IssueMarker {
 interface IssuesContextType {
   issues: IssueMarker[];
   setIssues: (issues: IssueMarker[]) => void;
+  /** Maps issueId → thumbnail URL (falls back to full URL if no thumbnail exists) */
+  thumbnailCache: Record<number, string>;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
@@ -31,8 +33,17 @@ const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 export function IssuesProvider({ children }: { children: ReactNode }) {
   const [issues, setIssues] = useState<IssueMarker[]>([]);
 
+  const thumbnailCache = useMemo(() => {
+    const cache: Record<number, string> = {};
+    for (const issue of issues) {
+      const first = issue.media_urls?.[0];
+      if (first) cache[issue.id] = first.url_thumbnail ?? first.url;
+    }
+    return cache;
+  }, [issues]);
+
   return (
-    <IssuesContext.Provider value={{ issues, setIssues }}>
+    <IssuesContext.Provider value={{ issues, setIssues, thumbnailCache }}>
       {children}
     </IssuesContext.Provider>
   );

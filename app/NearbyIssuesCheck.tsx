@@ -1,6 +1,7 @@
 import CustomText from "@/components/CustomText";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { calculateDaysActive } from "@/utils/FormatDate";
+import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
   getFastLocationWithProgressiveWatch,
@@ -63,11 +64,9 @@ function NearbyIssueCard({
   onView,
   isUpdating,
 }: NearbyIssueCardProps) {
-  const loadStartRef = useRef<number | null>(null);
+  const traceRef = useRef<ImageTraceHandle | null>(null);
   const thumbnailUrl =
-    (issue.media_urls?.[0] as { url: string; url_thumbnail?: string } | undefined)
-      ?.url_thumbnail ?? issue.media_urls?.[0]?.url;
-  const isThumbnail = !!(issue.media_urls?.[0] as { url: string; url_thumbnail?: string } | undefined)?.url_thumbnail;
+    issue.media_urls?.[0]?.url_thumbnail ?? issue.media_urls?.[0]?.url;
   const color = getIssueColor(issue.type);
   const daysActive = calculateDaysActive(issue.created_at);
   const locationText =
@@ -86,19 +85,21 @@ function NearbyIssueCard({
           style={styles.cardImage}
           contentFit="cover"
           onLoadStart={() => {
-            loadStartRef.current = Date.now();
-            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  load started`);
+            traceRef.current = startImageTrace({
+              component: 'nearbyIssueCard',
+              imageType: 'thumbnail',
+              renderer: 'expo-image',
+              id: String(issue.id),
+            });
           }}
           onLoad={(event) => {
-            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
             const { width: w, height: h } = event.source;
-            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  loaded in ${duration}ms  (${w}×${h})`);
-            loadStartRef.current = null;
+            traceRef.current?.stop(true, w, h);
+            traceRef.current = null;
           }}
           onError={() => {
-            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
-            console.log(`[ImageTiming] nearbyCard  issueId=${issue.id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  error after ${duration}ms`);
-            loadStartRef.current = null;
+            traceRef.current?.stop(false);
+            traceRef.current = null;
           }}
         />
       ) : (

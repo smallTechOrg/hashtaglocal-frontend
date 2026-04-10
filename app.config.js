@@ -60,6 +60,7 @@ export default {
       "expo-dev-client",
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
+      "@react-native-firebase/perf",
       "expo-router",
       [
         "expo-splash-screen",

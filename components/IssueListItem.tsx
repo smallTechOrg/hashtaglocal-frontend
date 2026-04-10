@@ -1,5 +1,6 @@
 import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { calculateDaysActive } from "@/utils/FormatDate";
+import { ImageTraceHandle, startImageTrace } from '@/utils/imagePerf';
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from "expo-image";
@@ -70,6 +71,7 @@ export default function IssueListItem({
   const thumbnailUrl = media_urls?.[0]?.url_thumbnail || media_urls?.[0]?.url;
   const isThumbnail = !!media_urls?.[0]?.url_thumbnail;
   const loadStartRef = useRef<number | null>(null);
+  const traceRef = useRef<ImageTraceHandle | null>(null);
 
   return (
     <TouchableOpacity
@@ -85,25 +87,30 @@ export default function IssueListItem({
           contentFit="cover"
           onLoadStart={() => {
             loadStartRef.current = Date.now();
-            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  load started`);
+            traceRef.current = startImageTrace({
+              component: 'listItem',
+              imageType: isThumbnail ? 'thumbnail' : 'mainImage',
+              renderer: 'expo-image',
+              id: String(id),
+            });
           }}
           onLoad={(event) => {
-            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
             const { width: w, height: h } = event.source;
-            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  loaded in ${duration}ms  (${w}×${h})`);
+            const duration = traceRef.current?.stop(true, w, h) ?? -1;
+            traceRef.current = null;
             if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
               const crashlytics = getCrashlytics();
-              log(crashlytics, `Slow list thumbnail load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} duration=${duration}ms — list item blank during load`);
+              log(crashlytics, `Slow list thumbnail load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} duration=${duration}ms`);
               recordCrashError(crashlytics, new Error(`[ImagePerf] IssueListItem slow load issueId=${id}: ${duration}ms`));
             }
             loadStartRef.current = null;
           }}
           onError={() => {
-            const duration = loadStartRef.current != null ? Date.now() - loadStartRef.current : -1;
-            console.log(`[ImageTiming] listItem  issueId=${id}  renderer=expo-image  type=${isThumbnail ? 'thumbnail' : 'mainImage'}  error after ${duration}ms`);
+            const duration = traceRef.current?.stop(false) ?? -1;
+            traceRef.current = null;
             loadStartRef.current = null;
             const crashlytics = getCrashlytics();
-            log(crashlytics, `List item image failed to load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} — image area blank`);
+            log(crashlytics, `List item image failed to load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'}`);
             recordCrashError(crashlytics, new Error(`[ImagePerf] IssueListItem image error issueId=${id} after ${duration}ms`));
           }}
         />

@@ -1,12 +1,12 @@
+import KarmaBadge from "@/components/KarmaBadge";
 import "@/global.css";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
+import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { clearTokens, getAccessToken } from "@/utils/tokenStorage";
-import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
-import KarmaBadge from "@/components/KarmaBadge";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {

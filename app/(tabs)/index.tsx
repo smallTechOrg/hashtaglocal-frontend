@@ -1,5 +1,5 @@
-import { getIssuesByLocation } from "@/api/IssueDetail";
 import { Event } from "@/api/events";
+import { getIssuesByLocation } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -9,9 +9,11 @@ import {
 } from "@/components/MapFilter";
 import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
-import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
-import { useIssues } from "@/utils/IssuesContext";
 import { useEvents } from "@/utils/EventsContext";
+import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
+import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
+import { useIssues } from "@/utils/IssuesContext";
+import { useKarma } from "@/utils/KarmaContext";
 import {
   calculateHaversineDistance,
   getFastLocationWithProgressiveWatch,
@@ -20,7 +22,6 @@ import {
   UserLocation,
 } from "@/utils/LocationService";
 import { formatDistance } from "@/utils/NearbyIssues";
-import { useKarma } from "@/utils/KarmaContext";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -106,7 +107,8 @@ export default function MapScreen() {
   const [imageVisible, setImageVisible] = useState(false);
   const [showEventsOnly, setShowEventsOnly] = useState(false);
   const prefetchedThumbs = useRef(new Set<string>());
-  const bottomSheetLoadStart = useRef<number | null>(null);
+  const bottomSheetTraceRef = useRef<ImageTraceHandle | null>(null);
+  const eventSheetTraceRef = useRef<ImageTraceHandle | null>(null);
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -683,6 +685,23 @@ export default function MapScreen() {
                 contentFit="cover"
                 transition={200}
                 cachePolicy="memory-disk"
+                onLoadStart={() => {
+                  eventSheetTraceRef.current = startImageTrace({
+                    component: 'mapBottomSheet',
+                    imageType: 'mainImage',
+                    renderer: 'expo-image',
+                    id: String(selectedEvent.id),
+                  });
+                }}
+                onLoad={(event) => {
+                  const { width: w, height: h } = event.source;
+                  eventSheetTraceRef.current?.stop(true, w, h);
+                  eventSheetTraceRef.current = null;
+                }}
+                onError={() => {
+                  eventSheetTraceRef.current?.stop(false);
+                  eventSheetTraceRef.current = null;
+                }}
               />
             </View>
 
@@ -760,27 +779,27 @@ export default function MapScreen() {
                 <Image
                   key={selectedIssue.id}
                   source={{ uri: selectedIssue.media_urls[0].url_thumbnail }}
-                  // placeholder={selectedIssue.media_urls[0].url_thumbnail}
-                  // placeholderContentFit="cover"
                   style={styles.previewImage}
                   contentFit="cover"
                   transition={0}
                   cachePolicy="memory-disk"
                   onLoadStart={() => {
-                    bottomSheetLoadStart.current = Date.now();
-                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  load started  hasThumbnail=${!!selectedIssue.media_urls![0].url_thumbnail}`);
+                    bottomSheetTraceRef.current = startImageTrace({
+                      component: 'mapBottomSheet',
+                      imageType: 'thumbnail',
+                      renderer: 'expo-image',
+                      id: String(selectedIssue.id),
+                    });
                   }}
                   onLoad={(event) => {
-                    const duration = bottomSheetLoadStart.current != null ? Date.now() - bottomSheetLoadStart.current : -1;
                     const { width: w, height: h } = event.source;
-                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  mainImage loaded in ${duration}ms  (${w}×${h})`);
-                    bottomSheetLoadStart.current = null;
+                    bottomSheetTraceRef.current?.stop(true, w, h);
+                    bottomSheetTraceRef.current = null;
                     setImageVisible(true);
                   }}
                   onError={() => {
-                    const duration = bottomSheetLoadStart.current != null ? Date.now() - bottomSheetLoadStart.current : -1;
-                    console.log(`[ImageTiming] bottomSheet  issueId=${selectedIssue.id}  renderer=expo-image  error after ${duration}ms`);
-                    bottomSheetLoadStart.current = null;
+                    bottomSheetTraceRef.current?.stop(false);
+                    bottomSheetTraceRef.current = null;
                   }}
                 />
               </View>
