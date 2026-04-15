@@ -1,16 +1,16 @@
 import CustomText from "@/components/CustomText";
 import IssueListItem from "@/components/IssueListItem";
 import {
-    createIssueFilterPredicate,
-    ISSUE_FILTER_CATEGORIES,
-    MapFilterOverlay,
-    useMapFilters,
+  createIssueFilterPredicate,
+  ISSUE_FILTER_CATEGORIES,
+  MapFilterOverlay,
+  useMapFilters,
 } from "@/components/MapFilter";
 import { useIssues } from "@/utils/IssuesContext";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useMemo } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 
 export default function IssuesScreen() {
   const { issues: contextIssues } = useIssues();
@@ -81,6 +81,13 @@ export default function IssuesScreen() {
     return counts;
   }, [contextIssues, activeFilters, user?.username]);
 
+  const [hasMore, setHasMore] = useState(true);
+  const lastFilteredLength = useRef(filteredIssues.length);
+  if (lastFilteredLength.current !== filteredIssues.length) {
+    lastFilteredLength.current = filteredIssues.length;
+    setHasMore(true);
+  }
+
   return (
     <View style={styles.container}>
       {/* Filter bar – identical to the map page filter, rendered inline */}
@@ -128,6 +135,21 @@ export default function IssuesScreen() {
           contentContainerStyle={styles.listContent}
           scrollEnabled={true}
           nestedScrollEnabled={true}
+          windowSize={5}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          removeClippedSubviews={true}
+          onEndReachedThreshold={0.3}
+          onEndReached={() => setHasMore(false)}
+          ListFooterComponent={
+            hasMore && filteredIssues.length > 4 ? (
+              <ActivityIndicator
+                size="small"
+                color="#256D1B"
+                style={styles.footer}
+              />
+            ) : null
+          }
         />
       )}
     </View>
@@ -147,5 +169,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 8,
+  },
+  footer: {
+    paddingVertical: 16,
   },
 });

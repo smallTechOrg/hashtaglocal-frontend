@@ -12,7 +12,6 @@ import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useIsFocused } from '@react-navigation/native';
-import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -56,20 +55,6 @@ const IssueDetailScreen = () => {
                 console.log('Loading issue with ID:', issueId);
                 const data = await fetchIssue(issueId);
                 setIssueData(data);
-                // Prefetch thumbnails so they're cached before the carousel renders
-                data?.data?.issue?.media_urls?.forEach((m: { url_thumbnail?: string }, i: number) => {
-                    if (m.url_thumbnail) {
-                        const prefetchStart = Date.now();
-                        Image.prefetch(m.url_thumbnail)
-                            .then((success) => {
-                                const duration = Date.now() - prefetchStart;
-                                console.log(`[ImageTiming] prefetch  issueDetail  index=${i}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
-                            })
-                            .catch(() => {
-                                console.log(`[ImageTiming] prefetch  issueDetail  index=${i}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
-                            });
-                    }
-                });
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to load issue';
                 setError(errorMessage);

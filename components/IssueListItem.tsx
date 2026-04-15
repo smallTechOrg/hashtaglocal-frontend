@@ -85,8 +85,10 @@ export default function IssueListItem({
           source={{ uri: thumbnailUrl }}
           style={styles.image}
           contentFit="cover"
+          cachePolicy="memory-disk"
           onLoadStart={() => {
             loadStartRef.current = Date.now();
+            console.log(`[ImageLoad] START  listItem  id=${id}  type=${isThumbnail ? 'thumbnail' : 'main'}`);
             traceRef.current = startImageTrace({
               component: 'listItem',
               imageType: isThumbnail ? 'thumbnail' : 'mainImage',
@@ -98,6 +100,7 @@ export default function IssueListItem({
             const { width: w, height: h } = event.source;
             const duration = traceRef.current?.stop(true, w, h) ?? -1;
             traceRef.current = null;
+            console.log(`[ImageLoad] DONE   listItem  id=${id}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
             if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
               const crashlytics = getCrashlytics();
               log(crashlytics, `Slow list thumbnail load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'} duration=${duration}ms`);
@@ -109,6 +112,7 @@ export default function IssueListItem({
             const duration = traceRef.current?.stop(false) ?? -1;
             traceRef.current = null;
             loadStartRef.current = null;
+            console.log(`[ImageLoad] ERROR  listItem  id=${id}  after ${duration}ms `);
             const crashlytics = getCrashlytics();
             log(crashlytics, `List item image failed to load: issueId=${id} type=${isThumbnail ? 'thumbnail' : 'mainImage'}`);
             recordCrashError(crashlytics, new Error(`[ImagePerf] IssueListItem image error issueId=${id} after ${duration}ms`));

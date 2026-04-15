@@ -94,8 +94,10 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                   style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
                   contentFit="contain"
                   transition={200}
+                  cachePolicy="memory-disk"
                   onLoadStart={() => {
                     loadStartTimesRef.current[index] = Date.now();
+                    console.log(`[ImageLoad] START  fullscreen  index=${index}`);
                     traceHandlesRef.current[index] = startImageTrace({
                       component: 'fullscreen',
                       imageType: 'mainImage',
@@ -107,6 +109,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                     const { width: w, height: h } = event.source;
                     const duration = traceHandlesRef.current[index]?.stop(true, w, h) ?? -1;
                     delete traceHandlesRef.current[index];
+                    console.log(`[ImageLoad] DONE   fullscreen  index=${index}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
                     if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
                       const crashlytics = getCrashlytics();
                       log(crashlytics, `Slow fullscreen image load: index=${index} duration=${duration}ms (${w}×${h})`);
@@ -118,6 +121,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                     traceHandlesRef.current[index]?.stop(false);
                     delete traceHandlesRef.current[index];
                     delete loadStartTimesRef.current[index];
+                    console.log(`[ImageLoad] ERROR  fullscreen  index=${index}`);
                     const crashlytics = getCrashlytics();
                     log(crashlytics, `Fullscreen image failed to load at index ${index}`);
                     recordCrashError(crashlytics, new Error(`[ImagePerf] Fullscreen image error at index ${index}`));

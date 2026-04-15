@@ -39,10 +39,12 @@ export default function EventCard({ event, distanceMeters }: { event: Event; dis
     >
       <Image
         source={imgSource}
+        cachePolicy="memory-disk"
         onError={() => {
           const duration = traceRef.current?.stop(false) ?? -1;
           traceRef.current = null;
           loadStartRef.current = null;
+          console.log(`[ImageLoad] ERROR  eventCard  id=${event.id ?? 'unknown'}  after ${duration}ms `);
           const crashlytics = getCrashlytics();
           log(crashlytics, `EventCard image failed to load: eventId=${event.id ?? 'unknown'} after ${duration}ms`);
           recordCrashError(crashlytics, new Error(`[ImagePerf] EventCard image error eventId=${event.id ?? 'unknown'} after ${duration}ms`));
@@ -53,6 +55,7 @@ export default function EventCard({ event, distanceMeters }: { event: Event; dis
         contentFit="cover"
         onLoadStart={() => {
           loadStartRef.current = Date.now();
+          console.log(`[ImageLoad] START  eventCard  id=${event.id ?? 'unknown'}`);
           traceRef.current = startImageTrace({
             component: 'eventCard',
             imageType: 'mainImage',
@@ -64,6 +67,7 @@ export default function EventCard({ event, distanceMeters }: { event: Event; dis
           const { width: w, height: h } = e.source;
           const duration = traceRef.current?.stop(true, w, h) ?? -1;
           traceRef.current = null;
+          console.log(`[ImageLoad] DONE   eventCard  id=${event.id ?? 'unknown'}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
           if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
             const crashlytics = getCrashlytics();
             log(crashlytics, `Slow EventCard image load: eventId=${event.id ?? 'unknown'} duration=${duration}ms (${w}×${h})`);
