@@ -37,7 +37,16 @@ export function IssuesProvider({ children }: { children: ReactNode }) {
     setIssuesState((prev) => {
       if (
         prev.length === newIssues.length &&
-        prev.every((p, i) => p.id === newIssues[i].id)
+        prev.every((p, i) => {
+          const n = newIssues[i];
+          return (
+            p.id === n.id &&
+            p.status === n.status &&
+            p.verify_count === n.verify_count &&
+            p.vote_count === n.vote_count &&
+            (p.media_urls?.length ?? 0) === (n.media_urls?.length ?? 0)
+          );
+        })
       ) {
         return prev;
       }

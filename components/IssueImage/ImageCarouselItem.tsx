@@ -2,7 +2,7 @@ import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { ImageTraceHandle, startImageTrace } from '@/utils/imagePerf';
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { Image } from 'expo-image';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ImageSourcePropType, Pressable, Image as RNImage, View } from 'react-native';
 
 interface ImageCarouselItemProps {
@@ -38,6 +38,12 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
   const MAX_RETRIES = 2;
   // Incrementing this key forces expo-image to unmount/remount (retry)
   const [retryKey, setRetryKey] = useState(0);
+
+  const imageUri = typeof imageSource === 'object' && 'uri' in imageSource ? imageSource.uri : String(imageSource);
+  useEffect(() => {
+    retryCountRef.current = 0;
+    setRetryKey(0);
+  }, [imageUri]);
 
   return (
     <View
