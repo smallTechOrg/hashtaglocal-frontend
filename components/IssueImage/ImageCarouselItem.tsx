@@ -2,7 +2,7 @@ import { IMAGE_SLOW_LOAD_THRESHOLD_MS } from '@/constants/imageConfig';
 import { ImageTraceHandle, startImageTrace } from '@/utils/imagePerf';
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { Image } from 'expo-image';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ImageSourcePropType, Pressable, Image as RNImage, View } from 'react-native';
 
 interface ImageCarouselItemProps {
@@ -34,6 +34,16 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
   const traceRef = useRef<ImageTraceHandle | null>(null);
   const rnTraceRef = useRef<ImageTraceHandle | null>(null);
   const thumbTraceRef = useRef<ImageTraceHandle | null>(null);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 2;
+  // Incrementing this key forces expo-image to unmount/remount (retry)
+  const [retryKey, setRetryKey] = useState(0);
+
+  const imageUri = typeof imageSource === 'object' && 'uri' in imageSource ? imageSource.uri : String(imageSource);
+  useEffect(() => {
+    retryCountRef.current = 0;
+    setRetryKey(0);
+  }, [imageUri]);
 
   return (
     <View
@@ -50,6 +60,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             resizeMode="cover"
             onLoadStart={() => {
               rnLoadStartRef.current = Date.now();
+              console.log(`[ImageLoad] START  carousel-RNfallback  index=${index}`);
               rnTraceRef.current = startImageTrace({
                 component: 'carousel',
                 imageType: 'mainImage',
@@ -60,6 +71,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             onLoad={() => {
               const duration = rnTraceRef.current?.stop(true) ?? -1;
               rnTraceRef.current = null;
+              console.log(`[ImageLoad] DONE   carousel-RNfallback  index=${index}  ${duration}ms${duration < 80 ? '  (cache)' : '  (network)'}`);
               if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
                 const crashlytics = getCrashlytics();
                 log(crashlytics, `Slow image load: index=${index} renderer=RNImage duration=${duration}ms`);
@@ -71,6 +83,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
               rnTraceRef.current?.stop(false);
               rnTraceRef.current = null;
               rnLoadStartRef.current = null;
+              console.log(`[ImageLoad] ERROR  carousel-RNfallback  index=${index}`);
               console.error(`[IssueImage] RN Image also failed for ${index}:`, error);
               const crashlytics = getCrashlytics();
               log(crashlytics, `Image render failed (both expo-image and RN Image) at index ${index}`);
@@ -79,6 +92,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
           />
         ) : (
           <Image
+            key={retryKey}
             source={imageSource}
             placeholder={thumbnailSource}
             placeholderContentFit="cover"
@@ -88,6 +102,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             cachePolicy="memory-disk"
             onLoadStart={() => {
               loadStartRef.current = Date.now();
+              console.log(`[ImageLoad] START  carousel-main  index=${index}`);
               traceRef.current = startImageTrace({
                 component: 'carousel',
                 imageType: 'mainImage',
@@ -99,6 +114,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
               const { width: w, height: h } = event.source;
               const duration = traceRef.current?.stop(true, w, h) ?? -1;
               traceRef.current = null;
+              console.log(`[ImageLoad] DONE   carousel-main  index=${index}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
               if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
                 const crashlytics = getCrashlytics();
                 log(crashlytics, `Slow image load: index=${index} renderer=expo-image duration=${duration}ms (${w}×${h})`);
@@ -110,6 +126,13 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
               traceRef.current?.stop(false);
               traceRef.current = null;
               loadStartRef.current = null;
+              if (retryCountRef.current < MAX_RETRIES) {
+                retryCountRef.current += 1;
+                console.log(`[ImageLoad] RETRY  carousel-main  index=${index}  attempt=${retryCountRef.current}`);
+                setRetryKey((k) => k + 1);
+                return;
+              }
+              console.log(`[ImageLoad] ERROR  carousel-main  index=${index}`);
               console.error(`[IssueImage] Error loading image ${index}:`, error);
               const crashlytics = getCrashlytics();
               log(crashlytics, `expo-image failed to load at index ${index}, falling back to RN Image`);
@@ -126,10 +149,11 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
       {thumbnailSource && (
         <Image
           source={thumbnailSource}
-          style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }}
+          style={{ width: 1, height: 1, position: 'absolute', opacity: 0 }}
           cachePolicy="memory-disk"
           onLoadStart={() => {
             thumbLoadStartRef.current = Date.now();
+            console.log(`[ImageLoad] START  carousel-thumb  index=${index}`);
             thumbTraceRef.current = startImageTrace({
               component: 'carousel',
               imageType: 'thumbnail',
@@ -141,6 +165,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             const { width: w, height: h } = event.source;
             const duration = thumbTraceRef.current?.stop(true, w, h) ?? -1;
             thumbTraceRef.current = null;
+            console.log(`[ImageLoad] DONE   carousel-thumb  index=${index}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
             if (duration > IMAGE_SLOW_LOAD_THRESHOLD_MS) {
               const crashlytics = getCrashlytics();
               log(crashlytics, `Slow thumbnail load: index=${index} duration=${duration}ms (${w}×${h})`);
@@ -152,6 +177,7 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             thumbTraceRef.current?.stop(false);
             thumbTraceRef.current = null;
             thumbLoadStartRef.current = null;
+            console.log(`[ImageLoad] ERROR  carousel-thumb  index=${index}`);
             const crashlytics = getCrashlytics();
             log(crashlytics, `Thumbnail failed to load: index=${index}`);
             recordCrashError(crashlytics, new Error(`[ImagePerf] Thumbnail load error at index ${index}: image area blank`));

@@ -1,14 +1,14 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Dimensions, Image, ImageSourcePropType, ScrollView, View } from 'react-native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 import '../../global.css';
 import CustomText from '../CustomText';
 import EmptyImagePlaceholder from './EmptyImagePlaceholder';
 import FullScreenImageViewer from './FullScreenImageViewer';
 import ImageCarouselItem from './ImageCarouselItem';
 import PaginationDots from './PaginationDots';
+
+const SCREEN_WIDTH = Math.round(Dimensions.get('window').width);
 
 export interface MediaItem {
   url: string;
@@ -40,7 +40,7 @@ const IssueImage: React.FC<IssueImageProps> = ({
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Support mediaItems, imageSources, or single imageSource
   const images = mediaItems && mediaItems.length > 0
@@ -84,7 +84,10 @@ const IssueImage: React.FC<IssueImageProps> = ({
           <View
             className="w-full"
             style={{ height: 450, overflow: 'hidden' }}
-            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            onLayout={(e) => {
+              const w = Math.round(e.nativeEvent.layout.width);
+              setContainerWidth((prev) => (prev === w ? prev : w));
+            }}
           >
             {containerWidth > 0 && (
               <ScrollView

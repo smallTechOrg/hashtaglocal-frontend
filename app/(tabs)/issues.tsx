@@ -1,10 +1,10 @@
 import CustomText from "@/components/CustomText";
 import IssueListItem from "@/components/IssueListItem";
 import {
-    createIssueFilterPredicate,
-    ISSUE_FILTER_CATEGORIES,
-    MapFilterOverlay,
-    useMapFilters,
+  createIssueFilterPredicate,
+  ISSUE_FILTER_CATEGORIES,
+  MapFilterOverlay,
+  useMapFilters,
 } from "@/components/MapFilter";
 import { useIssues } from "@/utils/IssuesContext";
 import { useUser } from "@/utils/UserContext";
@@ -128,6 +128,11 @@ export default function IssuesScreen() {
           contentContainerStyle={styles.listContent}
           scrollEnabled={true}
           nestedScrollEnabled={true}
+          windowSize={5}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          removeClippedSubviews={true}
+          onEndReachedThreshold={0.3}
         />
       )}
     </View>

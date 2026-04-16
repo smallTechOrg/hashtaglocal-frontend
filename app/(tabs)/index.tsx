@@ -106,7 +106,6 @@ export default function MapScreen() {
   const [checkingDistance, setCheckingDistance] = useState(false);
   const [imageVisible, setImageVisible] = useState(false);
   const [showEventsOnly, setShowEventsOnly] = useState(false);
-  const prefetchedThumbs = useRef(new Set<string>());
   const bottomSheetTraceRef = useRef<ImageTraceHandle | null>(null);
   const eventSheetTraceRef = useRef<ImageTraceHandle | null>(null);
 
@@ -288,22 +287,6 @@ export default function MapScreen() {
       setIssues(issuesData);
       // Also save to context for other tabs to use
       setContextIssues(issuesData);
-      // Prefetch thumbnails so they're cached before a marker is tapped
-      issuesData.forEach((issue: IssueMarker) => {
-        const thumb = issue.media_urls?.[0]?.url_thumbnail;
-        if (thumb && !prefetchedThumbs.current.has(thumb)){
-          prefetchedThumbs.current.add(thumb);
-          const prefetchStart = Date.now();
-          Image.prefetch(thumb)
-            .then((success) => {
-              const duration = Date.now() - prefetchStart;
-              console.log(`[ImageTiming] prefetch  mapBatch  issueId=${issue.id}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
-            })
-            .catch(() => {
-              console.log(`[ImageTiming] prefetch  mapBatch  issueId=${issue.id}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
-            });
-        } 
-      });
     } catch (error) {
       console.error("Failed to load nearby issues:", error);
     } finally {
@@ -321,21 +304,6 @@ export default function MapScreen() {
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
     setSelectedEvent(null);
-    const thumb = issue.media_urls?.[0]?.url_thumbnail;
-
-    // Prioritize this thumbnail
-    if (thumb && !prefetchedThumbs.current.has(thumb)) {
-      prefetchedThumbs.current.add(thumb);
-      const prefetchStart = Date.now();
-      Image.prefetch(thumb)
-        .then((success) => {
-          const duration = Date.now() - prefetchStart;
-          console.log(`[ImageTiming] prefetch  markerTap  issueId=${issue.id}  renderer=expo-image  thumbnail ${success ? `loaded in ${duration}ms` : `failed after ${duration}ms`}`);
-        })
-        .catch(() => {
-          console.log(`[ImageTiming] prefetch  markerTap  issueId=${issue.id}  renderer=expo-image  thumbnail error after ${Date.now() - prefetchStart}ms`);
-        });
-    }
     setSelectedIssue(issue);
   }, []);
 
@@ -686,6 +654,7 @@ export default function MapScreen() {
                 transition={200}
                 cachePolicy="memory-disk"
                 onLoadStart={() => {
+                  console.log(`[ImageLoad] START  bottomSheet-event  id=${selectedEvent.id} `);
                   eventSheetTraceRef.current = startImageTrace({
                     component: 'mapBottomSheet',
                     imageType: 'mainImage',
@@ -695,12 +664,14 @@ export default function MapScreen() {
                 }}
                 onLoad={(event) => {
                   const { width: w, height: h } = event.source;
-                  eventSheetTraceRef.current?.stop(true, w, h);
+                  const duration = eventSheetTraceRef.current?.stop(true, w, h) ?? -1;
                   eventSheetTraceRef.current = null;
+                  console.log(`[ImageLoad] DONE   bottomSheet-event  id=${selectedEvent.id}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
                 }}
                 onError={() => {
-                  eventSheetTraceRef.current?.stop(false);
+                  const duration = eventSheetTraceRef.current?.stop(false) ?? -1;
                   eventSheetTraceRef.current = null;
+                  console.log(`[ImageLoad] ERROR  bottomSheet-event  id=${selectedEvent.id}  after ${duration}ms`);
                 }}
               />
             </View>
@@ -784,6 +755,7 @@ export default function MapScreen() {
                   transition={0}
                   cachePolicy="memory-disk"
                   onLoadStart={() => {
+                    console.log(`[ImageLoad] START  bottomSheet-issue  id=${selectedIssue.id}`);
                     bottomSheetTraceRef.current = startImageTrace({
                       component: 'mapBottomSheet',
                       imageType: 'thumbnail',
@@ -793,13 +765,15 @@ export default function MapScreen() {
                   }}
                   onLoad={(event) => {
                     const { width: w, height: h } = event.source;
-                    bottomSheetTraceRef.current?.stop(true, w, h);
+                    const duration = bottomSheetTraceRef.current?.stop(true, w, h) ?? -1;
                     bottomSheetTraceRef.current = null;
+                    console.log(`[ImageLoad] DONE   bottomSheet-issue  id=${selectedIssue.id}  ${duration}ms  ${w}×${h}${duration < 80 ? '  (cache)' : '  (network)'}`);
                     setImageVisible(true);
                   }}
                   onError={() => {
-                    bottomSheetTraceRef.current?.stop(false);
+                    const duration = bottomSheetTraceRef.current?.stop(false) ?? -1;
                     bottomSheetTraceRef.current = null;
+                    console.log(`[ImageLoad] ERROR  bottomSheet-issue  id=${selectedIssue.id}  after ${duration}ms`);
                   }}
                 />
               </View>

@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
 export interface IssueMarker {
   id: number;
@@ -31,7 +31,28 @@ interface IssuesContextType {
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 
 export function IssuesProvider({ children }: { children: ReactNode }) {
-  const [issues, setIssues] = useState<IssueMarker[]>([]);
+  const [issues, setIssuesState] = useState<IssueMarker[]>([]);
+
+  const setIssues = useCallback((newIssues: IssueMarker[]) => {
+    setIssuesState((prev) => {
+      if (
+        prev.length === newIssues.length &&
+        prev.every((p, i) => {
+          const n = newIssues[i];
+          return (
+            p.id === n.id &&
+            p.status === n.status &&
+            p.verify_count === n.verify_count &&
+            p.vote_count === n.vote_count &&
+            (p.media_urls?.length ?? 0) === (n.media_urls?.length ?? 0)
+          );
+        })
+      ) {
+        return prev;
+      }
+      return newIssues;
+    });
+  }, []);
 
   const thumbnailCache = useMemo(() => {
     const cache: Record<number, string> = {};
