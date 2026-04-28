@@ -57,6 +57,14 @@ export default {
       favicon: "./assets/images/favicon.png",
     },
     plugins: [
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static",
+          },
+        },
+      ],
       "expo-dev-client",
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
