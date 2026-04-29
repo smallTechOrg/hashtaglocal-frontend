@@ -65,6 +65,7 @@ export default {
           },
         },
       ],
+      "./plugins/withFirebasePodfileFix",
       "expo-dev-client",
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
