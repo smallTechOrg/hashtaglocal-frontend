@@ -17,6 +17,9 @@ export default {
         "applinks:hashtaglocal.app",
         "applinks:www.hashtaglocal.app",
       ],
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       adaptiveIcon: {
