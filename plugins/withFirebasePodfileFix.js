@@ -3,17 +3,15 @@ const path = require("path");
 const fs = require("fs");
 
 /**
- * Injects ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES into
- * the existing post_install hook in the Podfile.
+ * Injects CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES
+ * and suppresses -Wnon-modular-include-in-framework-module via OTHER_CFLAGS
+ * into the existing post_install hook in the Podfile.
  *
- * This is required when using use_frameworks! :linkage => :static
- * (via expo-build-properties useFrameworks: "static") alongside
- * @react-native-firebase, because RNFBApp's Objective-C headers
- * import non-modular React-Core headers and Xcode treats that as
- * an error inside a framework module by default.
- *
- * NOTE: A new post_install block is NOT added — CocoaPods forbids
- * multiple post_install hooks, so we insert into the existing one.
+ * Required when using use_frameworks! :linkage => :static (via
+ * expo-build-properties useFrameworks: "static") alongside
+ * @react-native-firebase, because RNFBApp's Objective-C headers import
+ * non-modular React-Core headers and Xcode treats that as an error inside
+ * a framework module by default.
  */
 function withFirebasePodfileFix(config) {
   return withDangerousMod(config, [
@@ -25,29 +23,30 @@ function withFirebasePodfileFix(config) {
       );
       let podfile = fs.readFileSync(podfilePath, "utf8");
 
-      if (podfile.includes("ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES")) {
-        // Already patched
+      if (podfile.includes("CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES")) {
         return config;
       }
 
       const insertCode = [
-        "  # Fix: allow @react-native-firebase Objective-C pods to include",
-        "  # non-modular React-Core headers when use_frameworks! is active.",
+        "  # Fix: allow @react-native-firebase pods to include non-modular React-Core",
+        "  # headers when use_frameworks! :linkage => :static is active.",
         "  installer.pods_project.targets.each do |target|",
         "    target.build_configurations.each do |build_config|",
-        "      build_config.build_settings['ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'",
+        "      build_config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'",
+        "      flags = build_config.build_settings['OTHER_CFLAGS'] || '$(inherited)'",
+        "      unless flags.include?('-Wno-non-modular-include-in-framework-module')",
+        "        build_config.build_settings['OTHER_CFLAGS'] = flags + ' -Wno-non-modular-include-in-framework-module'",
+        "      end",
         "    end",
         "  end",
       ].join("\n");
 
       if (podfile.includes("post_install do |installer|")) {
-        // Inject into the existing post_install block
         podfile = podfile.replace(
           "post_install do |installer|",
           `post_install do |installer|\n${insertCode}`,
         );
       } else {
-        // No existing block — add one
         podfile += [
           "",
           "post_install do |installer|",
