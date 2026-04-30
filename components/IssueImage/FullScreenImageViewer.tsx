@@ -5,6 +5,7 @@ import { getCrashlytics, log, recordError as recordCrashError } from '@react-nat
 import { Image } from 'expo-image';
 import React from 'react';
 import { Dimensions, ImageSourcePropType, Modal, ScrollView, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PaginationDots from './PaginationDots';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -22,6 +23,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
   imageSources,
   initialIndex = 0
 }) => {
+  const { top } = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const loadStartTimesRef = React.useRef<Record<number, number>>({});
@@ -57,10 +59,10 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
           onPress={onClose}
           style={{
             position: 'absolute',
-            top: 5,
-            right: 5,
+            top: top + 12,
+            right: 16,
             zIndex: 10,
-            padding: 5,
+            padding: 8,
           }}
         >
           <MaterialIcons name="close" size={28} color="#fff" />

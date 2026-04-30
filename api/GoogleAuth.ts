@@ -1,28 +1,30 @@
-import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const oauth_endpoint = {
-    authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-};
+const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 
 export function useGoogleAuth() {
-    const redirectUri = process.env.EXPO_PUBLIC_API_BASE_URL!+"/auth-handler.html";
+    const signIn = async () => {
+        const redirectUri = process.env.EXPO_PUBLIC_API_BASE_URL! + "/auth-handler.html";
+        const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!;
 
-    const [request, response, promptAsync] =
-        AuthSession.useAuthRequest(
-            {
-                clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
-                scopes: ["openid", "email", "profile"],
-                redirectUri,
-                responseType: AuthSession.ResponseType.Token,
-                usePKCE: false,
-            },
-            oauth_endpoint
-        );
+        const authUrl =
+            GOOGLE_AUTH_ENDPOINT +
+            "?" +
+            new URLSearchParams({
+                client_id: clientId,
+                redirect_uri: redirectUri,
+                response_type: "token",
+                scope: "openid email profile",
+            }).toString();
 
-    return {
-        signIn: promptAsync,
+        // Pass hashtaglocal://auth/callback as the second arg so that
+        // ASWebAuthenticationSession (iOS) uses "hashtaglocal" as its
+        // callbackURLScheme and intercepts the deep-link redirect from
+        // auth-handler.html instead of silently blocking it.
+        return WebBrowser.openAuthSessionAsync(authUrl, "hashtaglocal://auth/callback");
     };
+
+    return { signIn };
 }

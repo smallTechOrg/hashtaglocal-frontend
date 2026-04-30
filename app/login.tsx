@@ -2,6 +2,7 @@ import { useGoogleAuth } from "@/api/GoogleAuth";
 import CustomText from "@/components/CustomText";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
+import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, Image, Pressable, View } from "react-native";
 
@@ -10,6 +11,7 @@ const SCALE = 1.25; // enough headroom for larger pan distances
 
 export default function LoginScreen() {
   const { signIn } = useGoogleAuth();
+  const router = useRouter();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
   useEffect(() => {
@@ -23,6 +25,25 @@ export default function LoginScreen() {
       ])
     ).start();
   }, []);
+
+  const handleSignIn = async () => {
+    const result = await signIn();
+    console.log("[Auth] openAuthSessionAsync result type:", result.type);
+
+    if (result.type === "success" && result.url) {
+      console.log("[Auth] iOS auth session succeeded, parsing callback URL");
+      const queryString = result.url.split("?")[1];
+      if (queryString) {
+        const params = Object.fromEntries(new URLSearchParams(queryString).entries());
+        if (params.access_token) {
+          router.replace({ pathname: "/auth/callback", params });
+          return;
+        }
+      }
+      console.log("[Auth] callback URL missing access_token:", result.url);
+    }
+    // On Android, the deep link fires via Linking and is handled by _layout.tsx
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -69,9 +90,7 @@ export default function LoginScreen() {
         </View>
 
         <Pressable
-          onPress={() => {
-            signIn();
-          }}
+          onPress={handleSignIn}
           className="flex-row items-center bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm"
           style={{ elevation: 2 }}
         >
