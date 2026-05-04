@@ -23,10 +23,8 @@ export default function EventsScreen() {
   const filteredEvents = useMemo(() => {
     const now = Date.now();
     return events.filter((e) => {
-      const endStr = e.end_time ?? e.start_time;
-      const utc = endStr.endsWith("Z") ? endStr : `${endStr}Z`;
-      const eventEnd = new Date(utc).getTime();
-      if (eventEnd < now) return false;
+      const startTime = new Date(e.start_time).getTime();
+      if (isNaN(startTime) || startTime < now) return false;
       if (!userHashtag) return true;
       return e.location.locality.hashtags.some(
         (tag) => tag.toLowerCase() === userHashtag

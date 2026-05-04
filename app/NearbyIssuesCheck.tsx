@@ -232,9 +232,9 @@ export default function NearbyIssuesCheck() {
       try {
         // Fetch location (getFastLocationWithProgressiveWatch handles cache internally)
         const result = await getFastLocationWithProgressiveWatch({
-          instantLoad: false,
+          instantLoad: true,
           accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
-          timeoutMs: 20_000,
+          timeoutMs: 8_000,
         });
 
         if (!result.success) {
