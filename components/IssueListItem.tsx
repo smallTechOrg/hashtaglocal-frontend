@@ -82,7 +82,7 @@ export default function IssueListItem({
       {/* Image */}
       {thumbnailUrl ? (
         <Image
-          source={{ uri: thumbnailUrl }}
+          source={{ uri: thumbnailUrl, cacheKey: thumbnailUrl?.split('?')[0] }}
           style={styles.image}
           contentFit="cover"
           cachePolicy="memory-disk"

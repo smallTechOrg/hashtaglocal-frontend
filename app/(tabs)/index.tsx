@@ -747,14 +747,17 @@ export default function MapScreen() {
             {/* Image */}
             {selectedIssue.media_urls && selectedIssue.media_urls.length > 0 ? (
               <View style={styles.imageContainer}>
-                <Image
-                  key={selectedIssue.id}
-                  source={{ uri: selectedIssue.media_urls[0].url_thumbnail }}
-                  style={styles.previewImage}
-                  contentFit="cover"
-                  transition={0}
-                  cachePolicy="memory-disk"
-                  onLoadStart={() => {
+                 <Image
+                   key={selectedIssue.id}
+                   source={{
+                     uri: selectedIssue.media_urls[0].url_thumbnail,
+                     cacheKey: selectedIssue.media_urls[0].url_thumbnail?.split('?')[0],
+                   }}
+                   style={styles.previewImage}
+                   contentFit="cover"
+                   transition={0}
+                   cachePolicy="memory-disk"
+                   onLoadStart={() => {
                     console.log(`[ImageLoad] START  bottomSheet-issue  id=${selectedIssue.id}`);
                     bottomSheetTraceRef.current = startImageTrace({
                       component: 'mapBottomSheet',

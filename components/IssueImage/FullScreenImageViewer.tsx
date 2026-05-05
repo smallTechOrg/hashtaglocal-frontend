@@ -77,7 +77,8 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
           style={{ flex: 1 }}
         >
           {imageSources.map((img, index) => {
-            const imageSource = typeof img === 'string' ? { uri: img } : img;
+            const imageUri = typeof img === 'string' ? img : (img as any).uri;
+            const cacheKey = imageUri?.split('?')[0];
 
             return (
               <View
@@ -89,13 +90,13 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
                   alignItems: 'center',
                 }}
               >
-                <Image
-                  source={imageSource}
-                  style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-                  contentFit="contain"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                  onLoadStart={() => {
+                 <Image
+                   source={{ uri: imageUri, cacheKey }}
+                   style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+                   contentFit="contain"
+                   transition={200}
+                   cachePolicy="memory-disk"
+                   onLoadStart={() => {
                     loadStartTimesRef.current[index] = Date.now();
                     console.log(`[ImageLoad] START  fullscreen  index=${index}`);
                     traceHandlesRef.current[index] = startImageTrace({
