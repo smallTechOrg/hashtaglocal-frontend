@@ -22,7 +22,7 @@ import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { ActivityIndicator, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -247,10 +247,28 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       </View>
       <UserSummarySection summary={user?.user_summary} />
       <DrawerItemList {...props} />
+      <TouchableOpacity
+        onPress={async () => {
+          const subject = encodeURIComponent("Enquiry / Account Request");
+          const body = encodeURIComponent(
+            `Hi SmallTech Support,\n\nUsername: ${user?.username ?? "N/A"}\n`
+          );
+          const url = `mailto:contact@smalltech.in?subject=${subject}&body=${body}`;
+          try {
+            await Linking.openURL(url);
+          } catch {
+            Alert.alert("No email app found", "Please reach us at contact@smalltech.in");
+          }
+        }}
+        className="flex-row items-center px-4 py-3 mt-2 border-t border-gray-200"
+      >
+        <MaterialIcons name="mail-outline" size={24} color="#6b7280" />
+        <Text className="ml-8 text-gray-600 font-nunito">Contact Us</Text>
+      </TouchableOpacity>
       {user && (
         <TouchableOpacity
           onPress={handleLogout}
-          className="flex-row items-center px-4 py-3 mt-4 border-t border-gray-200"
+          className="flex-row items-center px-4 py-3 border-t border-gray-200"
         >
           <MaterialIcons name="logout" size={24} color="#ef4444" />
           <Text className="ml-8 text-red-500 font-nunito">Logout</Text>
