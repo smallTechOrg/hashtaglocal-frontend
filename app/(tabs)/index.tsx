@@ -381,9 +381,8 @@ export default function MapScreen() {
     const now = Date.now();
     const userHashtag = user?.hashtag?.toLowerCase();
     return events.filter((event) => {
-      const endStr = event.end_time ?? event.start_time;
-      const utc = endStr.endsWith("Z") ? endStr : `${endStr}Z`;
-      if (new Date(utc).getTime() < now) return false;
+      const startTime = new Date(event.start_time).getTime();
+      if (isNaN(startTime) || startTime < now) return false;
       if (!userHashtag) return true;
       return event.location.locality.hashtags.some(
         (tag) => tag.toLowerCase() === userHashtag
