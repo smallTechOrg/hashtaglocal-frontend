@@ -1,3 +1,28 @@
+const { withDangerousMod } = require("@expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
+
+function withModularHeaders(config) {
+  return withDangerousMod(config, [
+    "ios",
+    async (config) => {
+      const podfilePath = path.join(
+        config.modRequest.platformProjectRoot,
+        "Podfile",
+      );
+      let contents = fs.readFileSync(podfilePath, "utf8");
+      if (!contents.includes("use_modular_headers!")) {
+        contents = contents.replace(
+          /(platform :ios[^\n]*\n)/,
+          "$1use_modular_headers!\n",
+        );
+        fs.writeFileSync(podfilePath, contents);
+      }
+      return config;
+    },
+  ]);
+}
+
 export default {
   expo: {
     name: "#local",
@@ -13,6 +38,9 @@ export default {
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
       bundleIdentifier: "com.smalltech.hashtaglocal",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
       associatedDomains: [
         "applinks:hashtaglocal.app",
         "applinks:www.hashtaglocal.app",
@@ -61,6 +89,7 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/perf",
+      withModularHeaders,
       "expo-router",
       [
         "expo-splash-screen",

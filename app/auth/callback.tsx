@@ -12,7 +12,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 export default function AuthCallbackScreen() {
   const router = useRouter();
   const { setUser, setIsLoading } = useUser();
-  
+
   // Use a string key to track which tokens we've processed
   // This allows detecting when new tokens arrive after logout/login
   const hasProcessed = useRef<string | false>(false);
@@ -31,12 +31,12 @@ export default function AuthCallbackScreen() {
     // Check if we have tokens and if they're different from what we've already processed
     if (params.access_token && params.refresh_token) {
       const currentParamsKey = params.access_token.substring(0, 20);
-      
+
       // Skip if we've already processed these exact tokens
       if (hasProcessed.current === currentParamsKey) {
         return;
       }
-      
+
       // Mark these tokens as processed
       hasProcessed.current = currentParamsKey;
     } else {
@@ -53,7 +53,6 @@ export default function AuthCallbackScreen() {
           return;
         }
 
-        // Store tokens using expiry timestamps from callback
         const accessTokenExpiry = parseInt(access_expiry || "0") * 1000;
         const refreshTokenExpiry = parseInt(refresh_expiry || "0") * 1000;
 
@@ -64,21 +63,16 @@ export default function AuthCallbackScreen() {
           refreshTokenExpiry
         );
 
-        // Fetch user profile with location
         let profileUrl = `${API_BASE_URL}/account/profile`;
         try {
           const locationPromise = getFastLocationWithProgressiveWatch({
             instantLoad: true,
             accuracyThresholdMeters: 50,
           });
-          
-          // Add timeout for location - max 5 seconds
-          const locationTimeout = new Promise<{success: boolean, location?: any}>((resolve) => 
+          const locationTimeout = new Promise<{success: boolean, location?: any}>((resolve) =>
             setTimeout(() => resolve({ success: false }), 5000)
           );
-          
           const location = await Promise.race([locationPromise, locationTimeout]);
-          
           if (location.success && location.location) {
             const { latitude, longitude } = location.location;
             profileUrl = `${API_BASE_URL}/account/profile?lat=${latitude}&lng=${longitude}`;
