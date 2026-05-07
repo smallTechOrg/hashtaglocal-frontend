@@ -91,16 +91,20 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
             }}
           />
         ) : (
-          <Image
-            key={retryKey}
-            source={imageSource}
-            placeholder={thumbnailSource}
-            placeholderContentFit="cover"
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-            transition={300}
-            cachePolicy="memory-disk"
-            onLoadStart={() => {
+           <Image
+             key={retryKey}
+             source={
+               typeof imageSource === 'object' && 'uri' in imageSource
+                 ? { uri: imageSource.uri, cacheKey: imageSource.uri?.split('?')[0] }
+                 : imageSource
+             }
+             placeholder={thumbnailSource}
+             placeholderContentFit="cover"
+             style={{ width: '100%', height: '100%' }}
+             contentFit="cover"
+             transition={300}
+             cachePolicy="memory-disk"
+             onLoadStart={() => {
               loadStartRef.current = Date.now();
               console.log(`[ImageLoad] START  carousel-main  index=${index}`);
               traceRef.current = startImageTrace({
@@ -146,9 +150,9 @@ const ImageCarouselItem: React.FC<ImageCarouselItemProps> = ({
       {/* Hidden 0×0 image purely for thumbnail load timing.
           expo-image only fires onLoad* for `source`, not for `placeholder`,
           so we need a separate render to measure thumbnail load time. */}
-      {thumbnailSource && (
+       {thumbnailSource && (
         <Image
-          source={thumbnailSource}
+          source={{ uri: thumbnailSource.uri, cacheKey: thumbnailSource.uri?.split('?')[0] }}
           style={{ width: 1, height: 1, position: 'absolute', opacity: 0 }}
           cachePolicy="memory-disk"
           onLoadStart={() => {
