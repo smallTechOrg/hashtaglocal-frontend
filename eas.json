@@ -18,9 +18,16 @@
       "environment": "production",
       "autoIncrement": true,
       "channel": "production"
+      "ios": {
+        "buildConfiguration": "Release"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6766214107"
+      }
+    }
   }
 }
