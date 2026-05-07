@@ -34,6 +34,12 @@ export default {
     scheme: "hashtaglocal",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
+    updates: {
+      url: "https://u.expo.dev/18f89762-0ed6-4b80-9076-c91679fc6eb4",
+    },
+    runtimeVersion: {
+      policy: "appVersion",
+    },
     ios: {
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
@@ -88,6 +94,7 @@ export default {
       favicon: "./assets/images/favicon.png",
     },
     plugins: [
+      "expo-updates",
       "expo-dev-client",
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
