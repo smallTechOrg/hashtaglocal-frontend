@@ -44,6 +44,7 @@ export default {
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
       bundleIdentifier: "com.smalltech.hashtaglocal",
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
