@@ -2,6 +2,12 @@ const { withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
+const CAMERA_PERMISSION =
+  "#local uses the camera so you can take photos of local civic issues when creating a report. For example, you can photograph a pothole, broken streetlight, or garbage pile and attach it to your report.";
+
+const LOCATION_WHEN_IN_USE_PERMISSION =
+  "#local uses your location while the app is open to tag issue reports to the correct place, find nearby reports before you submit, and show local issues and events on the map. For example, your current location helps attach a pothole report to the right street.";
+
 function withModularHeaders(config) {
   return withDangerousMod(config, [
     "ios",
@@ -47,6 +53,8 @@ export default {
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription: CAMERA_PERMISSION,
+        NSLocationWhenInUseUsageDescription: LOCATION_WHEN_IN_USE_PERMISSION,
       },
       associatedDomains: [
         "applinks:hashtaglocal.app",
@@ -99,6 +107,18 @@ export default {
       "@react-native-firebase/perf",
       withModularHeaders,
       "expo-router",
+      [
+        "expo-camera",
+        {
+          cameraPermission: CAMERA_PERMISSION,
+        },
+      ],
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission: LOCATION_WHEN_IN_USE_PERMISSION,
+        },
+      ],
       [
         "expo-splash-screen",
         {
