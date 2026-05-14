@@ -50,6 +50,7 @@ export default {
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
       bundleIdentifier: "com.smalltech.hashtaglocal",
+      buildNumber: "2",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -70,6 +71,7 @@ export default {
       predictiveBackGestureEnabled: false,
       googleServicesFile: "./google-services.json",
       package: "com.smalltech.hashtaglocal",
+      versionCode: 2,
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
