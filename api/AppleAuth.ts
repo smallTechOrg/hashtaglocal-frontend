@@ -21,8 +21,6 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       return { type: "error", error: new Error("Apple sign-in returned no identity token") };
     }
 
-    // TEMP: log token for backend testing — remove before production
-    console.log("[Apple] identity_token:", identityToken);
 
     // Combine given + family name (only available on first sign-in)
     const displayName =

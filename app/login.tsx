@@ -99,30 +99,32 @@ export default function LoginScreen() {
           ))}
         </View>
 
-        {Platform.OS === "ios" && (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-            cornerRadius={8}
-            style={{ width: "100%", height: 48 }}
-            onPress={handleAppleSignIn}
-          />
-        )}
+        <View className="flex-row gap-3 w-full">
+          {Platform.OS === "ios" && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={{ flex: 1, height: 48 }}
+              onPress={handleAppleSignIn}
+            />
+          )}
 
-        <Pressable
-          onPress={handleSignIn}
-          className="flex-row items-center bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm"
-          style={{ elevation: 2 }}
-        >
-          <Image
-            source={require("../assets/google.png")}
-            style={{ width: 24, height: 24, marginRight: 12 }}
-            resizeMode="contain"
-          />
-          <CustomText className="text-gray-700 h3">
-            Sign In with Google
-          </CustomText>
-        </Pressable>
+          <Pressable
+            onPress={handleSignIn}
+            className="flex-row items-center justify-center bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm"
+            style={{ elevation: 2, flex: 1, height: 48 }}
+          >
+            <Image
+              source={require("../assets/google.png")}
+              style={{ width: 24, height: 24, marginRight: 8 }}
+              resizeMode="contain"
+            />
+            <CustomText className="text-gray-700 h3">
+              Sign in with Google
+            </CustomText>
+          </Pressable>
+        </View>
       </View>
 
       <View className="absolute bottom-8 w-full items-center">
