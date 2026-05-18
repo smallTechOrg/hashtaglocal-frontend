@@ -1,10 +1,11 @@
 import CustomText from "@/components/CustomText";
-import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
+import { trackCameraOpened, trackPhotoCaptured } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useFocusEffect } from "@react-navigation/native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
 
 export default function CameraCapture() {
@@ -33,6 +34,11 @@ export default function CameraCapture() {
     }, [])
   );
 
+  // Track camera opened on mount
+  useEffect(() => {
+    trackCameraOpened((mode === "update" ? "update" : "report"));
+  }, []);
+
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) return;
 
@@ -47,6 +53,7 @@ export default function CameraCapture() {
       if (photo) {
         setCapturedPhoto(photo.uri);
         setCapturedTimestamp(new Date().toISOString());
+        trackPhotoCaptured(mode === "update" ? "update" : "report");
       }
     } catch (error) {
       console.error("Error capturing photo:", error);

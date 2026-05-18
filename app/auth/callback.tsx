@@ -1,3 +1,4 @@
+import { setAnalyticsUser, trackAuthEvent } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
@@ -25,6 +26,7 @@ export default function AuthCallbackScreen() {
     user_id?: string;
     email?: string;
     provider_id?: string;
+    is_new_user?: string;
   }>();
 
   useEffect(() => {
@@ -88,6 +90,8 @@ export default function AuthCallbackScreen() {
           const { username, picture, user_role, hashtag, user_summary } = profileData.data.user;
           setUser({ username, picture, user_role, hashtag, user_summary });
           setIsLoading(false);
+          if (params.user_id) setAnalyticsUser(params.user_id);
+          await trackAuthEvent("google", params.is_new_user === "true");
         } else {
           setIsLoading(false);
         }

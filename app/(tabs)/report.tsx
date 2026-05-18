@@ -1,9 +1,18 @@
 import CustomText from "@/components/CustomText";
+import { trackReportCtaTapped, trackReportFlowStarted } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
+import { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 export default function Index() {
+  useFocusEffect(
+    useCallback(() => {
+      trackReportFlowStarted();
+    }, [])
+  );
+
   return (
     <View className="flex-1 bg-white px-6 py-8">
       {/* Guidelines Section */}
@@ -66,7 +75,10 @@ export default function Index() {
 
       {/* Create Issue Button */}
       <TouchableOpacity
-        onPress={() => router.push("/NearbyIssuesCheck")}
+        onPress={() => {
+          trackReportCtaTapped();
+          router.push("/NearbyIssuesCheck");
+        }}
         className="bg-[#256D1B] py-4 rounded-xl flex-row items-center justify-center"
       >
         <MaterialIcons name="camera-alt" size={28} color="white" />
