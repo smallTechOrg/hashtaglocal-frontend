@@ -115,7 +115,7 @@ export default function CameraCapture() {
           onPress={handleCameraPermission}
           className="mt-6 bg-primary px-8 py-3 rounded-lg"
         >
-          <CustomText className="text-white font-semibold">Grant Permission</CustomText>
+          <CustomText className="text-white font-semibold">Continue</CustomText>
         </TouchableOpacity>
       </View>
     );
