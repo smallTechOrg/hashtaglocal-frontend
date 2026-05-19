@@ -5,8 +5,9 @@ import { useKeyboardScroll } from "@/hooks/useKeyboardScroll";
 import { useLocation } from "@/hooks/useLocation";
 import type { IssueFormParams as IssueFormParamsType } from "@/models/IssueFormParams";
 import { trackFormAbandoned, trackFormOpened } from "@/utils/analytics";
+import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, TextInput } from "react-native";
 
 export function useIssueForm() {
@@ -28,16 +29,18 @@ export function useIssueForm() {
     selectedIssueTypeRef.current = selectedIssueType;
   }, [selectedIssueType]);
 
-  // Track form opened on mount and abandoned on unmount
-  useEffect(() => {
-    const mode = isUpdateMode ? "update" : "report";
-    trackFormOpened(mode);
-    return () => {
-      if (!submittedRef.current) {
-        trackFormAbandoned(mode, selectedIssueTypeRef.current ? "has_type" : "no_type");
-      }
-    };
-  }, []);
+  // Track form opened on focus and abandoned on blur (more reliable than useEffect cleanup)
+  useFocusEffect(
+    useCallback(() => {
+      const mode = isUpdateMode ? "update" : "report";
+      trackFormOpened(mode);
+      return () => {
+        if (!submittedRef.current) {
+          trackFormAbandoned(mode, selectedIssueTypeRef.current ? "has_type" : "no_type");
+        }
+      };
+    }, [isUpdateMode])
+  );
 
   useEffect(() => {
     if (isUpdateMode && IssueFormParams.issueType) setSelectedIssueType(IssueFormParams.issueType as IssueType);

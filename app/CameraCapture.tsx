@@ -1,11 +1,11 @@
 import CustomText from "@/components/CustomText";
-import { trackCameraOpened, trackPhotoCaptured } from "@/utils/analytics";
+import { trackCameraAbandoned, trackCameraOpened, trackPhotoAbandoned, trackPhotoCaptured } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useFocusEffect } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
 
 export default function CameraCapture() {
@@ -22,8 +22,13 @@ export default function CameraCapture() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  // Refs for abandonment tracking (immune to stale-closure issues)
+  const proceededRef = useRef(false);
+  const everCapturedRef = useRef(false);
+  // Capture mode at mount time so cleanup closures always see the correct value
+  const modeRef = useRef<"report" | "update">(mode === "update" ? "update" : "report");
 
-  // Reset all state when screen comes into focus
+  // Reset state on focus, track camera_opened, fire abandonment event on blur
   useFocusEffect(
     useCallback(() => {
       setCapturedPhoto(null);
@@ -31,13 +36,21 @@ export default function CameraCapture() {
       setIsCapturing(false);
       setZoom(0);
       setFlash("off");
+      proceededRef.current = false;
+      everCapturedRef.current = false;
+      trackCameraOpened(modeRef.current);
+      return () => {
+        // Fires on every blur (back-press, tab switch, replace)
+        if (!proceededRef.current) {
+          if (everCapturedRef.current) {
+            trackPhotoAbandoned(modeRef.current);
+          } else {
+            trackCameraAbandoned(modeRef.current);
+          }
+        }
+      };
     }, [])
   );
-
-  // Track camera opened on mount
-  useEffect(() => {
-    trackCameraOpened((mode === "update" ? "update" : "report"));
-  }, []);
 
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) return;
@@ -53,6 +66,7 @@ export default function CameraCapture() {
       if (photo) {
         setCapturedPhoto(photo.uri);
         setCapturedTimestamp(new Date().toISOString());
+        everCapturedRef.current = true;
         trackPhotoCaptured(mode === "update" ? "update" : "report");
       }
     } catch (error) {
@@ -76,6 +90,7 @@ export default function CameraCapture() {
 
   const handleProceed = () => {
     if (!capturedPhoto || !capturedTimestamp) return;
+    proceededRef.current = true;
     router.replace({
       pathname: "/IssueForm",
       params: {

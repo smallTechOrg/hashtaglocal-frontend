@@ -1,17 +1,32 @@
 import CustomText from "@/components/CustomText";
-import { trackReportCtaTapped, trackReportFlowStarted } from "@/utils/analytics";
+import { trackReportCtaTapped, trackReportScreen, trackReportScreenAbandoned } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 export default function Index() {
-  useFocusEffect(
-    useCallback(() => {
-      trackReportFlowStarted();
-    }, [])
-  );
+  const ctaTappedRef = useRef(false);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    // 'focus' fires every time this screen becomes active (tab selected / back-navigated to)
+    const unsubFocus = navigation.addListener("focus", () => {
+      ctaTappedRef.current = false;
+      trackReportScreen();
+    });
+    // 'blur' fires every time this screen loses focus (tab switch, push, back)
+    const unsubBlur = navigation.addListener("blur", () => {
+      if (!ctaTappedRef.current) {
+        trackReportScreenAbandoned();
+      }
+    });
+    return () => {
+      unsubFocus();
+      unsubBlur();
+    };
+  }, [navigation]);
 
   return (
     <View className="flex-1 bg-white px-6 py-8">
@@ -76,6 +91,7 @@ export default function Index() {
       {/* Create Issue Button */}
       <TouchableOpacity
         onPress={() => {
+          ctaTappedRef.current = true;
           trackReportCtaTapped();
           router.push("/NearbyIssuesCheck");
         }}

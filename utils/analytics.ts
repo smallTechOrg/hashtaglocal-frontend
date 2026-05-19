@@ -24,8 +24,12 @@ export const trackLogout = () =>
 // ─── Report Funnel ──────────────────────────────────────────────────────────
 
 /** Fired when the user lands on the Report tab (guidelines screen). */
-export const trackReportFlowStarted = () =>
-  analytics().logEvent("report_flow_started");
+export const trackReportScreen = () =>
+  analytics().logEvent("report_screen");
+
+/** Fired when the user leaves the Report screen without tapping the CTA. */
+export const trackReportScreenAbandoned = () =>
+  analytics().logEvent("report_screen_abandoned");
 
 /** Fired when the user taps the "Report Issue" CTA button on the guidelines screen. */
 export const trackReportCtaTapped = () =>
@@ -39,6 +43,18 @@ export const trackCameraOpened = (mode: "report" | "update") =>
 export const trackPhotoCaptured = (mode: "report" | "update") =>
   analytics().logEvent("photo_captured", { mode });
 
+/**
+ * Fired when the user exits CameraCapture before taking any photo.
+ */
+export const trackCameraAbandoned = (mode: "report" | "update") =>
+  analytics().logEvent("camera_abandoned", { mode });
+
+/**
+ * Fired when the user took a photo but exited CameraCapture without using it (went back from preview).
+ */
+export const trackPhotoAbandoned = (mode: "report" | "update") =>
+  analytics().logEvent("photo_abandoned", { mode });
+
 /** Fired when IssueForm mounts. */
 export const trackFormOpened = (mode: "report" | "update") =>
   analytics().logEvent("issue_form_opened", { mode });
@@ -49,7 +65,7 @@ export const trackFormOpened = (mode: "report" | "update") =>
  * `step`  — the furthest step the user reached before abandoning.
  */
 export const trackFormAbandoned = (mode: "report" | "update", step: "no_type" | "has_type") =>
-  analytics().logEvent("report_form_abandoned", { mode, step });
+  analytics().logEvent("issue_form_abandoned", { mode, step });
 
 // ─── Issue Actions ───────────────────────────────────────────────────────────
 
