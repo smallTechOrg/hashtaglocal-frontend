@@ -1,10 +1,12 @@
+import { signInWithApple } from "@/api/AppleAuth";
 import { useGoogleAuth } from "@/api/GoogleAuth";
 import CustomText from "@/components/CustomText";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useRef } from "react";
-import { Animated, Dimensions, Image, Pressable, View } from "react-native";
+import { Animated, Dimensions, Image, Platform, Pressable, View } from "react-native";
 
 const { width, height } = Dimensions.get("window");
 const SCALE = 1.25; // enough headroom for larger pan distances
@@ -25,6 +27,14 @@ export default function LoginScreen() {
       ])
     ).start();
   }, []);
+
+  const handleAppleSignIn = async () => {
+    const result = await signInWithApple();
+    if (result.type === "success") {
+      router.replace({ pathname: "/auth/callback", params: result.params });
+    }
+    // cancelled and error: stay on login screen (error already logged inside signInWithApple)
+  };
 
   const handleSignIn = async () => {
     const result = await signIn();
@@ -89,20 +99,32 @@ export default function LoginScreen() {
           ))}
         </View>
 
-        <Pressable
-          onPress={handleSignIn}
-          className="flex-row items-center bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm"
-          style={{ elevation: 2 }}
-        >
-          <Image
-            source={require("../assets/google.png")}
-            style={{ width: 24, height: 24, marginRight: 12 }}
-            resizeMode="contain"
-          />
-          <CustomText className="text-gray-700 h3">
-            Sign In with Google
-          </CustomText>
-        </Pressable>
+        <View className="flex-row gap-3 w-full">
+          {Platform.OS === "ios" && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={{ flex: 1, height: 48 }}
+              onPress={handleAppleSignIn}
+            />
+          )}
+
+          <Pressable
+            onPress={handleSignIn}
+            className="flex-row items-center justify-center bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm"
+            style={{ elevation: 2, flex: 1, height: 48 }}
+          >
+            <Image
+              source={require("../assets/google.png")}
+              style={{ width: 24, height: 24, marginRight: 8 }}
+              resizeMode="contain"
+            />
+            <CustomText className="text-gray-700 h3">
+              Sign in with Google
+            </CustomText>
+          </Pressable>
+        </View>
       </View>
 
       <View className="absolute bottom-8 w-full items-center">
