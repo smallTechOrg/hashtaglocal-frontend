@@ -1,5 +1,6 @@
 import KarmaBadge from "@/components/KarmaBadge";
 import "@/global.css";
+import { clearAnalyticsUser, trackLogout } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
@@ -209,6 +210,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
+    trackLogout();
+    clearAnalyticsUser();
     await clearTokens();
     setUser(null);
     router.replace("/login");

@@ -1,9 +1,10 @@
 import {
-  reportIssue,
-  verifyIssue,
-  resolveIssue,
+    reportIssue,
+    resolveIssue,
+    verifyIssue,
 } from "@/api/IssueDetail";
 import { IssueSubmitParams } from "@/models/IssueSubmitParams";
+import { trackIssueReported, trackIssueResolved, trackIssueVerified } from "@/utils/analytics";
 import { useKarma } from "@/utils/KarmaContext";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { router } from "expo-router";
@@ -19,6 +20,7 @@ export function useIssueSubmit({
   locationMetaData,
   isUpdateMode,
   issueId,
+  onSuccess,
 }: IssueSubmitParams) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAction, setSelectedAction] = useState<
@@ -81,6 +83,17 @@ export function useIssueSubmit({
       if (karmaAwarded && karmaAwarded > 0) {
         addPendingKarma(karmaAwarded);
       }
+
+      // Track the successful action
+      if (action === "VERIFY" && issueId) {
+        trackIssueVerified(parseInt(issueId, 10));
+      } else if (action === "RESOLVE" && issueId) {
+        trackIssueResolved(parseInt(issueId, 10));
+      } else {
+        trackIssueReported(selectedType);
+      }
+
+      onSuccess?.();
 
       const karmaText = karmaAwarded ? `\n\n⭐ +${karmaAwarded} Karma Points!` : "";
 

@@ -9,6 +9,7 @@ import { calculateDaysActive, formatDate } from "@/utils/FormatDate";
 import { formatLocationString } from "@/utils/ImageProcessing";
 import { handleShare } from "@/utils/Share";
 import { useUser } from "@/utils/UserContext";
+import { trackIssueDetailOpened } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useIsFocused } from '@react-navigation/native';
@@ -55,6 +56,7 @@ const IssueDetailScreen = () => {
                 console.log('Loading issue with ID:', issueId);
                 const data = await fetchIssue(issueId);
                 setIssueData(data);
+                trackIssueDetailOpened(issueId);
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to load issue';
                 setError(errorMessage);
