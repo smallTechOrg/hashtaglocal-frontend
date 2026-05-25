@@ -82,28 +82,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-       <Tabs.Screen
-        name="issues2"
-        options={{
-          title: 'Issues',
-          headerTitleStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => <KarmaBadge />,
-          tabBarLabel: 'Issues',
-          tabBarLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'format-list-bulleted' : 'format-list-bulleted'} 
-              color={color} 
-              size={24} 
-            />
-          ),
-        }}
-      />
       <Tabs.Screen
         name="events"
         options={{
@@ -130,23 +108,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="report"
         options={{
-          title: 'Report Issue',
+          href: null,
+          title: "Report",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
-          headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => <KarmaBadge />,
-          tabBarLabel: 'Report Issue',
-          tabBarLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'add-circle' : 'add-circle-outline'} 
-              color={color} 
-              size={24} 
-            />
-          ),
         }}
       />
     </Tabs>

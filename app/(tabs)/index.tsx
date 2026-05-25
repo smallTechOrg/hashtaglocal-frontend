@@ -557,6 +557,9 @@ export default function MapScreen() {
         activeCount={filterActiveCount}
         activeFilters={activeFilters}
         itemCounts={filterItemCounts}
+        eventsCount={futureEvents.length}
+        onEventsPress={handleToggleEvents}
+        showEventsOnly={showEventsOnly}
       />
 
       <MapView
@@ -594,33 +597,12 @@ export default function MapScreen() {
               latitude: event.location.lat,
               longitude: event.location.lng,
             }}
-            pinColor="#FF6B35"
+            pinColor="#4f8ef7"
             onPress={() => handleEventMarkerPress(event)}
             tracksViewChanges={false}
           />
         ))}
       </MapView>
-
-      {/* Events callout banner */}
-      {futureEvents.length > 0 && (
-        <TouchableOpacity
-          style={[styles.eventsBanner, showEventsOnly && styles.eventsBannerActive]}
-          activeOpacity={0.85}
-          onPress={handleToggleEvents}
-        >
-          <MaterialIcons name="event" size={18} color={showEventsOnly ? "#fff" : "#FF6B35"} />
-          <CustomText
-            style={{ fontFamily: "Nunito-Bold", color: showEventsOnly ? "#fff" : "#FF6B35", fontSize: 13, marginLeft: 6 }}
-          >
-            {showEventsOnly
-              ? `Showing ${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`
-              : `${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`}
-          </CustomText>
-          {showEventsOnly && (
-            <MaterialIcons name="close" size={16} color="#fff" style={{ marginLeft: 6 }} />
-          )}
-        </TouchableOpacity>
-      )}
 
       {/* Loading Indicator for Issues */}
       {issuesLoading && (
@@ -628,6 +610,22 @@ export default function MapScreen() {
           <ActivityIndicator size="small" color="#256D1B" />
         </View>
       )}
+
+      {/* Bottom centre overlay: FAB */}
+      <View style={styles.bottomOverlay} pointerEvents="box-none">
+        <View style={styles.reportFabContainer}>
+          <TouchableOpacity
+            style={styles.reportFab}
+            activeOpacity={0.85}
+            onPress={() => router.push("/(tabs)/report")}
+          >
+            <MaterialIcons name="camera-alt" size={28} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.reportFabLabelPill}>
+            <CustomText style={styles.reportFabLabel}>Report an Issue</CustomText>
+          </View>
+        </View>
+      </View>
 
       {/* Bottom Sheet for Issue Preview */}
       <BottomSheet
@@ -677,7 +675,7 @@ export default function MapScreen() {
 
             {/* Event type badge */}
             <View className="flex-row items-center mb-2">
-              <View className="px-3 py-1 rounded-md" style={{ backgroundColor: "#FF6B35" }}>
+              <View className="px-3 py-1 rounded-md" style={{ backgroundColor: "#6366f1" }}>
                 <CustomText className="text-white text-xs font-bold uppercase">
                   {selectedEvent.type.replace(/_/g, " ")}
                 </CustomText>
@@ -899,27 +897,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  eventsBanner: {
+  bottomOverlay: {
     position: "absolute",
     bottom: 24,
-    alignSelf: "center",
-    flexDirection: "row",
+    left: 0,
+    right: 0,
     alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: "#FF6B3540",
-  },
-  eventsBannerActive: {
-    backgroundColor: "#FF6B35",
-    borderColor: "#FF6B35",
   },
   // Bottom Sheet Styles
   bottomSheetBackground: {
@@ -1059,5 +1042,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 16,
     paddingVertical: 8,
+  },
+  reportFabContainer: {
+    alignItems: "center",
+  },
+  reportFab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#256D1B",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  reportFabLabelPill: {
+    marginTop: 6,
+    backgroundColor: "rgba(144, 191, 144, 0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  reportFabLabel: {
+    fontSize: 11,
+    color: "#1a1a1a",
+    fontFamily: "Nunito-Bold",
   },
 });
