@@ -261,7 +261,10 @@ export async function getFastLocationWithProgressiveWatch(
   } = options || {};
 
   try {
-    // Step 1: Check permissions
+    // Step 1: Check / request app-level location permission.
+    // Only permission denied → India mode. If GPS is off but permission is
+    // granted, let the system show "turn on location" dialog so the user can
+    // enable it and get their local map.
     const { granted } = await checkLocationPermission();
     if (!granted) {
       const permissionResult = await requestLocationPermission();

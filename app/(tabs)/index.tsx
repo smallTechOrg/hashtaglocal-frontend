@@ -1,5 +1,6 @@
 import { Event } from "@/api/events";
-import { getIssuesByLocation } from "@/api/IssueDetail";
+import { getAllIssues, getIssuesByLocality, getIssuesByLocation } from "@/api/IssueDetail";
+import CityPickerModal from "@/components/CityPickerModal";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -25,17 +26,25 @@ import { formatDistance } from "@/utils/NearbyIssues";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Region } from "react-native-maps";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 type LoadingState = "loading" | "success" | "error";
+
+// India-wide view used when location permission is denied
+const INDIA_REGION = {
+  latitude: 20.5937,
+  longitude: 78.9629,
+  latitudeDelta: 30,
+  longitudeDelta: 30,
+};
 
 // Custom map style to hide POIs and business markers
 const customMapStyle = [
@@ -89,6 +98,7 @@ const getIssueColor = (type: string): string => {
 
 export default function MapScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user, setUser } = useUser();
   const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
@@ -98,7 +108,13 @@ export default function MapScreen() {
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [error, setError] = useState<LocationError | null>(null);
+  const [isIndiaMode, setIsIndiaMode] = useState(false);
+  const [selectedCity, setSelectedCity] = useState("#india");
+  const [cityPickerVisible, setCityPickerVisible] = useState(false);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
+  // Full city list — fetched once on mount so the picker always shows all cities
+  // regardless of whether the user is in local or India mode.
+  const [allCities, setAllCities] = useState<string[]>(["#india"]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -185,6 +201,9 @@ export default function MapScreen() {
   const isFocused = useIsFocused();
   const isFocusedRef = useRef(isFocused);
   const userRef = useRef(user);
+  // Tracks the active city so async callbacks (location watcher) can read
+  // the current value without stale-closure issues.
+  const selectedCityRef = useRef(selectedCity);
 
   useEffect(() => {
     isFocusedRef.current = isFocused;
@@ -195,7 +214,61 @@ export default function MapScreen() {
   }, [user]);
 
   useEffect(() => {
-    if (user) {
+    selectedCityRef.current = selectedCity;
+  }, [selectedCity]);
+
+  // Build allCities once on mount from the full issue list so the picker
+  // always shows every city regardless of the current view mode.
+  useEffect(() => {
+    getAllIssues()
+      .then((data) => {
+        const tags = new Set<string>(["#india"]);
+        data.forEach((issue: any) => {
+          issue.location?.locality?.hashtags?.forEach((tag: string) => {
+            const normalized = tag.startsWith("#") ? tag.toLowerCase() : "#" + tag.toLowerCase();
+            tags.add(normalized);
+          });
+        });
+        setAllCities(
+          Array.from(tags).sort((a, b) =>
+            a === "#india" ? -1 : b === "#india" ? 1 : a.localeCompare(b)
+          )
+        );
+      })
+      .catch(console.error);
+  }, []);
+
+  // Keep selectedCity in sync with the current mode:
+  // - India mode → always "#india"
+  // - local mode → user's own hashtag
+  useEffect(() => {
+    if (isIndiaMode) {
+      setSelectedCity("#india");
+    } else if (user?.hashtag) {
+      setSelectedCity(user.hashtag);
+    }
+  }, [user?.hashtag, isIndiaMode]);
+
+  // Render the header title as a tappable dropdown opener
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <TouchableOpacity
+          onPress={() => setCityPickerVisible(true)}
+          activeOpacity={0.7}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+        >
+          <CustomText style={{ fontSize: 20, fontFamily: "Nunito-Bold", color: "#111827" }}>
+            {selectedCity}
+          </CustomText>
+          <MaterialIcons name="expand-more" size={22} color="#374151" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [selectedCity, setCityPickerVisible, navigation]);
+
+  useEffect(() => {
+    if (user && !isIndiaMode) {
       loadUserLocation();
     }
   }, [user?.username]);
@@ -206,7 +279,9 @@ export default function MapScreen() {
     // does not keep firing authenticated API calls and causing a session-expired loop.
     const unsub = subscribeToBestLocation((loc) => {
       setUserLocation(loc);
-      if (userRef.current) {
+      // Only reload nearby issues when the user is viewing their home city.
+      // If they've picked a different city via the city picker, don't override it.
+      if (userRef.current && selectedCityRef.current === userRef.current?.hashtag) {
         loadNearbyIssues(loc.latitude, loc.longitude);
       }
     });
@@ -219,12 +294,31 @@ export default function MapScreen() {
     useCallback(() => {
       if (userLocation) {
         const { latitude, longitude } = userLocation;
-        Promise.all([
-          loadNearbyIssues(latitude, longitude),
-          refreshUserProfile(latitude, longitude),
-        ]);
+        // Always refresh the user's karma/profile on focus.
+        refreshUserProfile(latitude, longitude);
+
+        // Only reload nearby issues when the user is viewing their home city.
+        // If they've picked a different city (e.g. #india, #bengaluru), keep
+        // the city-selected issues so the view doesn't reset on tab switch.
+        const isViewingHomeCity =
+          selectedCityRef.current === userRef.current?.hashtag;
+        if (isViewingHomeCity) {
+          loadNearbyIssues(latitude, longitude);
+        } else if (selectedCityRef.current === "#india") {
+          loadAllIssues();
+        } else {
+          // Re-fetch the chosen city's issues (in case they became stale)
+          getIssuesByLocality(selectedCityRef.current)
+            .then((data) => {
+              setIssues(data);
+              setContextIssues(data);
+            })
+            .catch(console.error);
+        }
+      } else if (isIndiaMode) {
+        loadAllIssues();
       }
-    }, [userLocation])
+    }, [userLocation, isIndiaMode])
   );
 
   // Open/close bottom sheet when issue is selected/deselected
@@ -261,12 +355,73 @@ export default function MapScreen() {
 
     if (result.success) {
       setUserLocation(result.location);
+      setIsIndiaMode(false);
       setLoadingState("success");
       // Load issues for this location
       loadNearbyIssues(result.location.latitude, result.location.longitude);
     } else {
-      setError(result.error);
-      setLoadingState("error");
+      // Any location failure (permission denied, GPS off, timeout, etc.)
+      // → fall back to India mode: show all issues, center map on India
+      setIsIndiaMode(true);
+      setLoadingState("success");
+      loadAllIssues();
+    }
+  };
+
+  const loadAllIssues = async () => {
+    try {
+      setIssuesLoading(true);
+      const issuesData = await getAllIssues();
+      setIssues(issuesData);
+      setContextIssues(issuesData);
+      // Also refresh allCities so the picker is populated immediately
+      // when India mode is entered (avoids the race with the mount-time fetch).
+      const tags = new Set<string>(["#india"]);
+      issuesData.forEach((issue: any) => {
+        issue.location?.locality?.hashtags?.forEach((tag: string) => {
+          const normalized = tag.startsWith("#") ? tag.toLowerCase() : "#" + tag.toLowerCase();
+          tags.add(normalized);
+        });
+      });
+      setAllCities(
+        Array.from(tags).sort((a, b) =>
+          a === "#india" ? -1 : b === "#india" ? 1 : a.localeCompare(b)
+        )
+      );
+    } catch (error) {
+      console.error("Failed to load all issues:", error);
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  const handleCitySelect = async (city: string) => {
+    setSelectedCity(city);
+    setIssuesLoading(true);
+    try {
+      const data = city === "#india"
+        ? await getAllIssues()
+        : await getIssuesByLocality(city);
+      setIssues(data);
+      setContextIssues(data);
+
+      // Pan the map: always zoom to India overview for #india;
+      // otherwise fit to the selected city's issue pins.
+      if (city === "#india" && mapRef.current) {
+        mapRef.current.animateToRegion(INDIA_REGION, 500);
+      } else {
+        const geo = data.filter((i: any) => i.location?.lat && i.location?.lng);
+        if (geo.length > 0 && mapRef.current) {
+          mapRef.current.fitToCoordinates(
+            geo.map((i: any) => ({ latitude: i.location.lat, longitude: i.location.lng })),
+            { edgePadding: { top: 80, right: 40, bottom: 120, left: 40 }, animated: true }
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load city issues:", error);
+    } finally {
+      setIssuesLoading(false);
     }
   };
 
@@ -378,12 +533,18 @@ export default function MapScreen() {
     );
   }, [mapRegion]);
 
-  // Only render markers that are in the current viewport
+  // Only render markers that are in the current viewport.
+  // In India mode skip the viewport filter — the map is zoomed out to show
+  // the whole country so we want every geo-tagged issue to appear as a pin.
   const visibleMarkers = useMemo(() => {
-    return filteredIssues.filter(issue => 
-      isMarkerInViewport(issue.location.lat, issue.location.lng)
+    const geoTagged = filteredIssues.filter(
+      (issue) => issue.location.lat && issue.location.lng,
     );
-  }, [filteredIssues, isMarkerInViewport]);
+    if (isIndiaMode) return geoTagged;
+    return geoTagged.filter((issue) =>
+      isMarkerInViewport(issue.location.lat, issue.location.lng),
+    );
+  }, [filteredIssues, isMarkerInViewport, isIndiaMode]);
 
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
@@ -458,10 +619,20 @@ export default function MapScreen() {
     });
   }, [futureEvents, userLocation]);
 
+  // Track previous filterActiveCount so we only zoom to home when a filter
+  // is explicitly cleared, not when the issues dataset changes (city selection).
+  const prevFilterActiveCountRef = useRef(filterActiveCount);
+
   // Auto-zoom map to fit filtered markers when a filter is active
   useEffect(() => {
+    const prevCount = prevFilterActiveCountRef.current;
+    prevFilterActiveCountRef.current = filterActiveCount;
+
     if (filterActiveCount === 0) {
-      // No filter active → zoom back to user locality
+      // Only zoom back to home when a filter was just cleared (count dropped to 0).
+      // Skip if count was already 0 — that means issues changed for another reason
+      // (e.g. city selection) and we should NOT snap back to user location.
+      if (prevCount === 0) return;
       if (mapRef.current && userLocation) {
         mapRef.current.animateToRegion(
           {
@@ -472,6 +643,8 @@ export default function MapScreen() {
           },
           500,
         );
+      } else if (mapRef.current && isIndiaMode) {
+        mapRef.current.animateToRegion(INDIA_REGION, 500);
       }
       return;
     }
@@ -510,12 +683,15 @@ export default function MapScreen() {
   }, [filterActiveCount, filteredIssues, userLocation]);
 
   // Memoize initial region to prevent re-renders
-  const initialRegion = useMemo(() => ({
-    latitude: userLocation?.latitude || 0,
-    longitude: userLocation?.longitude || 0,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  }), [userLocation?.latitude, userLocation?.longitude]);
+  const initialRegion = useMemo(() => {
+    if (isIndiaMode && !userLocation) return INDIA_REGION;
+    return {
+      latitude: userLocation?.latitude || 0,
+      longitude: userLocation?.longitude || 0,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    };
+  }, [isIndiaMode, userLocation?.latitude, userLocation?.longitude]);
 
   if (loadingState === "loading") {
     return (
@@ -545,7 +721,7 @@ export default function MapScreen() {
     );
   }
 
-  if (!userLocation) {
+  if (!userLocation && !isIndiaMode) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#256D1B" />
@@ -612,6 +788,15 @@ export default function MapScreen() {
           />
         ))}
       </MapView>
+
+      {/* City picker modal — opened from the header title */}
+      <CityPickerModal
+        visible={cityPickerVisible}
+        onClose={() => setCityPickerVisible(false)}
+        cities={allCities}
+        selectedCity={selectedCity}
+        onSelect={handleCitySelect}
+      />
 
       {/* Loading Indicator for Issues */}
       {issuesLoading && (
@@ -892,6 +1077,31 @@ const styles = StyleSheet.create({
   map: {
     width: "100%",
     height: "100%",
+  },
+  indiaBadge: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 148 : 108,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 30,
+    borderWidth: 1,
+    borderColor: "#256D1B30",
+    gap: 5,
+  },
+  indiaBadgeText: {
+    fontFamily: "Nunito-Bold",
+    fontSize: 13,
+    color: "#256D1B",
   },
   loadingOverlay: {
     position: "absolute",

@@ -13,6 +13,7 @@ const API_ENDPOINTS = {
   REPORT_ISSUE: "/api/v1/issue",
   UPLOAD_URL: "/api/v1/media/upload-url",
   ISSUES_BY_LOCATION: "/api/v2/issues",
+  ALL_ISSUES: "/api/v1/issues",
 } as const;
 
 export interface SignedUrlResponse {
@@ -434,6 +435,42 @@ export async function uploadImage(
  */
 export async function getIssuesByLocation(lat: number, lng: number) {
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUES_BY_LOCATION}?lat=${lat}&lng=${lng}`;
+
+  const response = await apiGet(url, { timeout: 15_000 });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch issues: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.data.issues;
+}
+
+/**
+ * Fetch all issues across India (no location filter)
+ * Used when location permission is not granted
+ * @returns Promise resolving to list of all issues
+ */
+export async function getAllIssues() {
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ALL_ISSUES}`;
+
+  const response = await apiGet(url, { timeout: 15_000 });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch issues: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.data.issues;
+}
+
+/**
+ * Fetch issues filtered to a specific locality hashtag
+ * e.g. getIssuesByLocality("#delhi") → /api/v1/issues?locality=%23delhi
+ */
+export async function getIssuesByLocality(hashtag: string) {
+  const encoded = encodeURIComponent(hashtag);
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ALL_ISSUES}?locality=${encoded}`;
 
   const response = await apiGet(url, { timeout: 15_000 });
 
