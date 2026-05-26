@@ -71,6 +71,7 @@ export default {
       predictiveBackGestureEnabled: false,
       googleServicesFile: "./google-services.json",
       package: "com.smalltech.hashtaglocal",
+      permissions: ["android.permission.POST_NOTIFICATIONS"],
       versionCode: 2,
       config: {
         googleMaps: {
@@ -107,6 +108,7 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/perf",
+      "@react-native-firebase/messaging",
       withModularHeaders,
       "expo-router",
       [

@@ -10,6 +10,13 @@ import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
+  getFCMToken,
+  registerForegroundHandler,
+  requestNotificationPermission,
+  saveFCMToken,
+  setupNotificationTapHandlers,
+} from "@/utils/notificationService";
+import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
   DrawerItemList,
@@ -71,6 +78,13 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("Profile loaded:", username, "hashtag:", hashtag);
           setUser({ username, picture, user_role, hashtag, user_summary });
           setKarma(user_summary?.karma_earned ?? 0, user_summary?.karma_pending ?? 0);
+
+          // Register FCM token after confirming user is authenticated
+          const permitted = await requestNotificationPermission();
+          if (permitted) {
+            const token = await getFCMToken();
+            if (token) await saveFCMToken(token);
+          }
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();
@@ -296,8 +310,11 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-
-
+  useEffect(() => {
+    setupNotificationTapHandlers();
+    const unsubscribe = registerForegroundHandler();
+    return unsubscribe;
+  }, []);
 
 
   // Handle all incoming deep links – including auth callbacks
