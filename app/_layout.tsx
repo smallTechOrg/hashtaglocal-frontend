@@ -251,6 +251,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <UserSummarySection summary={user?.user_summary} />
       <DrawerItemList {...props} />
       <TouchableOpacity
+        onPress={() => router.push("/(tabs)/report")}
+        className="flex-row items-center px-4 py-3 mt-2 border-t border-gray-200"
+      >
+        <MaterialIcons name="camera-alt" size={24} color="#256D1B" />
+        <Text className="ml-8 font-nunito" style={{ color: "#256D1B" }}>Report an Issue</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         onPress={async () => {
           const subject = encodeURIComponent("Enquiry / Account Request");
           const body = encodeURIComponent(
