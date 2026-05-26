@@ -184,10 +184,15 @@ export default function MapScreen() {
 
   const isFocused = useIsFocused();
   const isFocusedRef = useRef(isFocused);
+  const userRef = useRef(user);
 
   useEffect(() => {
     isFocusedRef.current = isFocused;
   }, [isFocused]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -196,10 +201,14 @@ export default function MapScreen() {
   }, [user?.username]);
 
   useEffect(() => {
-    // Subscribe to progressive updates and update map when accuracy improves
+    // Subscribe to progressive updates and update map when accuracy improves.
+    // Guard with userRef so that after logout/account-deletion the callback
+    // does not keep firing authenticated API calls and causing a session-expired loop.
     const unsub = subscribeToBestLocation((loc) => {
       setUserLocation(loc);
-      loadNearbyIssues(loc.latitude, loc.longitude);
+      if (userRef.current) {
+        loadNearbyIssues(loc.latitude, loc.longitude);
+      }
     });
 
     return () => unsub();
