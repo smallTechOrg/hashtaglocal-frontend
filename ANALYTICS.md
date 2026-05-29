@@ -3,10 +3,12 @@
 All events are sent via **Firebase Analytics** (`@react-native-firebase/analytics`).  
 The central module is [`utils/analytics.ts`](utils/analytics.ts).
 
-To test on development build:
+**Development builds send no events** — `__DEV__` is `true` in development builds, so all tracking functions are no-ops. Only **preview** and **production** EAS builds send events to Firebase, keeping dashboard data clean.
+
+To test analytics on a development build using Firebase DebugView:
 
 1. Connect phone to laptop through adb
-2. run this command
+2. Run this command (overrides the `__DEV__` guard for the current session):
 
 `adb shell setprop debug.firebase.analytics.app com.smalltech.hashtaglocal`
 
