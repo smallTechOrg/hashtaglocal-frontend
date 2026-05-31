@@ -1,76 +1,102 @@
-import messaging from '@react-native-firebase/messaging';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApp } from '@react-native-firebase/app';
+import {
+  AuthorizationStatus,
+  getInitialNotification,
+  getMessaging,
+  getToken,
+  onMessage,
+  onNotificationOpenedApp,
+  onTokenRefresh,
+  requestPermission,
+} from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { apiPost } from '@/utils/apiClient';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+const FCM_TOKEN_STORAGE_KEY = 'fcm_token';
 
-// Extend this enum as your backend adds more notification types
 export type NotificationType =
   | 'ISSUE_UPDATE'
   | 'ISSUE_COMMENT'
   | 'NEARBY_ISSUE'
   | 'KARMA_UPDATE';
 
-/**
- * Requests notification permission from the OS.
- * On Android 12 and below this is a no-op (always granted).
- * On Android 13+ it shows the system permission dialog.
- * iOS is gated off — remove the Platform.OS guard when ready to enable iOS.
- */
+const getMsg = () => getMessaging(getApp());
+
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return false; // remove this line to enable iOS
 
-  const status = await messaging().requestPermission();
+  const status = await requestPermission(getMsg());
   return (
-    status === messaging.AuthorizationStatus.AUTHORIZED ||
-    status === messaging.AuthorizationStatus.PROVISIONAL
+    status === AuthorizationStatus.AUTHORIZED ||
+    status === AuthorizationStatus.PROVISIONAL
   );
 }
 
+async function pushTokenToBackend(token: string): Promise<void> {
+  await apiPost(`${API_BASE_URL}/account/device-token`, {
+    token,
+    platform: Platform.OS,
+  });
+  await AsyncStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+  console.log('[FCM] Token synced to backend');
+}
+
 /**
- * Returns the FCM device token for this install, or null if unavailable.
- * Log it during development to test manually from Firebase Console.
+ * Gets the FCM token and syncs it to the backend only if it has changed since
+ * the last sync. Skips the backend call on every subsequent login when the
+ * token is the same (tokens are per device/install, not per user session).
  */
-export async function getFCMToken(): Promise<string | null> {
+export async function syncFCMToken(): Promise<void> {
   try {
-    const token = await messaging().getToken();
+    const token = await getToken(getMsg());
+    if (!token) return;
+
     console.log('[FCM] Device token:', token);
-    return token;
+
+    const cachedToken = await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY);
+    if (token === cachedToken) {
+      console.log('[FCM] Token unchanged, skipping backend sync');
+      return;
+    }
+
+    await pushTokenToBackend(token);
   } catch (error) {
-    console.warn('[FCM] Failed to get token:', error);
-    return null;
+    console.warn('[FCM] Failed to sync token:', error);
   }
 }
 
 /**
- * Sends the FCM token to the backend so the server can target this device.
- * Called after login. Safe to call again if the token refreshes.
+ * Clears the locally cached FCM token on logout so the next login
+ * re-syncs with the backend (handles multi-user on the same device).
  */
-export async function saveFCMToken(token: string): Promise<void> {
-  try {
-    await apiPost(`${API_BASE_URL}/account/device-token`, {
-      token,
-      platform: Platform.OS,
-    });
-    console.log('[FCM] Token saved to backend');
-  } catch (error) {
-    console.warn('[FCM] Failed to save token to backend:', error);
-  }
+export async function clearCachedFCMToken(): Promise<void> {
+  await AsyncStorage.removeItem(FCM_TOKEN_STORAGE_KEY);
 }
 
 /**
- * Subscribes to messages while the app is in the foreground.
- * Returns an unsubscribe function — call it in a useEffect cleanup.
- * Extend the handler body to show an in-app banner if needed.
+ * Watches for Firebase-initiated token rotation (rare but can happen when
+ * Firebase invalidates the token). Returns an unsubscribe function.
  */
+export function watchTokenRefresh(): () => void {
+  return onTokenRefresh(getMsg(), async newToken => {
+    console.log('[FCM] Token rotated by Firebase, syncing...');
+    try {
+      await pushTokenToBackend(newToken);
+    } catch (error) {
+      console.warn('[FCM] Failed to sync rotated token:', error);
+    }
+  });
+}
+
 export function registerForegroundHandler(): () => void {
-  return messaging().onMessage(async remoteMessage => {
-    console.log(
-      '[FCM] Foreground message:',
-      remoteMessage.notification?.title,
-      remoteMessage.data,
-    );
+  return onMessage(getMsg(), async remoteMessage => {
+    const title = remoteMessage.notification?.title ?? 'New notification';
+    const body = remoteMessage.notification?.body ?? '';
+    console.log('[FCM] Foreground message:', title, remoteMessage.data);
+    Alert.alert(title, body);
   });
 }
 
@@ -93,25 +119,16 @@ function navigateFromNotification(data?: Record<string, string>): void {
   }
 }
 
-/**
- * Wires up tap handlers for both app states:
- * - onNotificationOpenedApp: app was backgrounded, user tapped notification
- * - getInitialNotification: app was killed, notification tap launched the app
- *
- * Call this once from the root layout after navigation is ready.
- */
 export function setupNotificationTapHandlers(): void {
-  messaging().onNotificationOpenedApp(remoteMessage => {
+  onNotificationOpenedApp(getMsg(), remoteMessage => {
     console.log('[FCM] Tap (background):', remoteMessage.data);
     navigateFromNotification(remoteMessage.data as Record<string, string>);
   });
 
-  messaging()
-    .getInitialNotification()
-    .then(remoteMessage => {
-      if (remoteMessage) {
-        console.log('[FCM] Tap (quit state):', remoteMessage.data);
-        navigateFromNotification(remoteMessage.data as Record<string, string>);
-      }
-    });
+  getInitialNotification(getMsg()).then(remoteMessage => {
+    if (remoteMessage) {
+      console.log('[FCM] Tap (quit state):', remoteMessage.data);
+      navigateFromNotification(remoteMessage.data as Record<string, string>);
+    }
+  });
 }

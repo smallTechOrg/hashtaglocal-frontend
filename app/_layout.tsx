@@ -10,11 +10,12 @@ import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
-  getFCMToken,
+  clearCachedFCMToken,
   registerForegroundHandler,
   requestNotificationPermission,
-  saveFCMToken,
   setupNotificationTapHandlers,
+  syncFCMToken,
+  watchTokenRefresh,
 } from "@/utils/notificationService";
 import {
   DrawerContentComponentProps,
@@ -37,8 +38,18 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 SplashScreen.preventAutoHideAsync();
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
-  const { setUser, setIsLoading } = useUser();
+  const { user, setUser, setIsLoading } = useUser();
   const { setKarma } = useKarma();
+
+  // Runs whenever user goes from null → logged-in, covers both stored token and fresh OAuth login
+  useEffect(() => {
+    if (!user) return;
+    async function registerFCMToken() {
+      const permitted = await requestNotificationPermission();
+      if (permitted) await syncFCMToken();
+    }
+    registerFCMToken();
+  }, [user]);
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -78,13 +89,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           console.log("Profile loaded:", username, "hashtag:", hashtag);
           setUser({ username, picture, user_role, hashtag, user_summary });
           setKarma(user_summary?.karma_earned ?? 0, user_summary?.karma_pending ?? 0);
-
-          // Register FCM token after confirming user is authenticated
-          const permitted = await requestNotificationPermission();
-          if (permitted) {
-            const token = await getFCMToken();
-            if (token) await saveFCMToken(token);
-          }
         } else {
           console.log("Profile fetch failed with status:", response.status);
           await clearTokens();
@@ -224,6 +228,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
   const handleLogout = async () => {
     await clearTokens();
+    await clearCachedFCMToken();
     setUser(null);
     router.replace("/login");
   };
@@ -312,8 +317,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     setupNotificationTapHandlers();
-    const unsubscribe = registerForegroundHandler();
-    return unsubscribe;
+    const unsubForeground = registerForegroundHandler();
+    const unsubTokenRefresh = watchTokenRefresh();
+    return () => {
+      unsubForeground();
+      unsubTokenRefresh();
+    };
   }, []);
 
 
