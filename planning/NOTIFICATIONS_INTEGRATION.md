@@ -77,9 +77,20 @@ Add this to the frontend logout flow in `handleLogout` in `app/_layout.tsx`:
 await apiPost(`${API_BASE_URL}/account/device-token/remove`, { platform: 'android' });
 ```
 
-And backend endpoint `POST /account/device-token/remove` (or `DELETE /account/device-token`):
-- Deletes all tokens for this user on the given platform
-- If you want per-device precision, the app can pass the token itself
+Backend endpoint `POST /account/device-token/remove` (or `DELETE /account/device-token`):
+```java
+@DeleteMapping("/account/device-token")
+public ResponseEntity<Void> removeDeviceToken(
+        @RequestBody RemoveTokenRequest request,
+        @AuthenticationPrincipal UserDetails currentUser) {
+
+    deviceTokenRepository.deleteByUserIdAndPlatform(
+        currentUser.getId(),
+        request.getPlatform()
+    );
+    return ResponseEntity.ok().build();
+}
+```
 
 **Option B — Ignore stale tokens:**
 
@@ -93,69 +104,107 @@ Either approach works — Option A is cleaner.
 
 Use the **Firebase Admin SDK** on your backend.
 
-**Install:**
-```bash
-npm install firebase-admin
-# or
-pip install firebase-admin   # Python
+**Add dependency (Maven):**
+```xml
+<dependency>
+    <groupId>com.google.firebase</groupId>
+    <artifactId>firebase-admin</artifactId>
+    <version>9.2.0</version>
+</dependency>
 ```
 
-**Initialize (once at startup):**
-```js
-const admin = require('firebase-admin');
-const serviceAccount = require('./service-account-key.json');
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+**Add dependency (Gradle):**
+```groovy
+implementation 'com.google.firebase:firebase-admin:9.2.0'
 ```
 
-> Get `service-account-key.json` from Firebase Console → Project Settings → Service accounts → Generate new private key. **Never commit this file.**
+**Initialize once at startup (e.g. in a `@Configuration` bean):**
+```java
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import java.io.FileInputStream;
+
+@Configuration
+public class FirebaseConfig {
+
+    @Bean
+    public FirebaseApp firebaseApp() throws IOException {
+        if (FirebaseApp.getApps().isEmpty()) {
+            FileInputStream serviceAccount =
+                new FileInputStream("service-account-key.json");
+
+            FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .build();
+
+            return FirebaseApp.initializeApp(options);
+        }
+        return FirebaseApp.getInstance();
+    }
+}
+```
+
+> Get `service-account-key.json` from Firebase Console → Project Settings → Service accounts → Generate new private key. **Never commit this file — add it to `.gitignore` and load the path from an env variable.**
 
 **Send to one device:**
-```js
-await admin.messaging().send({
-  token: deviceToken,
-  notification: {
-    title: 'Your issue was resolved',
-    body: 'The pothole on MG Road has been marked resolved.',
-  },
-  data: {
-    type: 'ISSUE_UPDATE',    // must match NotificationType in the app
-    issueId: '456',          // used by the app to navigate
-  },
-  android: {
-    priority: 'high',
-  },
-});
+```java
+import com.google.firebase.messaging.*;
+
+Message message = Message.builder()
+    .setToken(deviceToken)
+    .setNotification(Notification.builder()
+        .setTitle("Your issue was resolved")
+        .setBody("The pothole on MG Road has been marked resolved.")
+        .build())
+    .putData("type", "ISSUE_UPDATE")   // must match NotificationType in the app
+    .putData("issueId", "456")         // used by the app to navigate
+    .setAndroidConfig(AndroidConfig.builder()
+        .setPriority(AndroidConfig.Priority.HIGH)
+        .build())
+    .build();
+
+String messageId = FirebaseMessaging.getInstance().send(message);
 ```
 
 **Send to multiple devices at once:**
-```js
-await admin.messaging().sendEachForMulticast({
-  tokens: [token1, token2, token3],   // max 500 per call
-  notification: { title: '...', body: '...' },
-  data: { type: 'NEARBY_ISSUE', issueId: '789' },
-  android: { priority: 'high' },
-});
+```java
+import com.google.firebase.messaging.*;
+import java.util.List;
+
+MulticastMessage message = MulticastMessage.builder()
+    .addAllTokens(List.of(token1, token2, token3))  // max 500 per call
+    .setNotification(Notification.builder()
+        .setTitle("New issue nearby")
+        .setBody("A pothole was reported 0.2km from you.")
+        .build())
+    .putData("type", "NEARBY_ISSUE")
+    .putData("issueId", "789")
+    .setAndroidConfig(AndroidConfig.builder()
+        .setPriority(AndroidConfig.Priority.HIGH)
+        .build())
+    .build();
+
+BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message);
 ```
 
 **Handle send errors (clean up stale tokens):**
-```js
-const response = await admin.messaging().sendEachForMulticast({ tokens, ... });
+```java
+List<SendResponse> responses = response.getResponses();
 
-response.responses.forEach((result, index) => {
-  if (!result.success) {
-    const error = result.error;
-    if (
-      error.code === 'messaging/registration-token-not-registered' ||
-      error.code === 'messaging/invalid-registration-token'
-    ) {
-      // Token is no longer valid — delete it from DB
-      await db.deviceTokens.delete({ token: tokens[index] });
+for (int i = 0; i < responses.size(); i++) {
+    SendResponse sendResponse = responses.get(i);
+    if (!sendResponse.isSuccessful()) {
+        MessagingErrorCode errorCode =
+            sendResponse.getException().getMessagingErrorCode();
+
+        if (errorCode == MessagingErrorCode.UNREGISTERED ||
+            errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+            // Token is no longer valid — delete it from DB
+            deviceTokenRepository.deleteByToken(tokens.get(i));
+        }
     }
-  }
-});
+}
 ```
 
 ---
