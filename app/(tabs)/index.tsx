@@ -1,5 +1,5 @@
 import { Event } from "@/api/events";
-import { getIssuesByLocation } from "@/api/IssueDetail";
+import { getIssuesByHashtag } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -11,6 +11,7 @@ import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { useEvents } from "@/utils/EventsContext";
 import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
+import { useHashtag } from "@/utils/HashtagContext";
 import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { useIssues } from "@/utils/IssuesContext";
 import { useKarma } from "@/utils/KarmaContext";
@@ -93,6 +94,8 @@ export default function MapScreen() {
   const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
   const { events } = useEvents();
+  // Global hashtag selector (header dropdown) — drives which issues/events show.
+  const { hashtag, isRoot } = useHashtag();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -200,31 +203,50 @@ export default function MapScreen() {
     }
   }, [user?.username]);
 
+  // Load issues for the globally-selected hashtag (#india/root = all). Shared into the context so
+  // the Issues tab reflects the same selection. This is the source of truth for which issues show.
+  const loadIssuesForHashtag = useCallback(
+    async (tag: string, root: boolean) => {
+      try {
+        setIssuesLoading(true);
+        const issuesData = await getIssuesByHashtag(root ? undefined : tag);
+        setIssues(issuesData);
+        setContextIssues(issuesData);
+      } catch (error) {
+        console.error("Failed to load issues for hashtag:", error);
+      } finally {
+        setIssuesLoading(false);
+      }
+    },
+    [setContextIssues],
+  );
+
+  // Reload whenever the selected hashtag changes.
+  useEffect(() => {
+    loadIssuesForHashtag(hashtag, isRoot);
+  }, [hashtag, isRoot, loadIssuesForHashtag]);
+
   useEffect(() => {
     // Subscribe to progressive updates and update map when accuracy improves.
     // Guard with userRef so that after logout/account-deletion the callback
     // does not keep firing authenticated API calls and causing a session-expired loop.
     const unsub = subscribeToBestLocation((loc) => {
+      // Location now only positions the map; issues are loaded by the selected hashtag.
       setUserLocation(loc);
-      if (userRef.current) {
-        loadNearbyIssues(loc.latitude, loc.longitude);
-      }
     });
 
     return () => unsub();
   }, []);
 
-  // Reload issues + refresh user summary when screen comes back into focus
+  // Refresh the issues (for the current hashtag) + user summary when the screen regains focus.
   useFocusEffect(
     useCallback(() => {
+      loadIssuesForHashtag(hashtag, isRoot);
       if (userLocation) {
         const { latitude, longitude } = userLocation;
-        Promise.all([
-          loadNearbyIssues(latitude, longitude),
-          refreshUserProfile(latitude, longitude),
-        ]);
+        refreshUserProfile(latitude, longitude);
       }
-    }, [userLocation])
+    }, [hashtag, isRoot, loadIssuesForHashtag, userLocation])
   );
 
   // Open/close bottom sheet when issue is selected/deselected
@@ -262,8 +284,7 @@ export default function MapScreen() {
     if (result.success) {
       setUserLocation(result.location);
       setLoadingState("success");
-      // Load issues for this location
-      loadNearbyIssues(result.location.latitude, result.location.longitude);
+      // Issues are loaded by the selected hashtag (see loadIssuesForHashtag effect), not by location.
     } else {
       setError(result.error);
       setLoadingState("error");
@@ -285,21 +306,6 @@ export default function MapScreen() {
       }
     } catch (error) {
       console.log("[MapScreen] Silent profile refresh failed:", error);
-    }
-  };
-
-  const loadNearbyIssues = async (lat: number, lng: number) => {
-    try {
-      setIssuesLoading(true);
-      const issuesData = await getIssuesByLocation(lat, lng);
-      console.log("Issues loaded:", issuesData.length);
-      setIssues(issuesData);
-      // Also save to context for other tabs to use
-      setContextIssues(issuesData);
-    } catch (error) {
-      console.error("Failed to load nearby issues:", error);
-    } finally {
-      setIssuesLoading(false);
     }
   };
 
@@ -388,16 +394,15 @@ export default function MapScreen() {
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
     const now = Date.now();
-    const userHashtag = user?.hashtag?.toLowerCase();
     return events.filter((event) => {
       const startTime = new Date(event.start_time).getTime();
       if (isNaN(startTime) || startTime < now) return false;
-      if (!userHashtag) return true;
+      if (isRoot) return true; // #india = all localities
       return event.location.locality.hashtags.some(
-        (tag) => tag.toLowerCase() === userHashtag
+        (tag) => tag.toLowerCase().replace(/^#/, "") === hashtag
       );
     });
-  }, [events, user?.hashtag]);
+  }, [events, hashtag, isRoot]);
 
   // Future events visible in the current viewport
   const visibleEventMarkers = useMemo(() => {

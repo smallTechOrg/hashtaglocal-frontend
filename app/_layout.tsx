@@ -4,6 +4,7 @@ import "@/global.css";
 import { clearAnalyticsUser, trackLogout } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
+import { HashtagProvider } from "@/utils/HashtagContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
@@ -404,6 +405,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <HashtagProvider>
       <KarmaProvider>
       <EventsProvider>
       <IssuesProvider>
@@ -519,6 +521,7 @@ export default function RootLayout() {
       </IssuesProvider>
       </EventsProvider>
       </KarmaProvider>
+      </HashtagProvider>
     </UserProvider>
   );
 }
