@@ -103,6 +103,9 @@ export default function MapScreen() {
   const [error, setError] = useState<LocationError | null>(null);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  // The hashtag the loaded issue set belongs to (set when a load completes). The map-fit effect
+  // gates on this so it fits the right data, never the previous hashtag's during a switch.
+  const [loadedHashtag, setLoadedHashtag] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
@@ -212,6 +215,9 @@ export default function MapScreen() {
         const issuesData = await getIssuesByHashtag(root ? undefined : tag);
         setIssues(issuesData);
         setContextIssues(issuesData);
+        // Mark which hashtag the current issue set belongs to — the map-fit effect waits for this
+        // so it never fits stale (previous-hashtag) data during a switch.
+        setLoadedHashtag(tag);
       } catch (error) {
         console.error("Failed to load issues for hashtag:", error);
       } finally {
@@ -510,8 +516,9 @@ export default function MapScreen() {
   // selected hashtag is their OWN home hashtag (so "current location" only matters there).
   const lastFitHashtagRef = useRef<string | null>(null);
   useEffect(() => {
-    // Wait until the hashtag's issues have loaded so we fit the right marker set.
-    if (issuesLoading) return;
+    // Only fit once the loaded issue set actually belongs to the current hashtag — otherwise we'd
+    // fit the previous hashtag's (stale) markers mid-switch and then block the real fit.
+    if (loadedHashtag !== hashtag) return;
     if (lastFitHashtagRef.current === hashtag) return;
     if (!mapRef.current) return;
 
@@ -527,8 +534,10 @@ export default function MapScreen() {
     }
 
     if (coords.length === 0) {
-      // No data for this hashtag yet — don't snap to GPS; mark as handled and leave the view.
-      lastFitHashtagRef.current = hashtag;
+      // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
+      // genuinely empty hashtag. Do NOT mark this hashtag as fitted: leave the ref so that when the
+      // data lands the effect re-runs and fits then. (Marking it here was the bug — it blocked the
+      // real fit once the data arrived, which is why only #india, already loaded up-front, worked.)
       return;
     }
 
@@ -555,7 +564,7 @@ export default function MapScreen() {
     setSelectedIssue(null);
     setSelectedEvent(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hashtag, issuesLoading, filteredIssues, futureEvents, user?.hashtag]);
+  }, [hashtag, loadedHashtag, filteredIssues, futureEvents, user?.hashtag]);
 
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
