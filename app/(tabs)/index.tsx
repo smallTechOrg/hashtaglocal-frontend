@@ -103,6 +103,9 @@ export default function MapScreen() {
   const [error, setError] = useState<LocationError | null>(null);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  // The hashtag the loaded issue set belongs to (set when a load completes). The map-fit effect
+  // gates on this so it fits the right data, never the previous hashtag's during a switch.
+  const [loadedHashtag, setLoadedHashtag] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
@@ -212,6 +215,9 @@ export default function MapScreen() {
         const issuesData = await getIssuesByHashtag(root ? undefined : tag);
         setIssues(issuesData);
         setContextIssues(issuesData);
+        // Mark which hashtag the current issue set belongs to — the map-fit effect waits for this
+        // so it never fits stale (previous-hashtag) data during a switch.
+        setLoadedHashtag(tag);
       } catch (error) {
         console.error("Failed to load issues for hashtag:", error);
       } finally {
@@ -463,21 +469,11 @@ export default function MapScreen() {
     });
   }, [futureEvents, userLocation]);
 
-  // Auto-zoom map to fit filtered markers when a filter is active
+  // Auto-zoom map to fit filtered markers when a sub-filter (category/status/mine) is active.
+  // When no filter is active the default view is owned by the hashtag-fit effect above — we must
+  // NOT snap back to GPS here, or switching hashtags would keep recentering on the user's location.
   useEffect(() => {
     if (filterActiveCount === 0) {
-      // No filter active → zoom back to user locality
-      if (mapRef.current && userLocation) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          },
-          500,
-        );
-      }
       return;
     }
 
@@ -513,6 +509,62 @@ export default function MapScreen() {
     // Close any open issue card
     setSelectedIssue(null);
   }, [filterActiveCount, filteredIssues, userLocation]);
+
+  // Fit the map to the selected hashtag's data when the hashtag changes. The map should follow the
+  // hashtag, not stay glued to GPS: #india fits all markers across India; a locality (#pune) fits
+  // that locality's markers. The user's current location is only included in the box when the
+  // selected hashtag is their OWN home hashtag (so "current location" only matters there).
+  const lastFitHashtagRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Only fit once the loaded issue set actually belongs to the current hashtag — otherwise we'd
+    // fit the previous hashtag's (stale) markers mid-switch and then block the real fit.
+    if (loadedHashtag !== hashtag) return;
+    if (lastFitHashtagRef.current === hashtag) return;
+    if (!mapRef.current) return;
+
+    const coords: { lat: number; lng: number }[] = [
+      ...filteredIssues.map((i) => ({ lat: i.location.lat, lng: i.location.lng })),
+      ...futureEvents.map((e) => ({ lat: e.location.lat, lng: e.location.lng })),
+    ];
+
+    // Only fold in the user's GPS when viewing their own home hashtag.
+    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
+    if (userLocation && homeHashtag && homeHashtag === hashtag) {
+      coords.push({ lat: userLocation.latitude, lng: userLocation.longitude });
+    }
+
+    if (coords.length === 0) {
+      // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
+      // genuinely empty hashtag. Do NOT mark this hashtag as fitted: leave the ref so that when the
+      // data lands the effect re-runs and fits then. (Marking it here was the bug — it blocked the
+      // real fit once the data arrived, which is why only #india, already loaded up-front, worked.)
+      return;
+    }
+
+    let minLat = coords[0].lat, maxLat = coords[0].lat;
+    let minLng = coords[0].lng, maxLng = coords[0].lng;
+    coords.forEach((c) => {
+      minLat = Math.min(minLat, c.lat);
+      maxLat = Math.max(maxLat, c.lat);
+      minLng = Math.min(minLng, c.lng);
+      maxLng = Math.max(maxLng, c.lng);
+    });
+
+    lastFitHashtagRef.current = hashtag;
+    mapRef.current.animateToRegion(
+      {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+        // Pad the bounds; floor avoids over-zooming when all markers share a point.
+        latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.02),
+        longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.02),
+      },
+      600,
+    );
+    setSelectedIssue(null);
+    setSelectedEvent(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hashtag, loadedHashtag, filteredIssues, futureEvents, user?.hashtag]);
 
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
