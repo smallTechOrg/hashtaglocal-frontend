@@ -12,7 +12,7 @@ import {
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
 import { Alert, Platform } from 'react-native';
-import { apiPost } from '@/utils/apiClient';
+import { apiPost, apiRequest } from '@/utils/apiClient';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const FCM_TOKEN_STORAGE_KEY = 'fcm_token';
@@ -37,8 +37,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 async function pushTokenToBackend(token: string): Promise<void> {
   await apiPost(`${API_BASE_URL}/account/device-token`, {
-    token,
-    platform: Platform.OS,
+    data: { token, platform: Platform.OS },
   });
   await AsyncStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
   console.log('[FCM] Token synced to backend');
@@ -77,6 +76,22 @@ export async function clearCachedFCMToken(): Promise<void> {
 }
 
 /**
+ * Calls DELETE /account/device-token to remove the token from the backend.
+ * Must be called before clearing JWT tokens so the request is authenticated.
+ */
+export async function removeDeviceToken(): Promise<void> {
+  try {
+    await apiRequest(`${API_BASE_URL}/account/device-token`, {
+      method: 'DELETE',
+      body: JSON.stringify({ data: { platform: Platform.OS } }),
+    });
+    console.log('[FCM] Device token removed from backend');
+  } catch (error) {
+    console.warn('[FCM] Failed to remove device token:', error);
+  }
+}
+
+/**
  * Watches for Firebase-initiated token rotation (rare but can happen when
  * Firebase invalidates the token). Returns an unsubscribe function.
  */
@@ -95,12 +110,21 @@ export function registerForegroundHandler(): () => void {
   return onMessage(getMsg(), async remoteMessage => {
     const title = remoteMessage.notification?.title ?? 'New notification';
     const body = remoteMessage.notification?.body ?? '';
-    console.log('[FCM] Foreground message:', title, remoteMessage.data);
-    Alert.alert(title, body);
+    const data = remoteMessage.data as Record<string, string> | undefined;
+    console.log('[FCM] Foreground message:', title, data);
+
+    if (data?.type === 'ISSUE_UPDATE' && data.issueId) {
+      Alert.alert(title, body, [
+        { text: 'Dismiss', style: 'cancel' },
+        { text: 'View Issue', onPress: () => navigateFromNotification(data) },
+      ]);
+    } else {
+      Alert.alert(title, body);
+    }
   });
 }
 
-function navigateFromNotification(data?: Record<string, string>): void {
+export function navigateFromNotification(data?: Record<string, string>): void {
   if (!data?.type) return;
 
   switch (data.type as NotificationType) {
@@ -119,16 +143,28 @@ function navigateFromNotification(data?: Record<string, string>): void {
   }
 }
 
+// Holds the notification data when the app was opened from a killed state.
+// Consumed by AuthLoader once the user is confirmed authenticated.
+let pendingInitialNotification: Record<string, string> | null = null;
+
+export function consumePendingNotification(): Record<string, string> | null {
+  const data = pendingInitialNotification;
+  pendingInitialNotification = null;
+  return data;
+}
+
 export function setupNotificationTapHandlers(): void {
   onNotificationOpenedApp(getMsg(), remoteMessage => {
     console.log('[FCM] Tap (background):', remoteMessage.data);
     navigateFromNotification(remoteMessage.data as Record<string, string>);
   });
 
+  // For the killed-state tap: the router isn't ready yet at this point, so we
+  // store the data and let AuthLoader navigate after the user is loaded.
   getInitialNotification(getMsg()).then(remoteMessage => {
     if (remoteMessage) {
-      console.log('[FCM] Tap (quit state):', remoteMessage.data);
-      navigateFromNotification(remoteMessage.data as Record<string, string>);
+      console.log('[FCM] Tap (quit state), deferring navigation:', remoteMessage.data);
+      pendingInitialNotification = remoteMessage.data as Record<string, string>;
     }
   });
 }

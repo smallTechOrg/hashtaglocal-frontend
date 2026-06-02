@@ -11,7 +11,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
   clearCachedFCMToken,
+  consumePendingNotification,
+  navigateFromNotification,
   registerForegroundHandler,
+  removeDeviceToken,
   requestNotificationPermission,
   setupNotificationTapHandlers,
   syncFCMToken,
@@ -44,11 +47,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // Runs whenever user goes from null → logged-in, covers both stored token and fresh OAuth login
   useEffect(() => {
     if (!user) return;
-    async function registerFCMToken() {
+    async function onUserLoaded() {
+      // Navigate to any notification that opened the app from a killed state
+      const pending = consumePendingNotification();
+      if (pending) navigateFromNotification(pending);
+
       const permitted = await requestNotificationPermission();
       if (permitted) await syncFCMToken();
     }
-    registerFCMToken();
+    onUserLoaded();
   }, [user]);
 
   useEffect(() => {
@@ -227,6 +234,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
+    await removeDeviceToken(); // must run before clearTokens so the request is authenticated
     await clearTokens();
     await clearCachedFCMToken();
     setUser(null);
