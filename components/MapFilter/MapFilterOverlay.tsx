@@ -2,7 +2,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   Dimensions,
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -141,7 +140,7 @@ function MapFilterOverlayInner({
           <View
             style={{
               position: "absolute",
-              top: inline ? -barHeight : -(Platform.OS === "ios" ? 54 : 12),
+              top: inline ? -barHeight : -12,
               left: inline ? -screenWidth : -12,
               width: screenWidth * 3,
               height: screenHeight,
@@ -371,7 +370,7 @@ const DROPDOWN_WIDTH = 180;
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 12,
+    top: 12,
     right: 0,
     left: 0,
     zIndex: 20,
