@@ -101,6 +101,30 @@ export default function CameraCapture() {
     });
   };
 
+  const handleBack = () => {
+    if (mode !== "update") {
+      router.replace("/(tabs)/report");
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
+
+  const renderBackButton = () => (
+    <TouchableOpacity
+      onPress={handleBack}
+      className="bg-black/50 p-3 rounded-full"
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <MaterialIcons name="arrow-back" size={28} color="white" />
+    </TouchableOpacity>
+  );
+
   // Loading state while checking permissions
   if (permission === null) {
     return (
@@ -129,6 +153,9 @@ export default function CameraCapture() {
 
     return (
       <View className="flex-1 justify-center items-center bg-black px-6">
+        <View className="absolute top-0 left-0 right-0 pt-12 px-6">
+          {renderBackButton()}
+        </View>
         <MaterialIcons name="camera-alt" size={64} color="#6200EE" />
         <CustomText className="mt-4 text-white text-center text-lg">
           Camera access is required to report issues
@@ -147,6 +174,9 @@ export default function CameraCapture() {
   if (capturedPhoto) {
     return (
       <View className="flex-1 bg-black">
+        <View className="absolute top-0 left-0 right-0 pt-12 px-6 z-10">
+          {renderBackButton()}
+        </View>
         <Image
           source={{ uri: capturedPhoto }}
           style={{ flex: 1 }}
@@ -186,25 +216,29 @@ export default function CameraCapture() {
         {/* Top Controls */}
         <View className="absolute top-0 left-0 right-0 pt-12 px-6">
           <View className="flex-row justify-between items-center">
-            {/* Flash Toggle */}
-            <TouchableOpacity
-              onPress={() => setFlash(flash === "off" ? "on" : "off")}
-              className="bg-black/50 p-3 rounded-full"
-            >
-              <MaterialIcons
-                name={flash === "off" ? "flash-off" : "flash-on"}
-                size={28}
-                color="white"
-              />
-            </TouchableOpacity>
+            {renderBackButton()}
 
-            {/* Camera Flip */}
-            <TouchableOpacity
-              onPress={() => setFacing(facing === "back" ? "front" : "back")}
-              className="bg-black/50 p-3 rounded-full"
-            >
-              <MaterialIcons name="flip-camera-ios" size={28} color="white" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-3">
+              {/* Flash Toggle */}
+              <TouchableOpacity
+                onPress={() => setFlash(flash === "off" ? "on" : "off")}
+                className="bg-black/50 p-3 rounded-full"
+              >
+                <MaterialIcons
+                  name={flash === "off" ? "flash-off" : "flash-on"}
+                  size={28}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+              {/* Camera Flip */}
+              <TouchableOpacity
+                onPress={() => setFacing(facing === "back" ? "front" : "back")}
+                className="bg-black/50 p-3 rounded-full"
+              >
+                <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
