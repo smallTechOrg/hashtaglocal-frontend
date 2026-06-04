@@ -17,6 +17,8 @@ import { apiPost, apiRequest } from '@/utils/apiClient';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 const FCM_TOKEN_STORAGE_KEY = 'fcm_token';
 
+let syncInProgress: Promise<void> | null = null;
+
 export type NotificationType =
   | 'ISSUE_UPDATE'
   | 'ISSUE_COMMENT'
@@ -36,9 +38,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 async function pushTokenToBackend(token: string): Promise<void> {
-  await apiPost(`${API_BASE_URL}/account/device-token`, {
-    data: { token, platform: Platform.OS },
-  });
+  const requestBody = { data: { token, platform: Platform.OS } };
+  console.log('[FCM] POST /account/device-token request:', JSON.stringify(requestBody));
+  const response = await apiPost(`${API_BASE_URL}/account/device-token`, requestBody);
+  const responseText = await response.text();
+  console.log('[FCM] POST /account/device-token response:', response.status, responseText);
+  if (!response.ok) {
+    throw new Error(`Device token sync failed: ${response.status} ${responseText}`);
+  }
   await AsyncStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
   console.log('[FCM] Token synced to backend');
 }
@@ -47,24 +54,34 @@ async function pushTokenToBackend(token: string): Promise<void> {
  * Gets the FCM token and syncs it to the backend only if it has changed since
  * the last sync. Skips the backend call on every subsequent login when the
  * token is the same (tokens are per device/install, not per user session).
+ * A module-level lock prevents concurrent calls from both seeing an empty cache
+ * and racing to POST the same token twice.
  */
-export async function syncFCMToken(): Promise<void> {
-  try {
-    const token = await getToken(getMsg());
-    if (!token) return;
+export function syncFCMToken(): Promise<void> {
+  if (syncInProgress) return syncInProgress;
 
-    console.log('[FCM] Device token:', token);
+  syncInProgress = (async () => {
+    try {
+      const token = await getToken(getMsg());
+      if (!token) return;
 
-    const cachedToken = await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY);
-    if (token === cachedToken) {
-      console.log('[FCM] Token unchanged, skipping backend sync');
-      return;
+      console.log('[FCM] Device token:', token);
+
+      const cachedToken = await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY);
+      if (token === cachedToken) {
+        console.log('[FCM] Token unchanged, skipping backend sync');
+        return;
+      }
+
+      await pushTokenToBackend(token);
+    } catch (error) {
+      console.warn('[FCM] Failed to sync token:', error);
+    } finally {
+      syncInProgress = null;
     }
+  })();
 
-    await pushTokenToBackend(token);
-  } catch (error) {
-    console.warn('[FCM] Failed to sync token:', error);
-  }
+  return syncInProgress;
 }
 
 /**
@@ -81,10 +98,14 @@ export async function clearCachedFCMToken(): Promise<void> {
  */
 export async function removeDeviceToken(): Promise<void> {
   try {
-    await apiRequest(`${API_BASE_URL}/account/device-token`, {
+    const requestBody = { data: { platform: Platform.OS } };
+    console.log('[FCM] DELETE /account/device-token request:', JSON.stringify(requestBody));
+    const response = await apiRequest(`${API_BASE_URL}/account/device-token`, {
       method: 'DELETE',
-      body: JSON.stringify({ data: { platform: Platform.OS } }),
+      body: JSON.stringify(requestBody),
     });
+    const responseText = await response.text();
+    console.log('[FCM] DELETE /account/device-token response:', response.status, responseText);
     console.log('[FCM] Device token removed from backend');
   } catch (error) {
     console.warn('[FCM] Failed to remove device token:', error);
