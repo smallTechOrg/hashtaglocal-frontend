@@ -4,6 +4,7 @@ import { calculateDaysActive } from "@/utils/FormatDate";
 import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
+  getBestKnownLocation,
   getFastLocationWithProgressiveWatch,
   UserLocation,
 } from "@/utils/LocationService";
@@ -34,7 +35,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const LOCATION_ACCURACY_THRESHOLD = 30; // metres
+const LOCATION_ACCURACY_THRESHOLD = 100; // metres — coarse accuracy is fine for nearby-issue filtering
 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
   pothole: "#ef4444",
@@ -230,24 +231,29 @@ export default function NearbyIssuesCheck() {
   useEffect(() => {
     (async () => {
       try {
-        // Fetch location (getFastLocationWithProgressiveWatch handles cache internally)
-        const result = await getFastLocationWithProgressiveWatch({
-          instantLoad: true,
-          accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
-          timeoutMs: 8_000,
-        });
+        // Fast path: the app already has a location from the map/feed screen — use it directly
+        let location: UserLocation | null = getBestKnownLocation();
 
-        if (!result.success) {
-          const locErrMsg = result.error.message ?? "Unable to get your location.";
-          const crashlytics = getCrashlytics();
-          log(crashlytics, "Location fetch failed on NearbyIssuesCheck");
-          recordCrashError(crashlytics, new Error(locErrMsg));
-          setLocationError(locErrMsg);
-          setScreenState("error");
-          return;
+        if (!location) {
+          // No cached location yet — fetch fresh (first app open, permissions just granted, etc.)
+          const result = await getFastLocationWithProgressiveWatch({
+            instantLoad: true,
+            accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
+            timeoutMs: 8_000,
+          });
+
+          if (!result.success) {
+            const locErrMsg = result.error.message ?? "Unable to get your location.";
+            const crashlytics = getCrashlytics();
+            log(crashlytics, "Location fetch failed on NearbyIssuesCheck");
+            recordCrashError(crashlytics, new Error(locErrMsg));
+            setLocationError(locErrMsg);
+            setScreenState("error");
+            return;
+          }
+
+          location = result.location;
         }
-
-        const location = result.location;
 
         setUserLocation(location);
 
