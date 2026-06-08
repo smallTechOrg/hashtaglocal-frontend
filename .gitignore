@@ -45,5 +45,9 @@ app-example
 /ios
 /android
 
+# Firebase config (contains secrets — store in CI env or secure vault)
+google-services.json
+GoogleService-Info.plist
+
 # linux file system
 *.swp
