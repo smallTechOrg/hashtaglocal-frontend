@@ -1,4 +1,6 @@
 import * as AppleAuthentication from "expo-apple-authentication";
+import { Platform } from "react-native";
+import { getDeviceId } from "@/utils/deviceId";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -26,12 +28,16 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     const displayName =
       [fullName?.givenName, fullName?.familyName].filter(Boolean).join(" ").trim() || undefined;
 
+    const deviceId = await getDeviceId();
+
     const response = await fetch(`${API_BASE_URL}/auth/apple`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         identity_token: identityToken,
         full_name: displayName ?? null,
+        platform: Platform.OS,
+        device_id: deviceId,
       }),
     });
 

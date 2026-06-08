@@ -7,6 +7,8 @@ import {
   isRefreshTokenExpired,
   saveTokens,
 } from "@/utils/tokenStorage";
+import { clearCachedFCMToken } from "@/utils/fcmCache";
+import { getDeviceId } from "@/utils/deviceId";
 import { router } from "expo-router";
 import { Alert } from "react-native";
 import { authEvents } from "./authEvents";
@@ -51,6 +53,7 @@ async function refreshAccessToken(): Promise<string | null> {
       if (isRefreshExpired) {
         recordCrashError(getCrashlytics(), new Error("[ApiClient] Refresh token expired - user must login again"));
         await clearTokens();
+        await clearCachedFCMToken();
         authEvents.emitSessionExpired(); // Clear user state in UserContext
         Alert.alert(
           "Session Expired",
@@ -62,7 +65,8 @@ async function refreshAccessToken(): Promise<string | null> {
       }
 
       console.log("[ApiClient] Refreshing access token...");
-      const refreshResponse = await refreshAuthToken(refreshToken);
+      const deviceId = await getDeviceId();
+      const refreshResponse = await refreshAuthToken(refreshToken, undefined, deviceId);
       const { access_token, refresh_token } = refreshResponse.data;
 
       await saveTokens(
@@ -77,6 +81,7 @@ async function refreshAccessToken(): Promise<string | null> {
     } catch (error) {
       recordCrashError(getCrashlytics(), error instanceof Error ? error : new Error(String(error)), "[ApiClient] Failed to refresh token");
       await clearTokens();
+      await clearCachedFCMToken();
       authEvents.emitSessionExpired();
       Alert.alert(
         "Session Expired",

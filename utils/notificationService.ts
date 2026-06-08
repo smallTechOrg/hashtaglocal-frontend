@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp } from '@react-native-firebase/app';
 import {
   AuthorizationStatus,
@@ -13,9 +12,9 @@ import {
 import { router } from 'expo-router';
 import { Alert, Platform } from 'react-native';
 import { apiPost, apiRequest } from '@/utils/apiClient';
+import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
-const FCM_TOKEN_STORAGE_KEY = 'fcm_token';
 
 let syncInProgress: Promise<void> | null = null;
 
@@ -38,7 +37,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 async function pushTokenToBackend(token: string): Promise<void> {
-  const requestBody = { data: { token, platform: Platform.OS } };
+  const requestBody = { data: { notification_token: token, platform: Platform.OS } };
   console.log('[FCM] POST /account/device-token request:', JSON.stringify(requestBody));
   const response = await apiPost(`${API_BASE_URL}/account/device-token`, requestBody);
   const responseText = await response.text();
@@ -46,7 +45,7 @@ async function pushTokenToBackend(token: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Device token sync failed: ${response.status} ${responseText}`);
   }
-  await AsyncStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+  await setCachedFCMToken(token);
   console.log('[FCM] Token synced to backend');
 }
 
@@ -67,7 +66,7 @@ export function syncFCMToken(): Promise<void> {
 
       console.log('[FCM] Device token:', token);
 
-      const cachedToken = await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY);
+      const cachedToken = await getCachedFCMToken();
       if (token === cachedToken) {
         console.log('[FCM] Token unchanged, skipping backend sync');
         return;
@@ -84,13 +83,7 @@ export function syncFCMToken(): Promise<void> {
   return syncInProgress;
 }
 
-/**
- * Clears the locally cached FCM token on logout so the next login
- * re-syncs with the backend (handles multi-user on the same device).
- */
-export async function clearCachedFCMToken(): Promise<void> {
-  await AsyncStorage.removeItem(FCM_TOKEN_STORAGE_KEY);
-}
+export { clearCachedFCMToken };
 
 /**
  * Calls DELETE /account/device-token to remove the token from the backend.

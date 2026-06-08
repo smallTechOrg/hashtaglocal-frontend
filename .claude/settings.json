@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"e:\\\\smalltech\\\\#local\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(cd /e/smalltech/\\\\#local && find . -maxdepth 2 -type f -name \"*.json\" -o -name \"*.js\" -o -name \"*.ts\" | head -50)",
+      "Read(//e/e/smalltech/**)",
+      "Bash(Get-ChildItem -Path \"e:\\\\smalltech\\\\local frontend\\\\hashtaglocal-frontend\" -Recurse -Directory -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(grep -E \"\\(app\\\\.json|eas\\\\.json|\\\\.env\\)\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\vivek\\\\.claude\\\\projects\\\\e--smalltech-local-frontend-hashtaglocal-frontend\\\\memory\")",
+      "Bash(Remove-Item \"e:\\\\smalltech\\\\#local\\\\scripts\\\\migrate-add-session-indexes.sql\")",
+      "Bash(.\\\\gradlew clean *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\vivek\\.claude\\projects\\e--smalltech-local-frontend-hashtaglocal-frontend"
+    ]
+  }
+}
