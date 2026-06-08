@@ -30,6 +30,9 @@ export async function trackAuthEvent(method: "google", isNewUser: boolean) {
 export const trackLogout = () =>
   track("logout");
 
+export const trackAuthFailed = (resultType: string, redirectUri: string) =>
+  track("google_auth_failed", { result_type: resultType, redirect_uri: redirectUri });
+
 // ─── Report Funnel ──────────────────────────────────────────────────────────
 
 /** Fired when the user lands on the Report tab (guidelines screen). */
