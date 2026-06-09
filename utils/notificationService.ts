@@ -132,8 +132,10 @@ export function registerForegroundHandler(): () => void {
         { text: 'Dismiss', style: 'cancel' },
         { text: 'View Issue', onPress: () => navigateFromNotification(data) },
       ]);
+      console.log('[FCM] Notification displayed (foreground alert):', data.type, 'issueId:', data.issueId);
     } else {
       Alert.alert(title, body);
+      console.log('[FCM] Notification displayed (foreground alert):', data?.type ?? 'unknown');
     }
   });
 }
@@ -141,18 +143,23 @@ export function registerForegroundHandler(): () => void {
 export function navigateFromNotification(data?: Record<string, string>): void {
   if (!data?.type) return;
 
+  console.log('[FCM] Navigating from notification:', data.type, data);
+
   switch (data.type as NotificationType) {
     case 'ISSUE_UPDATE':
     case 'ISSUE_COMMENT':
       if (data.issueId) {
         router.push({ pathname: '/issueDetail', params: { id: data.issueId } });
+        console.log('[FCM] Navigated to issueDetail, issueId:', data.issueId);
       }
       break;
     case 'NEARBY_ISSUE':
       router.push('/(tabs)');
+      console.log('[FCM] Navigated to tabs (NEARBY_ISSUE)');
       break;
     case 'KARMA_UPDATE':
       router.push('/(tabs)');
+      console.log('[FCM] Navigated to tabs (KARMA_UPDATE)');
       break;
   }
 }
