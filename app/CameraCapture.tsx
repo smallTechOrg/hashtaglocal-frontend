@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useFocusEffect } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
@@ -64,7 +65,12 @@ export default function CameraCapture() {
       });
 
       if (photo) {
-        setCapturedPhoto(photo.uri);
+        // Bake EXIF rotation into pixels so orientation is preserved after GCS upload/serve
+        const normalized = await manipulateAsync(photo.uri, [], {
+          compress: 1,
+          format: SaveFormat.JPEG,
+        });
+        setCapturedPhoto(normalized.uri);
         setCapturedTimestamp(new Date().toISOString());
         everCapturedRef.current = true;
         trackPhotoCaptured(mode === "update" ? "update" : "report");
@@ -117,7 +123,7 @@ export default function CameraCapture() {
   const renderBackButton = () => (
     <TouchableOpacity
       onPress={handleBack}
-      className="bg-black/50 p-3 rounded-full"
+      className="bg-black/50 p-3 rounded-full self-start"
       accessibilityRole="button"
       accessibilityLabel="Go back"
     >

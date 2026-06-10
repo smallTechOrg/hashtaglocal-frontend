@@ -428,20 +428,18 @@ export async function getFastLocationWithProgressiveWatch(
                 }
               }
 
-              // If target accuracy reached, resolve immediately
+              // instantLoad: resolve on first reading — caller already waited 5 s for getCurrentPositionAsync
               if (instantLoad) {
-                if (loc.accuracy === null || loc.accuracy <= accuracyThresholdMeters) {
-                  if (!resolved) {
-                    resolved = true;
-                    tempUnwatchLocation();
-                    clearTimeout(watchTimer);
-                    resolve({
-                      success: true,
-                      location: bestFoundLocation!,
-                      improved: true,
-                      source: "watch",
-                    });
-                  }
+                if (!resolved) {
+                  resolved = true;
+                  tempUnwatchLocation();
+                  clearTimeout(watchTimer);
+                  resolve({
+                    success: true,
+                    location: bestFoundLocation!,
+                    improved: true,
+                    source: "watch",
+                  });
                 }
               } else {
                 // Blocking mode

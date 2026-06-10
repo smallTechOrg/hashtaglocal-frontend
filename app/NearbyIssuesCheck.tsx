@@ -4,6 +4,7 @@ import { calculateDaysActive } from "@/utils/FormatDate";
 import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { IssueMarker, useIssues } from "@/utils/IssuesContext";
 import {
+  getBestKnownLocation,
   getFastLocationWithProgressiveWatch,
   UserLocation,
 } from "@/utils/LocationService";
@@ -15,6 +16,7 @@ import {
 } from "@/utils/NearbyIssues";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
+import perf from "@react-native-firebase/perf";
 import { useIsFocused } from '@react-navigation/native';
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -34,7 +36,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const LOCATION_ACCURACY_THRESHOLD = 30; // metres
+const LOCATION_ACCURACY_THRESHOLD = 100; // metres — coarse accuracy is fine for nearby-issue filtering
+const LOCATION_SLOW_THRESHOLD_MS = 15_000;
 
 const ISSUE_TYPE_COLORS: Record<string, string> = {
   pothole: "#ef4444",
@@ -230,24 +233,35 @@ export default function NearbyIssuesCheck() {
   useEffect(() => {
     (async () => {
       try {
-        // Fetch location (getFastLocationWithProgressiveWatch handles cache internally)
-        const result = await getFastLocationWithProgressiveWatch({
-          instantLoad: true,
-          accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
-          timeoutMs: 8_000,
-        });
+        // Fast path: the app already has a location from the map/feed screen — use it directly
+        let location: UserLocation | null = getBestKnownLocation();
 
-        if (!result.success) {
-          const locErrMsg = result.error.message ?? "Unable to get your location.";
-          const crashlytics = getCrashlytics();
-          log(crashlytics, "Location fetch failed on NearbyIssuesCheck");
-          recordCrashError(crashlytics, new Error(locErrMsg));
-          setLocationError(locErrMsg);
-          setScreenState("error");
-          return;
+        if (!location) {
+          // No cached location yet — fetch fresh (first app open, permissions just granted, etc.)
+          const locationFetchStart = Date.now();
+          const locationTrace = await perf().startTrace("nearby_issues_location_fetch");
+          const result = await getFastLocationWithProgressiveWatch({
+            instantLoad: true,
+            accuracyThresholdMeters: LOCATION_ACCURACY_THRESHOLD,
+            timeoutMs: 8_000,
+          });
+          const locationFetchMs = Date.now() - locationFetchStart;
+          locationTrace.putAttribute("success", String(result.success));
+          locationTrace.putMetric(`took_${LOCATION_SLOW_THRESHOLD_MS / 1_000}_seconds`, locationFetchMs > LOCATION_SLOW_THRESHOLD_MS ? 1 : 0);
+          await locationTrace.stop();
+
+          if (!result.success) {
+            const locErrMsg = result.error.message ?? "Unable to get your location.";
+            const crashlytics = getCrashlytics();
+            log(crashlytics, `Location fetch failed on NearbyIssuesCheck`);
+            recordCrashError(crashlytics, new Error(locErrMsg));
+            setLocationError(locErrMsg);
+            setScreenState("error");
+            return;
+          }
+
+          location = result.location;
         }
-
-        const location = result.location;
 
         setUserLocation(location);
 
