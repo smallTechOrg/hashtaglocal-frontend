@@ -19,6 +19,7 @@ import {
 } from "@react-navigation/drawer";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
+import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { router, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
@@ -263,7 +264,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   };
 
   return (
-    <DrawerContentScrollView {...props}>
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props}>
       <View className="flex-row items-center p-1 border-b border-gray-200 pb-2 ">
         <Image
           source={
@@ -343,6 +345,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         </>
       )}
     </DrawerContentScrollView>
+      <View style={{ alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#f3f4f6" }}>
+        <Text style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito-Regular" }}>v{Constants.expoConfig?.version}</Text>
+      </View>
+    </View>
   );
 }
 
