@@ -33,7 +33,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 async function pushTokenToBackend(token: string): Promise<void> {
-  const requestBody = { data: { notification_token: token, platform: Platform.OS } };
+  const requestBody = { data: { notification_token: token, platform: Platform.OS.toUpperCase() } };
   console.log('[FCM] POST /account/device-token request:', JSON.stringify(requestBody));
   const response = await apiPost(`${API_BASE_URL}/account/device-token`, requestBody);
   const responseText = await response.text();
@@ -87,7 +87,7 @@ export { clearCachedFCMToken };
  */
 export async function removeDeviceToken(): Promise<void> {
   try {
-    const requestBody = { data: { platform: Platform.OS } };
+    const requestBody = { data: { platform: Platform.OS.toUpperCase() } };
     console.log('[FCM] DELETE /account/device-token request:', JSON.stringify(requestBody));
     const response = await apiRequest(`${API_BASE_URL}/account/device-token`, {
       method: 'DELETE',

@@ -18,7 +18,7 @@ export function useGoogleAuth() {
         // Encode platform + device_id in the OAuth state parameter.
         // Google echoes state back unchanged in the fragment alongside access_token,
         // so auth-handler.html can extract and forward them to the backend.
-        const state = new URLSearchParams({ platform: Platform.OS, device_id: deviceId }).toString();
+        const state = new URLSearchParams({ platform: Platform.OS.toUpperCase(), device_id: deviceId }).toString();
 
         const authUrl =
             GOOGLE_AUTH_ENDPOINT +

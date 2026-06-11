@@ -36,7 +36,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       body: JSON.stringify({
         identity_token: identityToken,
         full_name: displayName ?? null,
-        platform: Platform.OS,
+        platform: Platform.OS.toUpperCase(),
         device_id: deviceId,
       }),
     });
