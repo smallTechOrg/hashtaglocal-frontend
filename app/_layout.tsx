@@ -1,7 +1,10 @@
+import { requestAccountDeletion } from "@/api/account";
 import KarmaBadge from "@/components/KarmaBadge";
 import "@/global.css";
+import { clearAnalyticsUser, trackLogout } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
+import { HashtagProvider } from "@/utils/HashtagContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
@@ -27,12 +30,13 @@ import {
 } from "@react-navigation/drawer";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
+import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { router, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -132,6 +136,7 @@ function useProtectedRoute() {
     const inAuthGroup = segments[0] === "auth";
     const inLoginScreen = segments[0] === "login";
     const inTabsGroup = segments[0] === "(tabs)";
+    const isRootRoute = (segments as string[]).length === 0;
 
     // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
 
@@ -144,7 +149,7 @@ function useProtectedRoute() {
       // User is authenticated and on login screen, redirect to tabs
       console.log("Redirecting to tabs - user authenticated on login");
       router.replace("/(tabs)");
-    } else if (user && segments.length === 0) {
+    } else if (user && isRootRoute) {
       // User is authenticated at root with no segments, ensure tabs are loaded
       console.log("Loading tabs for authenticated user at root");
       router.replace("/(tabs)");
@@ -232,17 +237,62 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, setUser } = useUser();
   const { karma } = useKarma();
   const router = useRouter();
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleLogout = async () => {
     await removeDeviceToken(); // must run before clearTokens so the request is authenticated
+    trackLogout();
+    clearAnalyticsUser();
     await clearTokens();
     await clearCachedFCMToken();
     setUser(null);
     router.replace("/login");
   };
 
+  const handleDeleteAccount = () => {
+    // Confirmation step prevents accidental deletion requests while keeping the flow in-app.
+    Alert.alert(
+      "Delete Account?",
+      "This will permanently delete your account, including all your reported issues and activity.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Delete My Account",
+          style: "destructive",
+          onPress: submitDeleteAccountRequest,
+        },
+      ]
+    );
+  };
+
+  const submitDeleteAccountRequest = async () => {
+    if (isDeletingAccount) return;
+
+    setIsDeletingAccount(true);
+    try {
+      await requestAccountDeletion();
+      // Backend revokes sessions too; clearing local tokens makes the UI return to login immediately.
+      await clearTokens();
+      setUser(null);
+      Alert.alert(
+        "Deletion Requested",
+        "You've been logged out. Your account and all associated data will be permanently deleted within 24 hours.",
+        [{ text: "OK", onPress: () => router.replace("/login") }]
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to submit account deletion request. Please try again.";
+      Alert.alert("Request Failed", message);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   return (
-    <DrawerContentScrollView {...props}>
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props}>
       <View className="flex-row items-center p-1 border-b border-gray-200 pb-2 ">
         <Image
           source={
@@ -275,6 +325,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <UserSummarySection summary={user?.user_summary} />
       <DrawerItemList {...props} />
       <TouchableOpacity
+        onPress={() => router.push("/(tabs)/report")}
+        className="flex-row items-center px-4 py-3 mt-2 border-t border-gray-200"
+      >
+        <MaterialIcons name="camera-alt" size={24} color="#256D1B" />
+        <Text className="ml-8 font-nunito" style={{ color: "#256D1B" }}>Report an Issue</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         onPress={async () => {
           const subject = encodeURIComponent("Enquiry / Account Request");
           const body = encodeURIComponent(
@@ -293,15 +350,32 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <Text className="ml-8 text-gray-600 font-nunito">Contact Us</Text>
       </TouchableOpacity>
       {user && (
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="flex-row items-center px-4 py-3 border-t border-gray-200"
-        >
-          <MaterialIcons name="logout" size={24} color="#ef4444" />
-          <Text className="ml-8 text-red-500 font-nunito">Logout</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            className="flex-row items-center px-4 py-3 border-t border-gray-200"
+            style={{ opacity: isDeletingAccount ? 0.6 : 1 }}
+          >
+            <MaterialIcons name="delete-outline" size={24} color="#ef4444" />
+            <Text className="ml-8 text-red-500 font-nunito">
+              {isDeletingAccount ? "Submitting..." : "Delete Account"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="flex-row items-center px-4 py-3 border-t border-gray-200"
+          >
+            <MaterialIcons name="logout" size={24} color="#ef4444" />
+            <Text className="ml-8 text-red-500 font-nunito">Logout</Text>
+          </TouchableOpacity>
+        </>
       )}
     </DrawerContentScrollView>
+      <View style={{ alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#f3f4f6" }}>
+        <Text style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito-Regular" }}>v{Constants.expoConfig?.version}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -371,6 +445,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <HashtagProvider>
       <KarmaProvider>
       <EventsProvider>
       <IssuesProvider>
@@ -486,6 +561,7 @@ export default function RootLayout() {
       </IssuesProvider>
       </EventsProvider>
       </KarmaProvider>
+      </HashtagProvider>
     </UserProvider>
   );
 }

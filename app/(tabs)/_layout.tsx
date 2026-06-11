@@ -1,6 +1,8 @@
 // app/(tabs)/_layout.tsx
+import HashtagHeaderTitle from '@/components/chat/HashtagHeaderTitle';
 import KarmaBadge from '@/components/KarmaBadge';
 import { useEvents } from '@/utils/EventsContext';
+import { useHashtag } from '@/utils/HashtagContext';
 import { useUser } from '@/utils/UserContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DrawerToggleButton } from '@react-navigation/drawer';
@@ -10,21 +12,21 @@ import { useMemo } from 'react';
 export default function TabsLayout() {
   const { user } = useUser();
   const { events, loading: eventsLoading } = useEvents();
+  const { hashtag, isRoot } = useHashtag();
 
   const hasEvents = useMemo(() => {
     if (eventsLoading) return true; // keep tab visible while loading
     const now = Date.now();
-    const userHashtag = user?.hashtag?.toLowerCase();
     return events.some((e) => {
       const endStr = e.end_time ?? e.start_time;
       const utc = endStr.endsWith("Z") ? endStr : `${endStr}Z`;
       if (new Date(utc).getTime() < now) return false;
-      if (!userHashtag) return true;
+      if (isRoot) return true; // #india = all localities
       return e.location.locality.hashtags.some(
-        (tag) => tag.toLowerCase() === userHashtag
+        (tag) => tag.toLowerCase().replace(/^#/, "") === hashtag
       );
     });
-  }, [events, eventsLoading, user?.hashtag]);
+  }, [events, eventsLoading, hashtag, isRoot]);
 
   // Memoize options to prevent unnecessary re-renders
   const indexOptions = useMemo(() => ({
@@ -51,6 +53,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
+        // Global hashtag selector lives in the header title — shared across all tabs.
+        headerTitle: () => <HashtagHeaderTitle />,
+        headerTitleAlign: 'left',
         tabBarLabelStyle: {
           fontFamily: "Nunito-Regular",
         },
@@ -82,24 +87,24 @@ export default function TabsLayout() {
           ),
         }}
       />
-       <Tabs.Screen
-        name="issues2"
+      <Tabs.Screen
+        name="chat"
         options={{
-          title: 'Issues',
+          title: 'Chat',
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
           headerLeft: () => <DrawerToggleButton />,
           headerRight: () => <KarmaBadge />,
-          tabBarLabel: 'Issues',
+          tabBarLabel: 'Chat',
           tabBarLabelStyle: {
             fontFamily: "Nunito-Regular",
           },
           tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'format-list-bulleted' : 'format-list-bulleted'} 
-              color={color} 
-              size={24} 
+            <MaterialIcons
+              name={focused ? 'chat' : 'chat-bubble-outline'}
+              color={color}
+              size={24}
             />
           ),
         }}
@@ -130,23 +135,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="report"
         options={{
-          title: 'Report Issue',
+          href: null,
+          title: "Report",
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",
           },
-          headerLeft: () => <DrawerToggleButton />,
-          headerRight: () => <KarmaBadge />,
-          tabBarLabel: 'Report Issue',
-          tabBarLabelStyle: {
-            fontFamily: "Nunito-Regular",
-          },
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons 
-              name={focused ? 'add-circle' : 'add-circle-outline'} 
-              color={color} 
-              size={24} 
-            />
-          ),
         }}
       />
     </Tabs>

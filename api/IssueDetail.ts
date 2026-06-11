@@ -1,6 +1,7 @@
 import { APIResponse } from "@/models/APIResponse";
 import { LocationMetaData } from "@/models/Location";
-import { apiGet, apiPost, apiPut } from "@/utils/apiClient";
+import { apiGet, apiPost, apiPut, apiRequest } from "@/utils/apiClient";
+import { getAccessToken } from "@/utils/tokenStorage";
 
 /**
  * Fetches issue data from the backend API
@@ -13,6 +14,7 @@ const API_ENDPOINTS = {
   REPORT_ISSUE: "/api/v1/issue",
   UPLOAD_URL: "/api/v1/media/upload-url",
   ISSUES_BY_LOCATION: "/api/v2/issues",
+  ISSUES_HOME: "/api/v1/issues",
 } as const;
 
 export interface SignedUrlResponse {
@@ -443,4 +445,30 @@ export async function getIssuesByLocation(lat: number, lng: number) {
 
   const result = await response.json();
   return result.data.issues;
+}
+
+/**
+ * Fetch issues for a hashtag (the public home endpoint). Omitting the hashtag (or passing the
+ * "india" root) returns all issues — the "all localities" view. Public read: we don't force login,
+ * but attach the token when present so viewer_context is filled.
+ * @param hashtag normalized, no leading '#'; pass "india" / "" for all.
+ */
+export async function getIssuesByHashtag(hashtag?: string) {
+  const isRoot = !hashtag || hashtag.toLowerCase() === "india";
+  const qs = isRoot ? "" : `?locality=${encodeURIComponent(`#${hashtag}`)}`;
+  const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUES_HOME}${qs}`;
+
+  const token = await getAccessToken();
+  const response = await apiRequest(url, {
+    method: "GET",
+    skipAuth: true,
+    timeout: 15_000,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch issues: ${response.statusText}`);
+  }
+  const result = await response.json();
+  return result.data?.issues ?? [];
 }

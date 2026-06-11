@@ -2,7 +2,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   Dimensions,
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -41,6 +40,12 @@ interface MapFilterOverlayProps {
    * instead of a floating overlay anchored absolutely on top of a map.
    */
   inline?: boolean;
+  /** Number of upcoming events in user's hashtag area. */
+  eventsCount?: number;
+  /** Called when the Events tab is pressed. */
+  onEventsPress?: () => void;
+  /** Whether events-only mode is currently active. */
+  showEventsOnly?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,14 +74,15 @@ function MapFilterOverlayInner({
   activeFilters,
   itemCounts,
   inline = false,
+  eventsCount,
+  onEventsPress,
+  showEventsOnly = false,
 }: MapFilterOverlayProps) {
   // Which category dropdown is currently open (null = all collapsed)
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   // Height of bar content (row1+row2) measured when inline so dropdown can float below it
   const [barHeight, setBarHeight] = useState(96);
 
-  const typeCat = categories.find((c) => c.id === "issueType");
-  const statusCat = categories.find((c) => c.id === "status");
   const reporterCat = categories.find((c) => c.id === "reporter");
 
   // ── Dropdown toggle ───────────────────────────────────────────────────
@@ -117,110 +123,10 @@ function MapFilterOverlayInner({
   }, [openCat, itemCounts]);
 
   // ── Per-pill: has active (non-All) filter? ────────────────────────────
-  const typeHasFilter =
-    activeFilters.issueType && activeFilters.issueType.size > 0;
   const statusHasFilter =
     activeFilters.status && activeFilters.status.size > 0;
   const reporterIsMine =
     activeFilters.reporter && activeFilters.reporter.has("MINE");
-
-  // ── Rich summary ──────────────────────────────────────────────────────
-  const summaryLines = useMemo(() => {
-    const hasTypeFilter =
-      activeFilters.issueType && activeFilters.issueType.size > 0;
-    const hasStatusFilter =
-      activeFilters.status && activeFilters.status.size > 0;
-    const hasReporterFilter =
-      activeFilters.reporter && activeFilters.reporter.has("MINE");
-
-    // ── No filters: total + type breakdown ──
-    if (!hasTypeFilter && !hasStatusFilter && !hasReporterFilter) {
-      const typeCounts = itemCounts?.issueType ?? {};
-      const total = typeCounts[ALL_OPTION_ID] ?? 0;
-      const breakdown = Object.entries(typeCounts)
-        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([k]) => {
-          const opt = typeCat?.options.find((o) => o.id === k);
-          return opt ? `${opt.label} ${typeCounts[k]}` : null;
-        })
-        .filter(Boolean) as string[];
-
-      return {
-        title: `${total} issues nearby`,
-        detail: breakdown.length > 0 ? breakdown.join(" · ") : "\u00a0",
-      };
-    }
-
-    // ── Active filters: build title parts ──
-    const parts: string[] = [];
-    if (hasReporterFilter) parts.push("Your issues");
-    if (hasTypeFilter) {
-      const optId = [...activeFilters.issueType][0];
-      const opt = typeCat?.options.find((o) => o.id === optId);
-      if (opt) parts.push(opt.label);
-    }
-    if (hasStatusFilter) {
-      const optId = [...activeFilters.status][0];
-      const opt = statusCat?.options.find((o) => o.id === optId);
-      if (opt) parts.push(opt.label);
-    }
-
-    // ── filteredTotal: count items matching ALL active filters ──
-    // Use the cross-filtered count from the most-restricting active filter
-    let filteredTotal = 0;
-    if (hasTypeFilter) {
-      // issueType counts are already cross-filtered by status + reporter
-      const optId = [...activeFilters.issueType][0];
-      filteredTotal = itemCounts?.issueType?.[optId] ?? 0;
-    } else if (hasStatusFilter) {
-      // status counts are already cross-filtered by type + reporter
-      const optId = [...activeFilters.status][0];
-      filteredTotal = itemCounts?.status?.[optId] ?? 0;
-    } else if (hasReporterFilter) {
-      // reporter counts are already cross-filtered by type + status
-      filteredTotal = itemCounts?.reporter?.["MINE"] ?? 0;
-    }
-
-    // ── Breakdown line: show the "other" dimension(s) ──
-    // Rule: if type is NOT selected → show type breakdown; else show status breakdown
-    let breakdownStr: string | null = null;
-    if (!hasTypeFilter) {
-      // Show type breakdown (relevant for Mine-only, Status-only, Mine+Status)
-      const typeCounts = itemCounts?.issueType ?? {};
-      const breakdown = Object.entries(typeCounts)
-        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .map(([k, v]) => {
-          const opt = typeCat?.options.find((o) => o.id === k);
-          return opt ? `${opt.label} ${v}` : null;
-        })
-        .filter(Boolean) as string[];
-      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
-    } else if (!hasStatusFilter) {
-      // Type is selected, status is free → show status breakdown
-      // (relevant for Type-only, Mine+Type)
-      const statusCounts = itemCounts?.status ?? {};
-      const breakdown = Object.entries(statusCounts)
-        .filter(([k, v]) => k !== ALL_OPTION_ID && v > 0)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => {
-          const opt = statusCat?.options.find((o) => o.id === k);
-          return opt ? `${opt.label} ${v}` : null;
-        })
-        .filter(Boolean) as string[];
-      if (breakdown.length > 0) breakdownStr = breakdown.join(" · ");
-    }
-    // Both type + status active: no useful breakdown, but keep two lines
-
-    return {
-      title: `${parts.join(" · ")} · ${filteredTotal}`,
-      // Always provide a detail string so card height stays constant
-      detail: breakdownStr ?? "\u00a0",
-    };
-  }, [activeFilters, itemCounts, typeCat, statusCat, reporterCat]);
 
   // ── Dismiss overlay dimensions ────────────────────────────────────────
   const { height: screenHeight, width: screenWidth } =
@@ -234,7 +140,7 @@ function MapFilterOverlayInner({
           <View
             style={{
               position: "absolute",
-              top: inline ? -barHeight : -(Platform.OS === "ios" ? 54 : 12),
+              top: inline ? -barHeight : -12,
               left: inline ? -screenWidth : -12,
               width: screenWidth * 3,
               height: screenHeight,
@@ -270,88 +176,67 @@ function MapFilterOverlayInner({
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() =>
-            openCategory ? closeDropdown() : toggleCategory("issueType")
-          }
-          style={[styles.summaryCard, inline && styles.summaryCardInline]}
-        >
-          <CustomText
-            className="font-semibold"
-            style={[
-              styles.summaryTitle,
-              activeCount > 0 && { color: "#256D1B" },
-            ]}
-          >
-            {summaryLines.title}
-          </CustomText>
-          <CustomText
-            style={[
-              styles.summaryDetail,
-              activeCount > 0 && { color: "#256D1B90" },
-            ]}
-            numberOfLines={1}
-          >
-            {summaryLines.detail ?? "\u00a0"}
-          </CustomText>
-        </TouchableOpacity>
+        <View style={[styles.summaryCard, inline && styles.summaryCardInline]}>
+          {/* Issues & Events count tabs */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {/* Issues tab — tapping opens filter dropdown */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                openCategory ? closeDropdown() : toggleCategory("issueType")
+              }
+              style={[
+                styles.countTab,
+                activeCount > 0 ? styles.countTabIssuesActive : styles.countTabIssues,
+              ]}
+            >
+              <View style={styles.issueDot} />
+              <CustomText
+                className="font-semibold"
+                style={[styles.summaryTitle, activeCount > 0 && { color: "#256D1B" }]}
+              >
+                Issues {itemCounts?.issueType?.[ALL_OPTION_ID] ?? 0}
+              </CustomText>
+              <MaterialIcons
+                name={openCategory === "issueType" ? "expand-less" : "expand-more"}
+                size={13}
+                color={activeCount > 0 ? "#256D1B" : "#9ca3af"}
+              />
+            </TouchableOpacity>
+
+            {!!eventsCount && eventsCount > 0 && (
+              <>
+                <View style={styles.tabDivider} />
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={onEventsPress}
+                  style={[
+                    styles.countTab,
+                    showEventsOnly ? styles.countTabEventsActive : styles.countTabEvents,
+                  ]}
+                >
+                  <View style={[styles.eventDot, showEventsOnly && { backgroundColor: "#fff" }]} />
+                  <CustomText
+                    className="font-semibold"
+                    style={[
+                      styles.summaryTitle,
+                      showEventsOnly ? { color: "#fff" } : { color: "#6366f1" },
+                    ]}
+                  >
+                    Events {eventsCount}
+                  </CustomText>
+                  {showEventsOnly && (
+                    <MaterialIcons name="close" size={12} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
       </View>
 
       {/* ── Row 2: Category pills + active filter tags (right-aligned) ── */}
       <View style={styles.row2} pointerEvents="box-none">
-        {/* Type pill */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => toggleCategory("issueType")}
-          style={[
-            styles.catPill,
-            openCategory === "issueType" && styles.catPillActive,
-            openCategory !== "issueType" &&
-              typeHasFilter &&
-              styles.catPillFiltered,
-          ]}
-        >
-          <MaterialIcons
-            name="category"
-            size={13}
-            color={
-              openCategory === "issueType"
-                ? "#fff"
-                : typeHasFilter
-                  ? "#256D1B"
-                  : "#374151"
-            }
-          />
-          <CustomText
-            className="font-semibold"
-            style={{
-              fontSize: 11,
-              color:
-                openCategory === "issueType"
-                  ? "#fff"
-                  : typeHasFilter
-                    ? "#256D1B"
-                    : "#374151",
-            }}
-          >
-            Type
-          </CustomText>
-          <MaterialIcons
-            name={
-              openCategory === "issueType" ? "expand-less" : "expand-more"
-            }
-            size={14}
-            color={
-              openCategory === "issueType"
-                ? "#fff"
-                : typeHasFilter
-                  ? "#256D1B"
-                  : "#9ca3af"
-            }
-          />
-        </TouchableOpacity>
-
         {/* Status pill */}
         <TouchableOpacity
           activeOpacity={0.8}
@@ -485,7 +370,7 @@ const DROPDOWN_WIDTH = 180;
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 54 : 12,
+    top: 12,
     right: 0,
     left: 0,
     zIndex: 20,
@@ -508,16 +393,16 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
     flex: 1,
     marginLeft: 8,
     marginRight: 52,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
   },
   summaryCardInline: {
@@ -531,6 +416,44 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#9ca3af",
     marginTop: 1,
+  },
+  countTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  countTabIssues: {
+    // transparent — no background when idle
+  },
+  countTabIssuesActive: {
+    backgroundColor: "#dcfce7",
+  },
+  countTabEvents: {
+    // transparent — no background when idle
+  },
+  countTabEventsActive: {
+    backgroundColor: "#6366f1",
+  },
+  tabDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: "#e5e7eb",
+    marginHorizontal: 2,
+  },
+  issueDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#ef4444",
+  },
+  eventDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#6366f1",
   },
   tuneBtn: {
     width: 40,

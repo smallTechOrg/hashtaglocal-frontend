@@ -1,21 +1,22 @@
+import { setAnalyticsUser, trackAuthEvent } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
 import { saveTokens } from "@/utils/tokenStorage";
 import { useUser } from "@/utils/UserContext";
 import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
+// Module-level set: survives component remounts and second deep-link deliveries (common on Android).
+// Ensures auth analytics fire at most once per unique token within an app session.
+const processedTokens = new Set<string>();
+
 export default function AuthCallbackScreen() {
   const router = useRouter();
   const { setUser, setIsLoading } = useUser();
-
-  // Use a string key to track which tokens we've processed
-  // This allows detecting when new tokens arrive after logout/login
-  const hasProcessed = useRef<string | false>(false);
   
   const params = useLocalSearchParams<{
     access_token?: string;
@@ -25,23 +26,20 @@ export default function AuthCallbackScreen() {
     user_id?: string;
     email?: string;
     provider_id?: string;
+    is_new_user?: string;
   }>();
 
   useEffect(() => {
-    // Check if we have tokens and if they're different from what we've already processed
-    if (params.access_token && params.refresh_token) {
-      const currentParamsKey = params.access_token.substring(0, 20);
+    if (!params.access_token || !params.refresh_token) return;
 
-      // Skip if we've already processed these exact tokens
-      if (hasProcessed.current === currentParamsKey) {
-        return;
-      }
+    const tokenKey = params.access_token.substring(0, 20);
+    if (processedTokens.has(tokenKey)) return;
+    processedTokens.add(tokenKey);
 
-      // Mark these tokens as processed
-      hasProcessed.current = currentParamsKey;
-    } else {
-      return;
-    }
+    // Fire analytics here — synchronously after the hasProcessed guard — so it
+    // runs at most once per unique token regardless of re-renders or remounts.
+    if (params.user_id) setAnalyticsUser(params.user_id);
+    trackAuthEvent("google", params.is_new_user === "true");
 
     async function handleAuthCallback() {
       try {

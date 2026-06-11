@@ -34,7 +34,7 @@ export default {
     name: "#local",
     slug: "hashtaglocal",
     owner: "smalltech",
-    version: "1.0.0",
+    version: "1.0.5",
     orientation: "portrait",
     icon: "./assets/app-icon.png",
     scheme: "hashtaglocal",
@@ -72,7 +72,7 @@ export default {
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       package: "com.smalltech.hashtaglocal",
       permissions: ["android.permission.POST_NOTIFICATIONS"],
-      versionCode: 2,
+      versionCode: 5,
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,

@@ -1,4 +1,5 @@
 import { getCrashlytics, log, recordError } from "@react-native-firebase/crashlytics";
+import { trackAuthFailed } from "@/utils/analytics";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { getDeviceId } from "@/utils/deviceId";
@@ -42,7 +43,15 @@ export function useGoogleAuth() {
             const result = await WebBrowser.openAuthSessionAsync(authUrl, "hashtaglocal://auth/callback");
             log(crashlytics, `[GoogleAuth] browser result type=${result.type}`);
             if (result.type !== "success") {
-                recordError(crashlytics, new Error(`[GoogleAuth] browser closed with type=${result.type}`));
+                // type=cancel usually means redirect_uri_mismatch (Google error page shown, user dismissed)
+                // or user manually closed the browser. Analytics event is sent in near real-time unlike Crashlytics.
+                trackAuthFailed(result.type, redirectUri);
+                recordError(
+                    crashlytics,
+                    new Error(
+                        `[GoogleAuth] browser closed with type=${result.type} | redirectUri=${redirectUri} | clientId=${clientId}`
+                    )
+                );
             }
             return result;
         } catch (e) {

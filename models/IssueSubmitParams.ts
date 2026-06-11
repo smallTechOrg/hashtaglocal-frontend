@@ -10,4 +10,5 @@ export interface IssueSubmitParams {
   locationMetaData: LocationMetaData;
   isUpdateMode: boolean;
   issueId?: string;
+  onSuccess?: () => void;
 }

@@ -1,5 +1,5 @@
 import { Event } from "@/api/events";
-import { getIssuesByLocation } from "@/api/IssueDetail";
+import { getIssuesByHashtag } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -11,6 +11,7 @@ import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { useEvents } from "@/utils/EventsContext";
 import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
+import { useHashtag } from "@/utils/HashtagContext";
 import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { useIssues } from "@/utils/IssuesContext";
 import { useKarma } from "@/utils/KarmaContext";
@@ -93,6 +94,8 @@ export default function MapScreen() {
   const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
   const { events } = useEvents();
+  // Global hashtag selector (header dropdown) — drives which issues/events show.
+  const { hashtag, isRoot } = useHashtag();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -100,6 +103,9 @@ export default function MapScreen() {
   const [error, setError] = useState<LocationError | null>(null);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  // The hashtag the loaded issue set belongs to (set when a load completes). The map-fit effect
+  // gates on this so it fits the right data, never the previous hashtag's during a switch.
+  const [loadedHashtag, setLoadedHashtag] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
@@ -184,10 +190,15 @@ export default function MapScreen() {
 
   const isFocused = useIsFocused();
   const isFocusedRef = useRef(isFocused);
+  const userRef = useRef(user);
 
   useEffect(() => {
     isFocusedRef.current = isFocused;
   }, [isFocused]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -195,27 +206,53 @@ export default function MapScreen() {
     }
   }, [user?.username]);
 
+  // Load issues for the globally-selected hashtag (#india/root = all). Shared into the context so
+  // the Issues tab reflects the same selection. This is the source of truth for which issues show.
+  const loadIssuesForHashtag = useCallback(
+    async (tag: string, root: boolean) => {
+      try {
+        setIssuesLoading(true);
+        const issuesData = await getIssuesByHashtag(root ? undefined : tag);
+        setIssues(issuesData);
+        setContextIssues(issuesData);
+        // Mark which hashtag the current issue set belongs to — the map-fit effect waits for this
+        // so it never fits stale (previous-hashtag) data during a switch.
+        setLoadedHashtag(tag);
+      } catch (error) {
+        console.error("Failed to load issues for hashtag:", error);
+      } finally {
+        setIssuesLoading(false);
+      }
+    },
+    [setContextIssues],
+  );
+
+  // Reload whenever the selected hashtag changes.
   useEffect(() => {
-    // Subscribe to progressive updates and update map when accuracy improves
+    loadIssuesForHashtag(hashtag, isRoot);
+  }, [hashtag, isRoot, loadIssuesForHashtag]);
+
+  useEffect(() => {
+    // Subscribe to progressive updates and update map when accuracy improves.
+    // Guard with userRef so that after logout/account-deletion the callback
+    // does not keep firing authenticated API calls and causing a session-expired loop.
     const unsub = subscribeToBestLocation((loc) => {
+      // Location now only positions the map; issues are loaded by the selected hashtag.
       setUserLocation(loc);
-      loadNearbyIssues(loc.latitude, loc.longitude);
     });
 
     return () => unsub();
   }, []);
 
-  // Reload issues + refresh user summary when screen comes back into focus
+  // Refresh the issues (for the current hashtag) + user summary when the screen regains focus.
   useFocusEffect(
     useCallback(() => {
+      loadIssuesForHashtag(hashtag, isRoot);
       if (userLocation) {
         const { latitude, longitude } = userLocation;
-        Promise.all([
-          loadNearbyIssues(latitude, longitude),
-          refreshUserProfile(latitude, longitude),
-        ]);
+        refreshUserProfile(latitude, longitude);
       }
-    }, [userLocation])
+    }, [hashtag, isRoot, loadIssuesForHashtag, userLocation])
   );
 
   // Open/close bottom sheet when issue is selected/deselected
@@ -253,8 +290,7 @@ export default function MapScreen() {
     if (result.success) {
       setUserLocation(result.location);
       setLoadingState("success");
-      // Load issues for this location
-      loadNearbyIssues(result.location.latitude, result.location.longitude);
+      // Issues are loaded by the selected hashtag (see loadIssuesForHashtag effect), not by location.
     } else {
       setError(result.error);
       setLoadingState("error");
@@ -276,21 +312,6 @@ export default function MapScreen() {
       }
     } catch (error) {
       console.log("[MapScreen] Silent profile refresh failed:", error);
-    }
-  };
-
-  const loadNearbyIssues = async (lat: number, lng: number) => {
-    try {
-      setIssuesLoading(true);
-      const issuesData = await getIssuesByLocation(lat, lng);
-      console.log("Issues loaded:", issuesData.length);
-      setIssues(issuesData);
-      // Also save to context for other tabs to use
-      setContextIssues(issuesData);
-    } catch (error) {
-      console.error("Failed to load nearby issues:", error);
-    } finally {
-      setIssuesLoading(false);
     }
   };
 
@@ -379,16 +400,15 @@ export default function MapScreen() {
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
     const now = Date.now();
-    const userHashtag = user?.hashtag?.toLowerCase();
     return events.filter((event) => {
       const startTime = new Date(event.start_time).getTime();
       if (isNaN(startTime) || startTime < now) return false;
-      if (!userHashtag) return true;
+      if (isRoot) return true; // #india = all localities
       return event.location.locality.hashtags.some(
-        (tag) => tag.toLowerCase() === userHashtag
+        (tag) => tag.toLowerCase().replace(/^#/, "") === hashtag
       );
     });
-  }, [events, user?.hashtag]);
+  }, [events, hashtag, isRoot]);
 
   // Future events visible in the current viewport
   const visibleEventMarkers = useMemo(() => {
@@ -449,21 +469,11 @@ export default function MapScreen() {
     });
   }, [futureEvents, userLocation]);
 
-  // Auto-zoom map to fit filtered markers when a filter is active
+  // Auto-zoom map to fit filtered markers when a sub-filter (category/status/mine) is active.
+  // When no filter is active the default view is owned by the hashtag-fit effect above — we must
+  // NOT snap back to GPS here, or switching hashtags would keep recentering on the user's location.
   useEffect(() => {
     if (filterActiveCount === 0) {
-      // No filter active → zoom back to user locality
-      if (mapRef.current && userLocation) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          },
-          500,
-        );
-      }
       return;
     }
 
@@ -499,6 +509,62 @@ export default function MapScreen() {
     // Close any open issue card
     setSelectedIssue(null);
   }, [filterActiveCount, filteredIssues, userLocation]);
+
+  // Fit the map to the selected hashtag's data when the hashtag changes. The map should follow the
+  // hashtag, not stay glued to GPS: #india fits all markers across India; a locality (#pune) fits
+  // that locality's markers. The user's current location is only included in the box when the
+  // selected hashtag is their OWN home hashtag (so "current location" only matters there).
+  const lastFitHashtagRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Only fit once the loaded issue set actually belongs to the current hashtag — otherwise we'd
+    // fit the previous hashtag's (stale) markers mid-switch and then block the real fit.
+    if (loadedHashtag !== hashtag) return;
+    if (lastFitHashtagRef.current === hashtag) return;
+    if (!mapRef.current) return;
+
+    const coords: { lat: number; lng: number }[] = [
+      ...filteredIssues.map((i) => ({ lat: i.location.lat, lng: i.location.lng })),
+      ...futureEvents.map((e) => ({ lat: e.location.lat, lng: e.location.lng })),
+    ];
+
+    // Only fold in the user's GPS when viewing their own home hashtag.
+    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
+    if (userLocation && homeHashtag && homeHashtag === hashtag) {
+      coords.push({ lat: userLocation.latitude, lng: userLocation.longitude });
+    }
+
+    if (coords.length === 0) {
+      // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
+      // genuinely empty hashtag. Do NOT mark this hashtag as fitted: leave the ref so that when the
+      // data lands the effect re-runs and fits then. (Marking it here was the bug — it blocked the
+      // real fit once the data arrived, which is why only #india, already loaded up-front, worked.)
+      return;
+    }
+
+    let minLat = coords[0].lat, maxLat = coords[0].lat;
+    let minLng = coords[0].lng, maxLng = coords[0].lng;
+    coords.forEach((c) => {
+      minLat = Math.min(minLat, c.lat);
+      maxLat = Math.max(maxLat, c.lat);
+      minLng = Math.min(minLng, c.lng);
+      maxLng = Math.max(maxLng, c.lng);
+    });
+
+    lastFitHashtagRef.current = hashtag;
+    mapRef.current.animateToRegion(
+      {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+        // Pad the bounds; floor avoids over-zooming when all markers share a point.
+        latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.02),
+        longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.02),
+      },
+      600,
+    );
+    setSelectedIssue(null);
+    setSelectedEvent(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hashtag, loadedHashtag, filteredIssues, futureEvents, user?.hashtag]);
 
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
@@ -557,6 +623,9 @@ export default function MapScreen() {
         activeCount={filterActiveCount}
         activeFilters={activeFilters}
         itemCounts={filterItemCounts}
+        eventsCount={futureEvents.length}
+        onEventsPress={handleToggleEvents}
+        showEventsOnly={showEventsOnly}
       />
 
       <MapView
@@ -594,33 +663,12 @@ export default function MapScreen() {
               latitude: event.location.lat,
               longitude: event.location.lng,
             }}
-            pinColor="#FF6B35"
+            pinColor="#4f8ef7"
             onPress={() => handleEventMarkerPress(event)}
             tracksViewChanges={false}
           />
         ))}
       </MapView>
-
-      {/* Events callout banner */}
-      {futureEvents.length > 0 && (
-        <TouchableOpacity
-          style={[styles.eventsBanner, showEventsOnly && styles.eventsBannerActive]}
-          activeOpacity={0.85}
-          onPress={handleToggleEvents}
-        >
-          <MaterialIcons name="event" size={18} color={showEventsOnly ? "#fff" : "#FF6B35"} />
-          <CustomText
-            style={{ fontFamily: "Nunito-Bold", color: showEventsOnly ? "#fff" : "#FF6B35", fontSize: 13, marginLeft: 6 }}
-          >
-            {showEventsOnly
-              ? `Showing ${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`
-              : `${futureEvents.length} event${futureEvents.length !== 1 ? "s" : ""} near you`}
-          </CustomText>
-          {showEventsOnly && (
-            <MaterialIcons name="close" size={16} color="#fff" style={{ marginLeft: 6 }} />
-          )}
-        </TouchableOpacity>
-      )}
 
       {/* Loading Indicator for Issues */}
       {issuesLoading && (
@@ -628,6 +676,22 @@ export default function MapScreen() {
           <ActivityIndicator size="small" color="#256D1B" />
         </View>
       )}
+
+      {/* Bottom centre overlay: FAB */}
+      <View style={styles.bottomOverlay} pointerEvents="box-none">
+        <View style={styles.reportFabContainer}>
+          <TouchableOpacity
+            style={styles.reportFab}
+            activeOpacity={0.85}
+            onPress={() => router.push("/(tabs)/report")}
+          >
+            <MaterialIcons name="camera-alt" size={28} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.reportFabLabelPill}>
+            <CustomText style={styles.reportFabLabel}>Report an Issue</CustomText>
+          </View>
+        </View>
+      </View>
 
       {/* Bottom Sheet for Issue Preview */}
       <BottomSheet
@@ -677,7 +741,7 @@ export default function MapScreen() {
 
             {/* Event type badge */}
             <View className="flex-row items-center mb-2">
-              <View className="px-3 py-1 rounded-md" style={{ backgroundColor: "#FF6B35" }}>
+              <View className="px-3 py-1 rounded-md" style={{ backgroundColor: "#6366f1" }}>
                 <CustomText className="text-white text-xs font-bold uppercase">
                   {selectedEvent.type.replace(/_/g, " ")}
                 </CustomText>
@@ -899,27 +963,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  eventsBanner: {
+  bottomOverlay: {
     position: "absolute",
     bottom: 24,
-    alignSelf: "center",
-    flexDirection: "row",
+    left: 0,
+    right: 0,
     alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: "#FF6B3540",
-  },
-  eventsBannerActive: {
-    backgroundColor: "#FF6B35",
-    borderColor: "#FF6B35",
   },
   // Bottom Sheet Styles
   bottomSheetBackground: {
@@ -1059,5 +1108,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 16,
     paddingVertical: 8,
+  },
+  reportFabContainer: {
+    alignItems: "center",
+  },
+  reportFab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#256D1B",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  reportFabLabelPill: {
+    marginTop: 6,
+    backgroundColor: "rgba(144, 191, 144, 0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  reportFabLabel: {
+    fontSize: 11,
+    color: "#1a1a1a",
+    fontFamily: "Nunito-Bold",
   },
 });

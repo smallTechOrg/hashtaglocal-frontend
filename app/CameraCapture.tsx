@@ -1,8 +1,10 @@
 import CustomText from "@/components/CustomText";
-import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
+import { trackCameraAbandoned, trackCameraOpened, trackPhotoAbandoned, trackPhotoCaptured } from "@/utils/analytics";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { getCrashlytics, log, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import { useFocusEffect } from "@react-navigation/native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Linking, TouchableOpacity, View } from "react-native";
@@ -21,8 +23,13 @@ export default function CameraCapture() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [capturedTimestamp, setCapturedTimestamp] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  // Refs for abandonment tracking (immune to stale-closure issues)
+  const proceededRef = useRef(false);
+  const everCapturedRef = useRef(false);
+  // Capture mode at mount time so cleanup closures always see the correct value
+  const modeRef = useRef<"report" | "update">(mode === "update" ? "update" : "report");
 
-  // Reset all state when screen comes into focus
+  // Reset state on focus, track camera_opened, fire abandonment event on blur
   useFocusEffect(
     useCallback(() => {
       setCapturedPhoto(null);
@@ -30,6 +37,19 @@ export default function CameraCapture() {
       setIsCapturing(false);
       setZoom(0);
       setFlash("off");
+      proceededRef.current = false;
+      everCapturedRef.current = false;
+      trackCameraOpened(modeRef.current);
+      return () => {
+        // Fires on every blur (back-press, tab switch, replace)
+        if (!proceededRef.current) {
+          if (everCapturedRef.current) {
+            trackPhotoAbandoned(modeRef.current);
+          } else {
+            trackCameraAbandoned(modeRef.current);
+          }
+        }
+      };
     }, [])
   );
 
@@ -45,8 +65,15 @@ export default function CameraCapture() {
       });
 
       if (photo) {
-        setCapturedPhoto(photo.uri);
+        // Bake EXIF rotation into pixels so orientation is preserved after GCS upload/serve
+        const normalized = await manipulateAsync(photo.uri, [], {
+          compress: 1,
+          format: SaveFormat.JPEG,
+        });
+        setCapturedPhoto(normalized.uri);
         setCapturedTimestamp(new Date().toISOString());
+        everCapturedRef.current = true;
+        trackPhotoCaptured(mode === "update" ? "update" : "report");
       }
     } catch (error) {
       console.error("Error capturing photo:", error);
@@ -69,6 +96,7 @@ export default function CameraCapture() {
 
   const handleProceed = () => {
     if (!capturedPhoto || !capturedTimestamp) return;
+    proceededRef.current = true;
     router.replace({
       pathname: "/IssueForm",
       params: {
@@ -78,6 +106,30 @@ export default function CameraCapture() {
       },
     });
   };
+
+  const handleBack = () => {
+    if (mode !== "update") {
+      router.replace("/(tabs)/report");
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
+
+  const renderBackButton = () => (
+    <TouchableOpacity
+      onPress={handleBack}
+      className="bg-black/50 p-3 rounded-full self-start"
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <MaterialIcons name="arrow-back" size={28} color="white" />
+    </TouchableOpacity>
+  );
 
   // Loading state while checking permissions
   if (permission === null) {
@@ -107,6 +159,9 @@ export default function CameraCapture() {
 
     return (
       <View className="flex-1 justify-center items-center bg-black px-6">
+        <View className="absolute top-0 left-0 right-0 pt-12 px-6">
+          {renderBackButton()}
+        </View>
         <MaterialIcons name="camera-alt" size={64} color="#6200EE" />
         <CustomText className="mt-4 text-white text-center text-lg">
           Camera access is required to report issues
@@ -125,6 +180,9 @@ export default function CameraCapture() {
   if (capturedPhoto) {
     return (
       <View className="flex-1 bg-black">
+        <View className="absolute top-0 left-0 right-0 pt-12 px-6 z-10">
+          {renderBackButton()}
+        </View>
         <Image
           source={{ uri: capturedPhoto }}
           style={{ flex: 1 }}
@@ -164,25 +222,29 @@ export default function CameraCapture() {
         {/* Top Controls */}
         <View className="absolute top-0 left-0 right-0 pt-12 px-6">
           <View className="flex-row justify-between items-center">
-            {/* Flash Toggle */}
-            <TouchableOpacity
-              onPress={() => setFlash(flash === "off" ? "on" : "off")}
-              className="bg-black/50 p-3 rounded-full"
-            >
-              <MaterialIcons
-                name={flash === "off" ? "flash-off" : "flash-on"}
-                size={28}
-                color="white"
-              />
-            </TouchableOpacity>
+            {renderBackButton()}
 
-            {/* Camera Flip */}
-            <TouchableOpacity
-              onPress={() => setFacing(facing === "back" ? "front" : "back")}
-              className="bg-black/50 p-3 rounded-full"
-            >
-              <MaterialIcons name="flip-camera-ios" size={28} color="white" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-3">
+              {/* Flash Toggle */}
+              <TouchableOpacity
+                onPress={() => setFlash(flash === "off" ? "on" : "off")}
+                className="bg-black/50 p-3 rounded-full"
+              >
+                <MaterialIcons
+                  name={flash === "off" ? "flash-off" : "flash-on"}
+                  size={28}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+              {/* Camera Flip */}
+              <TouchableOpacity
+                onPress={() => setFacing(facing === "back" ? "front" : "back")}
+                className="bg-black/50 p-3 rounded-full"
+              >
+                <MaterialIcons name="flip-camera-ios" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
