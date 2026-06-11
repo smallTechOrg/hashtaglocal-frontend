@@ -49,3 +49,6 @@ app-example
 
 # linux file system
 *.swp
+
+# Claude Code local config
+.claude/

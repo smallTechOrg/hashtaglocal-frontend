@@ -18,11 +18,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 let syncInProgress: Promise<void> | null = null;
 
-export type NotificationType =
-  | 'ISSUE_UPDATE'
-  | 'ISSUE_COMMENT'
-  | 'NEARBY_ISSUE'
-  | 'KARMA_UPDATE';
+export type NotificationType = 'ISSUE_UPDATE';
 
 const getMsg = () => getMessaging(getApp());
 
@@ -145,22 +141,9 @@ export function navigateFromNotification(data?: Record<string, string>): void {
 
   console.log('[FCM] Navigating from notification:', data.type, data);
 
-  switch (data.type as NotificationType) {
-    case 'ISSUE_UPDATE':
-    case 'ISSUE_COMMENT':
-      if (data.issueId) {
-        router.push({ pathname: '/issueDetail', params: { id: data.issueId } });
-        console.log('[FCM] Navigated to issueDetail, issueId:', data.issueId);
-      }
-      break;
-    case 'NEARBY_ISSUE':
-      router.push('/(tabs)');
-      console.log('[FCM] Navigated to tabs (NEARBY_ISSUE)');
-      break;
-    case 'KARMA_UPDATE':
-      router.push('/(tabs)');
-      console.log('[FCM] Navigated to tabs (KARMA_UPDATE)');
-      break;
+  if (data.type === 'ISSUE_UPDATE' && data.issueId) {
+    router.push({ pathname: '/issueDetail', params: { id: data.issueId } });
+    console.log('[FCM] Navigated to issueDetail, issueId:', data.issueId);
   }
 }
 
