@@ -62,6 +62,10 @@ export default {
         "applinks:www.hashtaglocal.app",
       ],
     },
+    notification: {
+      icon: "./assets/notification-icon.png",
+      color: "#22c55e",
+    },
     android: {
       adaptiveIcon: {
         backgroundColor: "#ffffff",

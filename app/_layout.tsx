@@ -1,5 +1,6 @@
 import { requestAccountDeletion } from "@/api/account";
 import KarmaBadge from "@/components/KarmaBadge";
+import NotificationBanner from "@/components/NotificationBanner";
 import "@/global.css";
 import { clearAnalyticsUser, trackLogout } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
@@ -452,7 +453,8 @@ export default function RootLayout() {
         <AuthLoader>
           <NavigationContainer>
             <StatusBar style="dark" />
-            <Drawer
+            <NotificationBanner />
+      <Drawer
             initialRouteName="(tabs)"
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{

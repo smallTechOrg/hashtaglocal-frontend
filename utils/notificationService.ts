@@ -10,9 +10,10 @@ import {
   requestPermission,
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
+import { showNotificationBanner } from '@/utils/notificationBannerService';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -123,16 +124,8 @@ export function registerForegroundHandler(): () => void {
     const data = remoteMessage.data as Record<string, string> | undefined;
     console.log('[FCM] Foreground message:', title, data);
 
-    if (data?.type === 'ISSUE_UPDATE' && data.issueId) {
-      Alert.alert(title, body, [
-        { text: 'Dismiss', style: 'cancel' },
-        { text: 'View Issue', onPress: () => navigateFromNotification(data) },
-      ]);
-      console.log('[FCM] Notification displayed (foreground alert):', data.type, 'issueId:', data.issueId);
-    } else {
-      Alert.alert(title, body);
-      console.log('[FCM] Notification displayed (foreground alert):', data?.type ?? 'unknown');
-    }
+    showNotificationBanner({ title, body, data });
+    console.log('[FCM] Notification displayed (banner):', data?.type ?? 'unknown', data?.issueId ?? '');
   });
 }
 
