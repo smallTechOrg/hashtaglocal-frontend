@@ -20,6 +20,7 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+
 # Metro
 .metro-health-check*
 
@@ -44,5 +45,10 @@ app-example
 /ios
 /android
 
+
+
 # linux file system
 *.swp
+
+# Claude Code local config
+.claude/

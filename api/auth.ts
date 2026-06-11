@@ -35,21 +35,25 @@ const TIME_OUT = 30000; // 30 seconds
 
 // Function to refresh auth tokens using refresh token
 export async function refreshAuthToken(
-  refreshToken: string
+  refreshToken: string,
+  notificationToken?: string,
+  deviceId?: string
 ): Promise<RefreshTokenResponse> {
   const url = `${API_BASE_URL}/auth/refresh`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
 
+  const body: Record<string, string> = { refresh_token: refreshToken };
+  if (notificationToken) body.notification_token = notificationToken;
+  if (deviceId) body.device_id = deviceId;
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-        refresh_token: refreshToken
-    }),
+    body: JSON.stringify(body),
     signal: controller.signal,
   });
 

@@ -13,6 +13,17 @@ import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
+  clearCachedFCMToken,
+  consumePendingNotification,
+  navigateFromNotification,
+  registerForegroundHandler,
+  removeDeviceToken,
+  requestNotificationPermission,
+  setupNotificationTapHandlers,
+  syncFCMToken,
+  watchTokenRefresh,
+} from "@/utils/notificationService";
+import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
   DrawerItemList,
@@ -34,8 +45,22 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 SplashScreen.preventAutoHideAsync();
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
-  const { setUser, setIsLoading } = useUser();
+  const { user, setUser, setIsLoading } = useUser();
   const { setKarma } = useKarma();
+
+  // Runs whenever user goes from null → logged-in, covers both stored token and fresh OAuth login
+  useEffect(() => {
+    if (!user) return;
+    async function onUserLoaded() {
+      // Navigate to any notification that opened the app from a killed state
+      const pending = consumePendingNotification();
+      if (pending) navigateFromNotification(pending);
+
+      const permitted = await requestNotificationPermission();
+      if (permitted) await syncFCMToken();
+    }
+    onUserLoaded();
+  }, [user]);
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -215,9 +240,11 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleLogout = async () => {
+    await removeDeviceToken(); // must run before clearTokens so the request is authenticated
     trackLogout();
     clearAnalyticsUser();
     await clearTokens();
+    await clearCachedFCMToken();
     setUser(null);
     router.replace("/login");
   };
@@ -370,8 +397,15 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-
-
+  useEffect(() => {
+    setupNotificationTapHandlers();
+    const unsubForeground = registerForegroundHandler();
+    const unsubTokenRefresh = watchTokenRefresh();
+    return () => {
+      unsubForeground();
+      unsubTokenRefresh();
+    };
+  }, []);
 
 
   // Handle all incoming deep links – including auth callbacks

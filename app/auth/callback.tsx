@@ -51,8 +51,8 @@ export default function AuthCallbackScreen() {
           return;
         }
 
-        const accessTokenExpiry = parseInt(access_expiry || "0") * 1000;
-        const refreshTokenExpiry = parseInt(refresh_expiry || "0") * 1000;
+        const accessTokenExpiry = parseInt(access_expiry || "0");
+        const refreshTokenExpiry = parseInt(refresh_expiry || "0");
 
         await saveTokens(
           access_token,
