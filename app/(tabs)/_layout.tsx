@@ -110,6 +110,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="bulletin"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="events"
         options={{
           href: hasEvents ? undefined : null,

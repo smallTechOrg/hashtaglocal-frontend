@@ -1,4 +1,7 @@
+import { BulletinQuizAttempt } from "@/api/bulletin";
 import { createFeedPost } from "@/api/Feed";
+import BulletinOverlay from "@/components/bulletin/BulletinOverlay";
+import ChatBulletinCard from "@/components/chat/ChatBulletinCard";
 import ChatIssueRefCard from "@/components/chat/ChatIssueRefCard";
 import ChatLinkCard from "@/components/chat/ChatLinkCard";
 import ChatMediaCard from "@/components/chat/ChatMediaCard";
@@ -12,9 +15,10 @@ import {
 import { useFeed } from "@/utils/useFeed";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -45,6 +49,7 @@ export default function ChatScreen() {
   const { user } = useUser();
   const loggedIn = Boolean(user);
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // The selected hashtag is global (header dropdown) — shared across all tabs.
   const { hashtag, isRoot } = useHashtag();
@@ -56,6 +61,25 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [bulletinPost, setBulletinPost] = useState<FeedPost | null>(null);
+  // Cache quiz attempts locally so reopening the overlay shows the result, not "Start Quiz".
+  const attemptCache = useRef<Map<number, BulletinQuizAttempt>>(new Map());
+
+  function openBulletin(post: FeedPost) {
+    const quizId = post.bulletin?.quiz?.id;
+    const cached = quizId != null ? attemptCache.current.get(quizId) : undefined;
+    if (cached && post.bulletin?.quiz) {
+      setBulletinPost({
+        ...post,
+        bulletin: {
+          ...post.bulletin,
+          quiz: { ...post.bulletin.quiz, attempt: cached },
+        },
+      });
+    } else {
+      setBulletinPost(post);
+    }
+  }
 
   const data = useMemo(() => posts, [posts]);
 
@@ -122,7 +146,7 @@ export default function ChatScreen() {
             inverted
             data={data}
             keyExtractor={(p) => String(p.id)}
-            renderItem={({ item }) => <ChatRow post={item} showTag={isRoot} />}
+            renderItem={({ item }) => <ChatRow post={item} showTag={isRoot} onOpenBulletin={openBulletin} />}
             contentContainerStyle={styles.listContent}
             onEndReached={hasMore ? loadMore : undefined}
             onEndReachedThreshold={0.4}
@@ -168,13 +192,33 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {bulletinPost && (
+        <BulletinOverlay
+          post={bulletinPost}
+          onClose={() => setBulletinPost(null)}
+          headerHeight={headerHeight}
+          tabBarHeight={tabBarHeight}
+          onAttempted={(quizId, attempt) => {
+            attemptCache.current.set(quizId, attempt);
+          }}
+        />
+      )}
     </View>
   );
 }
 
 /** One message row. Greyed with an "under review" badge when it's the viewer's own not-yet-
  * published post (the API only returns such posts to their author). */
-function ChatRow({ post, showTag }: { post: FeedPost; showTag?: boolean }) {
+function ChatRow({
+  post,
+  showTag,
+  onOpenBulletin,
+}: {
+  post: FeedPost;
+  showTag?: boolean;
+  onOpenBulletin?: (post: FeedPost) => void;
+}) {
   const isSystem = !post.author;
   const name = isSystem ? "#local" : post.author?.username ?? "member";
   const tag = post.hashtag?.replace(/^#/, "");
@@ -190,13 +234,19 @@ function ChatRow({ post, showTag }: { post: FeedPost; showTag?: boolean }) {
         <CustomText style={styles.msgTime}>{timeAgo(post.created_at)}</CustomText>
         {underReview && <CustomText style={styles.reviewBadge}>under review</CustomText>}
       </View>
-      <ChatBody post={post} />
+      <ChatBody post={post} onOpenBulletin={onOpenBulletin} />
     </View>
   );
 }
 
 /** Body by kind — rich cards for ISSUE_REF / LINK / MEDIA, summary line for EVENT_REF, text else. */
-function ChatBody({ post }: { post: FeedPost }) {
+function ChatBody({
+  post,
+  onOpenBulletin,
+}: {
+  post: FeedPost;
+  onOpenBulletin?: (post: FeedPost) => void;
+}) {
   switch (post.kind) {
     case "ISSUE_REF":
       return <ChatIssueRefCard issueId={post.issue_id} fallbackText={post.text} />;
@@ -204,6 +254,8 @@ function ChatBody({ post }: { post: FeedPost }) {
       return <ChatLinkCard post={post} />;
     case "MEDIA":
       return <ChatMediaCard post={post} />;
+    case "BULLETIN":
+      return <ChatBulletinCard post={post} onOpen={onOpenBulletin ?? (() => {})} />;
     case "EVENT_REF":
       return (
         <View style={styles.eventRef}>
