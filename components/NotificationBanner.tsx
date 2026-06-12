@@ -13,7 +13,7 @@ import CustomText from '@/components/CustomText';
 import { navigateFromNotification } from '@/utils/notificationService';
 import { BannerConfig, setNotificationBannerListener } from '@/utils/notificationBannerService';
 
-const AUTO_DISMISS_MS = 4500;
+const AUTO_DISMISS_MS = 10000;
 const SLIDE_OFFSET = -130;
 
 const CTA_LABEL: Partial<Record<string, string>> = {

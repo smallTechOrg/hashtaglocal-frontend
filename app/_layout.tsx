@@ -53,10 +53,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     async function onUserLoaded() {
-      // Navigate to any notification that opened the app from a killed state
-      const pending = consumePendingNotification();
-      if (pending) navigateFromNotification(pending);
-
       const permitted = await requestNotificationPermission();
       if (permitted) await syncFCMToken();
     }
@@ -136,24 +132,23 @@ function useProtectedRoute() {
 
     const inAuthGroup = segments[0] === "auth";
     const inLoginScreen = segments[0] === "login";
-    const inTabsGroup = segments[0] === "(tabs)";
     const isRootRoute = (segments as string[]).length === 0;
 
-    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
+    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen });
 
-    // Only protect routes, don't interfere with normal navigation
     if (!user && !inAuthGroup && !inLoginScreen) {
-      // User is not authenticated and trying to access protected route
       console.log("Redirecting to login - user not authenticated");
       router.replace("/login");
-    } else if (user && inLoginScreen) {
-      // User is authenticated and on login screen, redirect to tabs
-      console.log("Redirecting to tabs - user authenticated on login");
+    } else if (user && (inLoginScreen || isRootRoute)) {
+      console.log("Loading tabs for authenticated user");
       router.replace("/(tabs)");
-    } else if (user && isRootRoute) {
-      // User is authenticated at root with no segments, ensure tabs are loaded
-      console.log("Loading tabs for authenticated user at root");
-      router.replace("/(tabs)");
+      // Consume any notification that opened the app from a killed state.
+      // We wait for the tabs transition to finish before pushing, otherwise
+      // the replace() would race with push() and the push would be lost.
+      const pending = consumePendingNotification();
+      if (pending) {
+        setTimeout(() => navigateFromNotification(pending), 300);
+      }
     }
   }, [user, segments, isLoading, router]);
 }
