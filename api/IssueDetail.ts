@@ -1,7 +1,6 @@
 import { APIResponse } from "@/models/APIResponse";
 import { LocationMetaData } from "@/models/Location";
-import { apiGet, apiPost, apiPut, apiRequest } from "@/utils/apiClient";
-import { getAccessToken } from "@/utils/tokenStorage";
+import { apiGet, apiPost, apiPut, apiRequest, getValidAccessToken } from "@/utils/apiClient";
 
 /**
  * Fetches issue data from the backend API
@@ -458,7 +457,7 @@ export async function getIssuesByHashtag(hashtag?: string) {
   const qs = isRoot ? "" : `?locality=${encodeURIComponent(`#${hashtag}`)}`;
   const url = `${API_BASE_URL}${API_ENDPOINTS.ISSUES_HOME}${qs}`;
 
-  const token = await getAccessToken();
+  const token = await getValidAccessToken();
   const response = await apiRequest(url, {
     method: "GET",
     skipAuth: true,

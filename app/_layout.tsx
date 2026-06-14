@@ -394,10 +394,11 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    setupNotificationTapHandlers();
+    const unsubTapHandlers = setupNotificationTapHandlers();
     const unsubForeground = registerForegroundHandler();
     const unsubTokenRefresh = watchTokenRefresh();
     return () => {
+      unsubTapHandlers();
       unsubForeground();
       unsubTokenRefresh();
     };

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomText from '@/components/CustomText';
 import { navigateFromNotification } from '@/utils/notificationService';
 import { BannerConfig, setNotificationBannerListener } from '@/utils/notificationBannerService';
+import { cancelSystemTrayNotification } from '@/utils/notificationTray';
 
 const AUTO_DISMISS_MS = 10000;
 const ENTRY_OFFSET = -130;
@@ -22,6 +23,7 @@ export default function NotificationBanner() {
   const dark = scheme === 'dark';
   const insets = useSafeAreaInsets();
   const [banner, setBanner] = useState<BannerConfig | null>(null);
+  const bannerRef = useRef<BannerConfig | null>(null);
   const translateY = useRef(new Animated.Value(ENTRY_OFFSET)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +39,7 @@ export default function NotificationBanner() {
       }).start(() => {
         translateX.setValue(0);
         translateY.setValue(ENTRY_OFFSET);
+        bannerRef.current = null;
         setBanner(null);
       });
     },
@@ -46,6 +49,7 @@ export default function NotificationBanner() {
   const show = useCallback(
     (config: BannerConfig) => {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
+      bannerRef.current = config;
       setBanner(config);
       translateX.setValue(0);
       translateY.setValue(ENTRY_OFFSET);
@@ -86,8 +90,14 @@ export default function NotificationBanner() {
         const swipedH = Math.abs(dx) > SWIPE_THRESHOLD || Math.abs(vx) > 0.8;
         const swipedUp = dy < -SWIPE_THRESHOLD || vy < -0.8;
         if (swipedH) {
+          if (bannerRef.current?.trayNotificationId) {
+            cancelSystemTrayNotification(bannerRef.current.trayNotificationId);
+          }
           dismiss(dx > 0 ? 400 : -400, 0);
         } else if (swipedUp) {
+          if (bannerRef.current?.trayNotificationId) {
+            cancelSystemTrayNotification(bannerRef.current.trayNotificationId);
+          }
           dismiss(0, ENTRY_OFFSET);
         } else {
           Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
@@ -100,6 +110,7 @@ export default function NotificationBanner() {
 
   const handleTap = () => {
     if (isDragging.current) return;
+    if (banner?.trayNotificationId) cancelSystemTrayNotification(banner.trayNotificationId);
     dismiss();
     if (banner?.data) navigateFromNotification(banner.data);
   };
@@ -171,7 +182,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#256D1B',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

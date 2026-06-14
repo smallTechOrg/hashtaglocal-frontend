@@ -64,7 +64,7 @@ export default {
     },
     notification: {
       icon: "./assets/notification-icon.png",
-      color: "#22c55e",
+      color: "#256D1B",
     },
     android: {
       adaptiveIcon: {

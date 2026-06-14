@@ -340,6 +340,7 @@ and appends it to the backend `/auth/google/token` call. More robust but require
 | Bug #7 — device_id never sent from frontend | ✅ Done | current branch |
 | Bug #8 — NPE on null expiry timestamps | ✅ Done | current branch |
 | Bug #9 — Google OAuth sessions have platform=null | ✅ Done | current branch |
+| Bug #10 — `getIssuesByHashtag` sends expired token, skips 401 retry | ✅ Done | notification-ui branch |
 
 ---
 

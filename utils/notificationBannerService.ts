@@ -2,6 +2,7 @@ export type BannerConfig = {
   title: string;
   body: string;
   data?: Record<string, string>;
+  trayNotificationId?: string;
 };
 
 type BannerListener = (config: BannerConfig) => void;
