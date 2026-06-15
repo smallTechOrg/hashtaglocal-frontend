@@ -29,8 +29,6 @@ export type NotificationType = 'ISSUE_UPDATE';
 const getMsg = () => getMessaging(getApp());
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') return false; // remove this line to enable iOS
-
   const status = await requestPermission(getMsg());
   return (
     status === AuthorizationStatus.AUTHORIZED ||
