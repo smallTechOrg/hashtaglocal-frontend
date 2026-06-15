@@ -4,9 +4,11 @@ import {
   getInitialNotification,
   getMessaging,
   getToken,
+  isDeviceRegisteredForRemoteMessages,
   onMessage,
   onNotificationOpenedApp,
   onTokenRefresh,
+  registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
@@ -61,6 +63,9 @@ export function syncFCMToken(): Promise<void> {
 
   syncInProgress = (async () => {
     try {
+      if (Platform.OS === 'ios' && !isDeviceRegisteredForRemoteMessages(getMsg())) {
+        await registerDeviceForRemoteMessages(getMsg());
+      }
       const token = await getToken(getMsg());
       if (!token) return;
 
