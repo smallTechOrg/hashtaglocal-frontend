@@ -63,7 +63,7 @@ export default {
         "applinks:www.hashtaglocal.app",
       ],
       entitlements: {
-        "aps-environment": "development",
+        "aps-environment": process.env.EAS_BUILD_PROFILE === "production" ? "production" : "development",
       },
     },
     notification: {
