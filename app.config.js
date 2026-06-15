@@ -48,7 +48,8 @@ export default {
     },
     ios: {
       supportsTablet: true,
-      googleServicesFile: process.env.GOOGLE_SERVICE_INFO_PLIST ?? "./GoogleService-Info.plist",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICE_INFO_PLIST ?? "./GoogleService-Info.plist",
       bundleIdentifier: "com.smalltech.hashtaglocal",
       buildNumber: "2",
       usesAppleSignIn: true,
@@ -61,6 +62,9 @@ export default {
         "applinks:hashtaglocal.app",
         "applinks:www.hashtaglocal.app",
       ],
+      entitlements: {
+        "aps-environment": "development",
+      },
     },
     notification: {
       icon: "./assets/notification-icon.png",
@@ -73,7 +77,8 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       package: "com.smalltech.hashtaglocal",
       permissions: ["android.permission.POST_NOTIFICATIONS"],
       versionCode: 5,
