@@ -59,6 +59,10 @@ export interface FeedPost {
   issue_id?: number;
   event_id?: number;
 
+  // BULLETIN — full payload (weather + summary + quiz with the answer hidden)
+  bulletin_id?: number;
+  bulletin?: import("@/api/bulletin").Bulletin;
+
   data?: Record<string, unknown>;
   viewer_context?: FeedViewerContext;
 }
