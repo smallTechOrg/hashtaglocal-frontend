@@ -4,15 +4,23 @@ import {
   getInitialNotification,
   getMessaging,
   getToken,
+  isDeviceRegisteredForRemoteMessages,
   onMessage,
   onNotificationOpenedApp,
   onTokenRefresh,
+  registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
+import { showNotificationBanner } from '@/utils/notificationBannerService';
+import {
+  consumeNotifeeInitialNotification,
+  postToSystemTray,
+  setupNotifeeForegroundHandler,
+} from '@/utils/notificationTray';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -23,8 +31,6 @@ export type NotificationType = 'ISSUE_UPDATE';
 const getMsg = () => getMessaging(getApp());
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') return false; // remove this line to enable iOS
-
   const status = await requestPermission(getMsg());
   return (
     status === AuthorizationStatus.AUTHORIZED ||
@@ -57,6 +63,9 @@ export function syncFCMToken(): Promise<void> {
 
   syncInProgress = (async () => {
     try {
+      if (Platform.OS === 'ios' && !isDeviceRegisteredForRemoteMessages(getMsg())) {
+        await registerDeviceForRemoteMessages(getMsg());
+      }
       const token = await getToken(getMsg());
       if (!token) return;
 
@@ -123,16 +132,9 @@ export function registerForegroundHandler(): () => void {
     const data = remoteMessage.data as Record<string, string> | undefined;
     console.log('[FCM] Foreground message:', title, data);
 
-    if (data?.type === 'ISSUE_UPDATE' && data.issueId) {
-      Alert.alert(title, body, [
-        { text: 'Dismiss', style: 'cancel' },
-        { text: 'View Issue', onPress: () => navigateFromNotification(data) },
-      ]);
-      console.log('[FCM] Notification displayed (foreground alert):', data.type, 'issueId:', data.issueId);
-    } else {
-      Alert.alert(title, body);
-      console.log('[FCM] Notification displayed (foreground alert):', data?.type ?? 'unknown');
-    }
+    const trayNotificationId = await postToSystemTray(title, body, data);
+    showNotificationBanner({ title, body, data, trayNotificationId });
+    console.log('[FCM] Notification displayed (banner + tray):', data?.type ?? 'unknown', data?.issueId ?? '');
   });
 }
 
@@ -157,7 +159,7 @@ export function consumePendingNotification(): Record<string, string> | null {
   return data;
 }
 
-export function setupNotificationTapHandlers(): void {
+export function setupNotificationTapHandlers(): () => void {
   onNotificationOpenedApp(getMsg(), remoteMessage => {
     console.log('[FCM] Tap (background):', remoteMessage.data);
     navigateFromNotification(remoteMessage.data as Record<string, string>);
@@ -165,10 +167,20 @@ export function setupNotificationTapHandlers(): void {
 
   // For the killed-state tap: the router isn't ready yet at this point, so we
   // store the data and let AuthLoader navigate after the user is loaded.
-  getInitialNotification(getMsg()).then(remoteMessage => {
-    if (remoteMessage) {
-      console.log('[FCM] Tap (quit state), deferring navigation:', remoteMessage.data);
-      pendingInitialNotification = remoteMessage.data as Record<string, string>;
+  Promise.all([
+    getInitialNotification(getMsg()),
+    consumeNotifeeInitialNotification(),
+  ]).then(([fcmMessage, notifeeData]) => {
+    const data = (fcmMessage?.data as Record<string, string> | undefined) ?? notifeeData;
+    if (data) {
+      console.log('[FCM] Tap (quit state), deferring navigation:', data);
+      pendingInitialNotification = data;
     }
+  });
+
+  // Handles taps on notifee local notifications when app is in foreground/background.
+  return setupNotifeeForegroundHandler(data => {
+    console.log('[Notifee] Tap (foreground):', data);
+    navigateFromNotification(data);
   });
 }
