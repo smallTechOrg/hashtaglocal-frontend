@@ -150,7 +150,6 @@ export default function BulletinOverlay({
                     quiz={bulletin.quiz}
                     onQuizStart={() => setQuizStarted(true)}
                     onAttempted={(attempt) => {
-                      setQuizStarted(false);
                       if (attempt.is_correct) triggerKarmaBurst(QUIZ_KARMA);
                       onAttempted?.(bulletin.quiz!.id, attempt);
                     }}
