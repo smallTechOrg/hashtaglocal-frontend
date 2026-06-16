@@ -26,7 +26,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 let syncInProgress: Promise<void> | null = null;
 
-export type NotificationType = 'ISSUE_UPDATE';
+export type NotificationType = 'ISSUE_DETAIL' | 'BROADCAST';
 
 const getMsg = () => getMessaging(getApp());
 
@@ -143,9 +143,12 @@ export function navigateFromNotification(data?: Record<string, string>): void {
 
   console.log('[FCM] Navigating from notification:', data.type, data);
 
-  if (data.type === 'ISSUE_UPDATE' && data.issueId) {
+  if (data.type === 'ISSUE_DETAIL' && data.issueId) {
     router.push({ pathname: '/issueDetail', params: { id: data.issueId } });
     console.log('[FCM] Navigated to issueDetail, issueId:', data.issueId);
+  } else if (data.type === 'BROADCAST') {
+    router.push('/');
+    console.log('[FCM] Navigated to map (broadcast notification)');
   }
 }
 
