@@ -12,6 +12,14 @@ function pct(v: number | null | undefined) {
   return v === null || v === undefined ? "—" : `${Math.round(v)}%`;
 }
 
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const suffix = [11,12,13].includes(day) ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th";
+  return `${day}${suffix} ${MONTHS[month - 1]} ${year}`;
+}
+
 export default function ChatBulletinCard({
   post,
   onOpen,
@@ -21,7 +29,7 @@ export default function ChatBulletinCard({
 }) {
   const bulletin = post.bulletin;
   const w = bulletin?.weather;
-  const localityName = bulletin?.locality_name ?? null;
+  const dateLabel = formatDate(bulletin?.date);
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onOpen(post)} activeOpacity={0.75}>
@@ -31,7 +39,7 @@ export default function ChatBulletinCard({
         </View>
         <View style={styles.text}>
           <CustomText style={styles.title}>
-            Daily Bulletin{localityName ? ` — ${localityName}` : ""}
+            Daily Bulletin{dateLabel ? ` — ${dateLabel}` : ""}
           </CustomText>
           {w ? (
             <View style={styles.meta}>
@@ -77,7 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: { flex: 1 },
-  title: { fontSize: 13, fontWeight: "700", color: ACCENT },
+  title: { fontSize: 13, color: ACCENT },
   meta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   metaText: { fontSize: 12, color: "#5b6573" },
   right: { flexDirection: "row", alignItems: "center", gap: 4 },
