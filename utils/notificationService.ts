@@ -12,7 +12,7 @@ import {
   requestPermission,
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
@@ -31,6 +31,17 @@ export type NotificationType = 'ISSUE_DETAIL' | 'BROADCAST' | 'CHAT';
 const getMsg = () => getMessaging(getApp());
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  // Android 13+ (API 33+) requires POST_NOTIFICATIONS to be explicitly requested at runtime.
+  // Firebase's requestPermission alone does not reliably show the native dialog on Android.
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+      return false;
+    }
+  }
+
   const status = await requestPermission(getMsg());
   return (
     status === AuthorizationStatus.AUTHORIZED ||
