@@ -13,6 +13,7 @@ import {
   getFastLocationWithProgressiveWatch,
 } from "@/utils/LocationService";
 import { useFeed } from "@/utils/useFeed";
+import { trackBulletinOpened } from "@/utils/analytics";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -64,8 +65,11 @@ export default function ChatScreen() {
   const [bulletinPost, setBulletinPost] = useState<FeedPost | null>(null);
   // Cache quiz attempts locally so reopening the overlay shows the result, not "Start Quiz".
   const attemptCache = useRef<Map<number, BulletinQuizAttempt>>(new Map());
+  // Tracks which quiz IDs were completed this session so the chat card updates immediately.
+  const [attemptedQuizIds, setAttemptedQuizIds] = useState<Set<number>>(new Set());
 
   function openBulletin(post: FeedPost) {
+    if (post.bulletin_id != null) trackBulletinOpened(post.bulletin_id);
     const quizId = post.bulletin?.quiz?.id;
     const cached = quizId != null ? attemptCache.current.get(quizId) : undefined;
     if (cached && post.bulletin?.quiz) {
@@ -146,7 +150,18 @@ export default function ChatScreen() {
             inverted
             data={data}
             keyExtractor={(p) => String(p.id)}
-            renderItem={({ item }) => <ChatRow post={item} showTag={isRoot} onOpenBulletin={openBulletin} />}
+            renderItem={({ item }) => (
+              <ChatRow
+                post={item}
+                showTag={isRoot}
+                onOpenBulletin={openBulletin}
+                quizAttempted={
+                  item.kind === "BULLETIN" &&
+                  item.bulletin?.quiz != null &&
+                  (!!item.bulletin.quiz.attempt || attemptedQuizIds.has(item.bulletin.quiz.id))
+                }
+              />
+            )}
             contentContainerStyle={styles.listContent}
             onEndReached={hasMore ? loadMore : undefined}
             onEndReachedThreshold={0.4}
@@ -201,6 +216,7 @@ export default function ChatScreen() {
           tabBarHeight={tabBarHeight}
           onAttempted={(quizId, attempt) => {
             attemptCache.current.set(quizId, attempt);
+            setAttemptedQuizIds((prev) => new Set(prev).add(quizId));
           }}
         />
       )}
@@ -214,10 +230,12 @@ function ChatRow({
   post,
   showTag,
   onOpenBulletin,
+  quizAttempted,
 }: {
   post: FeedPost;
   showTag?: boolean;
   onOpenBulletin?: (post: FeedPost) => void;
+  quizAttempted?: boolean;
 }) {
   const isSystem = !post.author;
   const name = isSystem ? "#local" : post.author?.username ?? "member";
@@ -234,7 +252,7 @@ function ChatRow({
         <CustomText style={styles.msgTime}>{timeAgo(post.created_at)}</CustomText>
         {underReview && <CustomText style={styles.reviewBadge}>under review</CustomText>}
       </View>
-      <ChatBody post={post} onOpenBulletin={onOpenBulletin} />
+      <ChatBody post={post} onOpenBulletin={onOpenBulletin} quizAttempted={quizAttempted} />
     </View>
   );
 }
@@ -243,9 +261,11 @@ function ChatRow({
 function ChatBody({
   post,
   onOpenBulletin,
+  quizAttempted,
 }: {
   post: FeedPost;
   onOpenBulletin?: (post: FeedPost) => void;
+  quizAttempted?: boolean;
 }) {
   switch (post.kind) {
     case "ISSUE_REF":
@@ -255,7 +275,7 @@ function ChatBody({
     case "MEDIA":
       return <ChatMediaCard post={post} />;
     case "BULLETIN":
-      return <ChatBulletinCard post={post} onOpen={onOpenBulletin ?? (() => {})} />;
+      return <ChatBulletinCard post={post} onOpen={onOpenBulletin ?? (() => {})} quizAttempted={quizAttempted} />;
     case "EVENT_REF":
       return (
         <View style={styles.eventRef}>

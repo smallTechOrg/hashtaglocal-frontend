@@ -1,9 +1,9 @@
-import BulletinQuizSection from "@/components/bulletin/BulletinQuizSection";
+import BulletinQuizSection, { isQuizActive } from "@/components/bulletin/BulletinQuizSection";
 import CustomText from "@/components/CustomText";
 import { FeedPost } from "@/models/Feed";
 import { useKarma } from "@/utils/KarmaContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { BulletinQuizAttempt } from "@/api/bulletin";
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
@@ -12,7 +12,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 
@@ -40,13 +39,14 @@ export default function BulletinOverlay({
   onAttempted?: (quizId: number, attempt: BulletinQuizAttempt) => void;
 }) {
   const { addPendingKarma } = useKarma();
-  const [quizStarted, setQuizStarted] = useState(false);
+  const bulletin = post.bulletin;
+  const w = bulletin?.weather;
+  const [quizStarted, setQuizStarted] = useState(
+    () => bulletin?.quiz != null && !bulletin.quiz.attempt && isQuizActive(bulletin.quiz.id),
+  );
 
-  // Slide-up entrance / slide-down exit — animates just the content panel
-  const translateY = useSharedValue(600);
-  useEffect(() => {
-    translateY.value = withSpring(0, { damping: 22, stiffness: 260 });
-  }, []);
+  // Slide-down exit only — no entrance animation
+  const translateY = useSharedValue(0);
 
   const slideStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -82,9 +82,6 @@ export default function BulletinOverlay({
     burstTranslateY.value = withTiming(-120, { duration: 2250, easing: Easing.out(Easing.cubic) });
   }
 
-  const bulletin = post.bulletin;
-  const w = bulletin?.weather;
-
   return (
     <Modal
       visible
@@ -104,10 +101,12 @@ export default function BulletinOverlay({
 
         {/* Animated content panel */}
         <Animated.View style={[styles.panel, slideStyle]}>
-          {/* Close button */}
-          <TouchableOpacity style={styles.closeBtn} onPress={close} hitSlop={16}>
-            <MaterialIcons name="close" size={22} color="#5b6573" />
-          </TouchableOpacity>
+          {/* Non-scrolling header row */}
+          <View style={styles.panelHeader}>
+            <TouchableOpacity onPress={close} hitSlop={16} style={styles.closeBtn}>
+              <MaterialIcons name="close" size={22} color="#5b6573" />
+            </TouchableOpacity>
+          </View>
 
           <ScrollView
             contentContainerStyle={styles.body}
@@ -150,6 +149,7 @@ export default function BulletinOverlay({
                     quiz={bulletin.quiz}
                     onQuizStart={() => setQuizStarted(true)}
                     onAttempted={(attempt) => {
+                      setQuizStarted(false);
                       if (attempt.is_correct) triggerKarmaBurst(QUIZ_KARMA);
                       onAttempted?.(bulletin.quiz!.id, attempt);
                     }}
@@ -190,16 +190,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  panelHeader: {
+    alignItems: "flex-end",
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
   closeBtn: {
-    position: "absolute",
-    top: 12,
-    right: 16,
-    zIndex: 10,
     padding: 6,
   },
   body: {
     padding: 16,
-    paddingTop: 48,
     gap: 14,
     paddingBottom: 32,
   },
