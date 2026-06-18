@@ -94,6 +94,10 @@ export const trackIssueVerified = (issueId: number) =>
 export const trackIssueResolved = (issueId: number) =>
   track("issue_resolved", { issue_id: String(issueId) });
 
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export const trackNotificationOpened = (notificationLogId: string, type: string) =>
+  track("notification_opened", { notification_log_id: notificationLogId, type });
 // ─── Bulletin Funnel ─────────────────────────────────────────────────────────
 
 /** Fired when a bulletin chat card is tapped to open the overlay. */

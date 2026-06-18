@@ -11,8 +11,10 @@ import {
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
+import notifee from '@notifee/react-native';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
@@ -31,11 +33,33 @@ export type NotificationType = 'ISSUE_DETAIL' | 'BROADCAST' | 'CHAT';
 const getMsg = () => getMessaging(getApp());
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  // Android 13+ (API 33+) requires POST_NOTIFICATIONS to be explicitly requested at runtime.
+  // Firebase's requestPermission alone does not reliably show the native dialog on Android.
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+      return false;
+    }
+  }
+
   const status = await requestPermission(getMsg());
-  return (
+  const granted =
     status === AuthorizationStatus.AUTHORIZED ||
-    status === AuthorizationStatus.PROVISIONAL
-  );
+    status === AuthorizationStatus.PROVISIONAL;
+
+  // Battery optimization blocks FCM from waking the app when it is killed on
+  // most OEM devices. Opening these settings lets the user exempt the app so
+  // notifications arrive even when it is closed.
+  if (granted && Platform.OS === 'android') {
+    const isOptimized = await notifee.isBatteryOptimizationEnabled();
+    if (isOptimized) {
+      await notifee.openBatteryOptimizationSettings();
+    }
+  }
+
+  return granted;
 }
 
 async function pushTokenToBackend(token: string): Promise<void> {
@@ -167,8 +191,10 @@ export function consumePendingNotification(): Record<string, string> | null {
 
 export function setupNotificationTapHandlers(): () => void {
   onNotificationOpenedApp(getMsg(), remoteMessage => {
-    console.log('[FCM] Tap (background):', remoteMessage.data);
-    navigateFromNotification(remoteMessage.data as Record<string, string>);
+    const data = remoteMessage.data as Record<string, string>;
+    console.log('[FCM] Tap (background):', data);
+    trackNotificationOpened(data?.notificationLogId ?? 'unknown', data?.type ?? 'unknown');
+    navigateFromNotification(data);
   });
 
   // For the killed-state tap: the router isn't ready yet at this point, so we
@@ -180,6 +206,7 @@ export function setupNotificationTapHandlers(): () => void {
     const data = (fcmMessage?.data as Record<string, string> | undefined) ?? notifeeData;
     if (data) {
       console.log('[FCM] Tap (quit state), deferring navigation:', data);
+      trackNotificationOpened(data.notificationLogId ?? 'unknown', data.type ?? 'unknown');
       pendingInitialNotification = data;
     }
   });
@@ -187,6 +214,7 @@ export function setupNotificationTapHandlers(): () => void {
   // Handles taps on notifee local notifications when app is in foreground/background.
   return setupNotifeeForegroundHandler(data => {
     console.log('[Notifee] Tap (foreground):', data);
+    trackNotificationOpened(data?.notificationLogId ?? 'unknown', data?.type ?? 'unknown');
     navigateFromNotification(data);
   });
 }
