@@ -11,7 +11,7 @@ import {
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
-import notifee, { AndroidBatteryOptimizationStatus } from '@notifee/react-native';
+import notifee from '@notifee/react-native';
 import { router } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
@@ -53,8 +53,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
   // most OEM devices. Opening these settings lets the user exempt the app so
   // notifications arrive even when it is closed.
   if (granted && Platform.OS === 'android') {
-    const batteryStatus = await notifee.getBatteryOptimizationStatus();
-    if (batteryStatus === AndroidBatteryOptimizationStatus.OPTIMIZED) {
+    const isOptimized = await notifee.isBatteryOptimizationEnabled();
+    if (isOptimized) {
       await notifee.openBatteryOptimizationSettings();
     }
   }
