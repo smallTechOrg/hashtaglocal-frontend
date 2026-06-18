@@ -34,7 +34,7 @@ export default {
     name: "#local",
     slug: "hashtaglocal",
     owner: "smalltech",
-    version: "1.0.6",
+    version: "1.0.7",
     orientation: "portrait",
     icon: "./assets/app-icon.png",
     scheme: "hashtaglocal",
