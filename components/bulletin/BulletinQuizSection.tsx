@@ -4,6 +4,7 @@ import {
   submitQuizAttempt,
 } from "@/api/bulletin";
 import CustomText from "@/components/CustomText";
+import { trackBulletinQuizAttempted, trackBulletinQuizStarted } from "@/utils/analytics";
 import { useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -14,6 +15,15 @@ const ACCENT = "#256D1B";
 const QUIZ_SECONDS = 15;
 
 type Phase = "idle" | "active" | "submitting" | "done";
+
+// Keyed by quiz ID — survives component unmount so the timer continues if the overlay is closed and reopened.
+const quizTimerStore = new Map<number, number>(); // quizId -> Date.now() when started
+
+export function isQuizActive(quizId: number): boolean {
+  const startedAt = quizTimerStore.get(quizId);
+  if (startedAt == null) return false;
+  return Math.floor((Date.now() - startedAt) / 1000) < QUIZ_SECONDS;
+}
 
 /**
  * The daily quiz flow: Start Quiz → 15-second timed question → result + explanation. One attempt
@@ -30,12 +40,27 @@ export default function BulletinQuizSection({
   onQuizStart?: () => void;
 }) {
   const { user } = useUser();
-  const [phase, setPhase] = useState<Phase>(quiz.attempt ? "done" : "idle");
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (quiz.attempt) return "done";
+    // If the timer was started (store has entry), resume as active regardless of elapsed time.
+    // secondsLeft=0 will fire the auto-submit useEffect, showing "Time's up!" instead of Start Quiz.
+    if (quizTimerStore.has(quiz.id)) return "active";
+    return "idle";
+  });
   const [attempt, setAttempt] = useState<BulletinQuizAttempt | null>(quiz.attempt);
-  const [secondsLeft, setSecondsLeft] = useState(QUIZ_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const startedAt = quizTimerStore.get(quiz.id);
+    if (startedAt != null) {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      return Math.max(0, QUIZ_SECONDS - elapsed);
+    }
+    return QUIZ_SECONDS;
+  });
   const [error, setError] = useState<string | null>(null);
   // Shuffled display order: each element is an original 0-based option index.
-  const [shuffledOrder, setShuffledOrder] = useState<number[]>([0, 1, 2, 3]);
+  const [shuffledOrder, setShuffledOrder] = useState<number[]>(() =>
+    quizTimerStore.has(quiz.id) ? shuffleOptions() : [0, 1, 2, 3],
+  );
   // Guards against the timer and a tap submitting simultaneously.
   const submittedRef = useRef(false);
 
@@ -62,6 +87,9 @@ export default function BulletinQuizSection({
           answer_option_index: result.answer_option_index,
           explanation: result.explanation,
         };
+        quizTimerStore.delete(quiz.id);
+        const quizResult = newAttempt.selected_option_index === null ? "timed_out" : newAttempt.is_correct ? "correct" : "wrong";
+        trackBulletinQuizAttempted(quiz.id, quizResult);
         setAttempt(newAttempt);
         setPhase("done");
         onAttempted?.(newAttempt);
@@ -92,6 +120,8 @@ export default function BulletinQuizSection({
       return;
     }
     submittedRef.current = false;
+    quizTimerStore.set(quiz.id, Date.now());
+    trackBulletinQuizStarted(quiz.id);
     setSecondsLeft(QUIZ_SECONDS);
     setShuffledOrder(shuffleOptions());
     setPhase("active");

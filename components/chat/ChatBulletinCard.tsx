@@ -23,13 +23,16 @@ function formatDate(dateStr: string | undefined): string {
 export default function ChatBulletinCard({
   post,
   onOpen,
+  quizAttempted,
 }: {
   post: FeedPost;
   onOpen: (post: FeedPost) => void;
+  quizAttempted?: boolean;
 }) {
   const bulletin = post.bulletin;
   const w = bulletin?.weather;
   const dateLabel = formatDate(bulletin?.date);
+  const quizDone = quizAttempted || !!(bulletin?.quiz?.attempt);
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onOpen(post)} activeOpacity={0.75}>
@@ -56,8 +59,17 @@ export default function ChatBulletinCard({
         </View>
       </View>
       <View style={styles.right}>
-        <CustomText style={styles.tapHint}>Tap to open</CustomText>
-        <MaterialIcons name="chevron-right" size={18} color={ACCENT} />
+        {quizDone ? (
+          <View style={styles.doneBadge}>
+            <MaterialIcons name="check-circle" size={12} color="#16a34a" />
+            <CustomText style={styles.doneText}>Quiz done</CustomText>
+          </View>
+        ) : (
+          <>
+            <CustomText style={styles.tapHint}>Tap to open</CustomText>
+            <MaterialIcons name="chevron-right" size={18} color={ACCENT} />
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -90,4 +102,6 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, color: "#5b6573" },
   right: { flexDirection: "row", alignItems: "center", gap: 4 },
   tapHint: { fontSize: 11, color: "#93a89f" },
+  doneBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#f0fdf4", borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: "#bbf7d0" },
+  doneText: { fontSize: 11, color: "#16a34a" },
 });
