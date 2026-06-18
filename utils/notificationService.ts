@@ -13,7 +13,7 @@ import {
 } from '@react-native-firebase/messaging';
 import notifee from '@notifee/react-native';
 import { router } from 'expo-router';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
@@ -56,7 +56,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (granted && Platform.OS === 'android') {
     const powerManagerInfo = await notifee.getPowerManagerInfo();
     if (powerManagerInfo.activity) {
-      notifee.openPowerManagerSettings();
+      Alert.alert(
+        'Improve notification delivery',
+        'To ensure you receive notifications reliably, please exempt this app from battery optimization on the next screen.',
+        [
+          { text: 'Skip', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => notifee.openPowerManagerSettings() },
+        ],
+      );
     }
   }
 
