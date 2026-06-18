@@ -49,13 +49,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
     status === AuthorizationStatus.AUTHORIZED ||
     status === AuthorizationStatus.PROVISIONAL;
 
-  // Battery optimization blocks FCM from waking the app when it is killed on
-  // most OEM devices. Opening these settings lets the user exempt the app so
-  // notifications arrive even when it is closed.
+  // OEM power managers (Xiaomi, OnePlus, etc.) aggressively kill background
+  // processes and can block FCM even when standard battery optimization is on.
+  // We only prompt if the device actually has one of these OEM power managers,
+  // since standard Android optimization alone does not reliably block FCM.
   if (granted && Platform.OS === 'android') {
-    const isOptimized = await notifee.isBatteryOptimizationEnabled();
-    if (isOptimized) {
-      await notifee.openBatteryOptimizationSettings();
+    const powerManagerInfo = await notifee.getPowerManagerInfo();
+    if (powerManagerInfo.activity) {
+      await notifee.openPowerManagerSettings();
     }
   }
 
