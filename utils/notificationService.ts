@@ -13,10 +13,16 @@ import {
 } from '@react-native-firebase/messaging';
 import notifee from '@notifee/react-native';
 import { router } from 'expo-router';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
-import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
+import {
+  clearCachedFCMToken,
+  getCachedFCMToken,
+  hasPowerManagerBeenPrompted,
+  markPowerManagerPrompted,
+  setCachedFCMToken,
+} from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
 import {
   consumeNotifeeInitialNotification,
@@ -49,13 +55,21 @@ export async function requestNotificationPermission(): Promise<boolean> {
     status === AuthorizationStatus.AUTHORIZED ||
     status === AuthorizationStatus.PROVISIONAL;
 
-  // Battery optimization blocks FCM from waking the app when it is killed on
-  // most OEM devices. Opening these settings lets the user exempt the app so
-  // notifications arrive even when it is closed.
   if (granted && Platform.OS === 'android') {
-    const isOptimized = await notifee.isBatteryOptimizationEnabled();
-    if (isOptimized) {
-      await notifee.openBatteryOptimizationSettings();
+    const [powerManagerInfo, alreadyPrompted] = await Promise.all([
+      notifee.getPowerManagerInfo(),
+      hasPowerManagerBeenPrompted(),
+    ]);
+    if (powerManagerInfo.activity && !alreadyPrompted) {
+      await markPowerManagerPrompted();
+      Alert.alert(
+        'Improve notification delivery',
+        'To ensure you receive notifications reliably, please exempt this app from battery optimization on the next screen.',
+        [
+          { text: 'Skip', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => notifee.openPowerManagerSettings() },
+        ],
+      );
     }
   }
 
