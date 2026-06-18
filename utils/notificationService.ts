@@ -16,7 +16,13 @@ import { router } from 'expo-router';
 import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
-import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
+import {
+  clearCachedFCMToken,
+  getCachedFCMToken,
+  hasPowerManagerBeenPrompted,
+  markPowerManagerPrompted,
+  setCachedFCMToken,
+} from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
 import {
   consumeNotifeeInitialNotification,
@@ -49,13 +55,13 @@ export async function requestNotificationPermission(): Promise<boolean> {
     status === AuthorizationStatus.AUTHORIZED ||
     status === AuthorizationStatus.PROVISIONAL;
 
-  // OEM power managers (Xiaomi, OnePlus, etc.) aggressively kill background
-  // processes and can block FCM even when standard battery optimization is on.
-  // We only prompt if the device actually has one of these OEM power managers,
-  // since standard Android optimization alone does not reliably block FCM.
   if (granted && Platform.OS === 'android') {
-    const powerManagerInfo = await notifee.getPowerManagerInfo();
-    if (powerManagerInfo.activity) {
+    const [powerManagerInfo, alreadyPrompted] = await Promise.all([
+      notifee.getPowerManagerInfo(),
+      hasPowerManagerBeenPrompted(),
+    ]);
+    if (powerManagerInfo.activity && !alreadyPrompted) {
+      await markPowerManagerPrompted();
       Alert.alert(
         'Improve notification delivery',
         'To ensure you receive notifications reliably, please exempt this app from battery optimization on the next screen.',
