@@ -13,6 +13,7 @@ import {
 } from '@react-native-firebase/messaging';
 import { router } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
+import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
 import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
@@ -178,8 +179,10 @@ export function consumePendingNotification(): Record<string, string> | null {
 
 export function setupNotificationTapHandlers(): () => void {
   onNotificationOpenedApp(getMsg(), remoteMessage => {
-    console.log('[FCM] Tap (background):', remoteMessage.data);
-    navigateFromNotification(remoteMessage.data as Record<string, string>);
+    const data = remoteMessage.data as Record<string, string>;
+    console.log('[FCM] Tap (background):', data);
+    trackNotificationOpened(data?.notificationLogId ?? 'unknown', data?.type ?? 'unknown');
+    navigateFromNotification(data);
   });
 
   // For the killed-state tap: the router isn't ready yet at this point, so we
@@ -191,6 +194,7 @@ export function setupNotificationTapHandlers(): () => void {
     const data = (fcmMessage?.data as Record<string, string> | undefined) ?? notifeeData;
     if (data) {
       console.log('[FCM] Tap (quit state), deferring navigation:', data);
+      trackNotificationOpened(data.notificationLogId ?? 'unknown', data.type ?? 'unknown');
       pendingInitialNotification = data;
     }
   });
@@ -198,6 +202,7 @@ export function setupNotificationTapHandlers(): () => void {
   // Handles taps on notifee local notifications when app is in foreground/background.
   return setupNotifeeForegroundHandler(data => {
     console.log('[Notifee] Tap (foreground):', data);
+    trackNotificationOpened(data?.notificationLogId ?? 'unknown', data?.type ?? 'unknown');
     navigateFromNotification(data);
   });
 }
