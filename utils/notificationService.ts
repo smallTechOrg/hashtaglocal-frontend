@@ -11,6 +11,7 @@ import {
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
+import notifee, { AndroidBatteryOptimizationStatus } from '@notifee/react-native';
 import { router } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
@@ -44,10 +45,21 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 
   const status = await requestPermission(getMsg());
-  return (
+  const granted =
     status === AuthorizationStatus.AUTHORIZED ||
-    status === AuthorizationStatus.PROVISIONAL
-  );
+    status === AuthorizationStatus.PROVISIONAL;
+
+  // Battery optimization blocks FCM from waking the app when it is killed on
+  // most OEM devices. Opening these settings lets the user exempt the app so
+  // notifications arrive even when it is closed.
+  if (granted && Platform.OS === 'android') {
+    const batteryStatus = await notifee.getBatteryOptimizationStatus();
+    if (batteryStatus === AndroidBatteryOptimizationStatus.OPTIMIZED) {
+      await notifee.openBatteryOptimizationSettings();
+    }
+  }
+
+  return granted;
 }
 
 async function pushTokenToBackend(token: string): Promise<void> {

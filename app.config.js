@@ -80,7 +80,10 @@ export default {
       googleServicesFile:
         process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       package: "com.smalltech.hashtaglocal",
-      permissions: ["android.permission.POST_NOTIFICATIONS"],
+      permissions: [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+      ],
       versionCode: 5,
       config: {
         googleMaps: {
