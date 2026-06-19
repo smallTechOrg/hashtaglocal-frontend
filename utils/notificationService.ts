@@ -11,18 +11,11 @@ import {
   registerDeviceForRemoteMessages,
   requestPermission,
 } from '@react-native-firebase/messaging';
-import notifee from '@notifee/react-native';
 import { router } from 'expo-router';
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { trackNotificationOpened } from '@/utils/analytics';
 import { apiPost, apiRequest } from '@/utils/apiClient';
-import {
-  clearCachedFCMToken,
-  getCachedFCMToken,
-  hasPowerManagerBeenPrompted,
-  markPowerManagerPrompted,
-  setCachedFCMToken,
-} from '@/utils/fcmCache';
+import { clearCachedFCMToken, getCachedFCMToken, setCachedFCMToken } from '@/utils/fcmCache';
 import { showNotificationBanner } from '@/utils/notificationBannerService';
 import {
   consumeNotifeeInitialNotification,
@@ -54,24 +47,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const granted =
     status === AuthorizationStatus.AUTHORIZED ||
     status === AuthorizationStatus.PROVISIONAL;
-
-  if (granted && Platform.OS === 'android') {
-    const [powerManagerInfo, alreadyPrompted] = await Promise.all([
-      notifee.getPowerManagerInfo(),
-      hasPowerManagerBeenPrompted(),
-    ]);
-    if (powerManagerInfo.activity && !alreadyPrompted) {
-      await markPowerManagerPrompted();
-      Alert.alert(
-        'Improve notification delivery',
-        'To ensure you receive notifications reliably, please exempt this app from battery optimization on the next screen.',
-        [
-          { text: 'Skip', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => notifee.openPowerManagerSettings() },
-        ],
-      );
-    }
-  }
 
   return granted;
 }
