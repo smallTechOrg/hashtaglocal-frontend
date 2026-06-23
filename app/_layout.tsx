@@ -16,10 +16,10 @@ import { getCrashlytics, recordError as recordCrashError } from "@react-native-f
 import {
   clearCachedFCMToken,
   consumePendingNotification,
-  navigateFromNotification,
   registerForegroundHandler,
   removeDeviceToken,
   requestNotificationPermission,
+  resolveNotificationTarget,
   setupNotificationTapHandlers,
   syncFCMToken,
   watchTokenRefresh,
@@ -37,7 +37,7 @@ import { router, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -126,6 +126,9 @@ function useProtectedRoute() {
   const { user, isLoading } = useUser();
   const segments = useSegments();
   const router = useRouter();
+  // Stashes the killed-state notification promise until the tabs navigator is
+  // confirmed mounted (see the effect below) — never a setTimeout guess.
+  const pendingNotificationRef = useRef<Promise<Record<string, string> | null> | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -142,15 +145,31 @@ function useProtectedRoute() {
     } else if (user && (inLoginScreen || isRootRoute)) {
       console.log("Loading tabs for authenticated user");
       router.replace("/(tabs)");
-      // Consume any notification that opened the app from a killed state.
-      // We wait for the tabs transition to finish before pushing, otherwise
-      // the replace() would race with push() and the push would be lost.
-      const pending = consumePendingNotification();
-      if (pending) {
-        setTimeout(() => navigateFromNotification(pending), 300);
+      if (!pendingNotificationRef.current) {
+        pendingNotificationRef.current = consumePendingNotification();
       }
     }
   }, [user, segments, isLoading, router]);
+
+  // `segments` only reflects "(tabs)" once the navigation container has actually
+  // committed that route change (it's updated from the container's post-commit
+  // `state` listener) — so this is a real readiness signal, not a guess like the
+  // setTimeout this replaces. Only then is it safe to push the deferred target
+  // on top of the now-confirmed-mounted tabs stack.
+  useEffect(() => {
+    if (segments[0] !== "(tabs)") return;
+    const pending = pendingNotificationRef.current;
+    if (!pending) return;
+    pendingNotificationRef.current = null;
+
+    pending.then((data) => {
+      const target = resolveNotificationTarget(data ?? undefined);
+      if (target) {
+        router.push(target.params ? { pathname: target.pathname as any, params: target.params } : (target.pathname as any));
+        console.log("[FCM] Navigated from killed-state notification:", target.pathname);
+      }
+    });
+  }, [segments, router]);
 }
 
 function NavigationContainer({ children }: { children: React.ReactNode }) {

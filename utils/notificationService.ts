@@ -151,31 +151,45 @@ export function registerForegroundHandler(): () => void {
   });
 }
 
-export function navigateFromNotification(data?: Record<string, string>): void {
-  if (!data?.type) return;
-
-  console.log('[FCM] Navigating from notification:', data.type, data);
+export function resolveNotificationTarget(
+  data?: Record<string, string>,
+): { pathname: string; params?: Record<string, string> } | null {
+  if (!data?.type) return null;
 
   if (data.type === 'ISSUE_DETAIL' && data.issueId) {
-    router.push({ pathname: '/issueDetail', params: { id: data.issueId } });
-    console.log('[FCM] Navigated to issueDetail, issueId:', data.issueId);
-  } else if (data.type === 'BROADCAST') {
-    router.push('/');
-    console.log('[FCM] Navigated to map (broadcast notification)');
-  } else if (data.type === 'CHAT') {
-    router.push('/chat');
-    console.log('[FCM] Navigated to chat (chat notification)');
+    return { pathname: '/issueDetail', params: { id: data.issueId } };
   }
+  if (data.type === 'BROADCAST') {
+    return { pathname: '/' };
+  }
+  if (data.type === 'CHAT') {
+    return { pathname: '/chat' };
+  }
+  return null;
+}
+
+export function navigateFromNotification(data?: Record<string, string>): void {
+  const target = resolveNotificationTarget(data);
+  if (!target) return;
+
+  console.log('[FCM] Navigating from notification:', data?.type, data);
+  router.push(target.params ? { pathname: target.pathname as any, params: target.params } : (target.pathname as any));
+  console.log('[FCM] Navigated:', target.pathname);
 }
 
 // Holds the notification data when the app was opened from a killed state.
-// Consumed by AuthLoader once the user is confirmed authenticated.
-let pendingInitialNotification: Record<string, string> | null = null;
+// Promise-based (not a plain variable) so that whoever calls consumePendingNotification()
+// always gets the eventual result, regardless of whether this promise has resolved yet
+// at the moment of the call — there is no synchronous-peek race with the auth-ready check.
+let initialNotificationPromise: Promise<Record<string, string> | null> | null = null;
+let initialNotificationConsumed = false;
 
-export function consumePendingNotification(): Record<string, string> | null {
-  const data = pendingInitialNotification;
-  pendingInitialNotification = null;
-  return data;
+export function consumePendingNotification(): Promise<Record<string, string> | null> {
+  if (initialNotificationConsumed || !initialNotificationPromise) {
+    return Promise.resolve(null);
+  }
+  initialNotificationConsumed = true;
+  return initialNotificationPromise;
 }
 
 export function setupNotificationTapHandlers(): () => void {
@@ -187,8 +201,9 @@ export function setupNotificationTapHandlers(): () => void {
   });
 
   // For the killed-state tap: the router isn't ready yet at this point, so we
-  // store the data and let AuthLoader navigate after the user is loaded.
-  Promise.all([
+  // store the resolved promise and let AuthLoader/useProtectedRoute navigate
+  // once the user is confirmed authenticated AND the tabs navigator is mounted.
+  initialNotificationPromise = Promise.all([
     getInitialNotification(getMsg()),
     consumeNotifeeInitialNotification(),
   ]).then(([fcmMessage, notifeeData]) => {
@@ -196,8 +211,8 @@ export function setupNotificationTapHandlers(): () => void {
     if (data) {
       console.log('[FCM] Tap (quit state), deferring navigation:', data);
       trackNotificationOpened(data.notificationLogId ?? 'unknown', data.type ?? 'unknown');
-      pendingInitialNotification = data;
     }
+    return data ?? null;
   });
 
   // Handles taps on notifee local notifications when app is in foreground/background.

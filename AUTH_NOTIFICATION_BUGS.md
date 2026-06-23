@@ -324,6 +324,48 @@ and appends it to the backend `/auth/google/token` call. More robust but require
 
 ---
 
+## Bug #11 — Killed-state notification navigation silently dropped (race condition)
+**Severity: Medium | Side: Frontend**
+
+### What happens
+Tapping a push notification while the app is fully killed cold-starts the app but lands on
+the home/tabs screen instead of the notification's target (most visible with `CHAT`, but
+affects any type). Two independent races in the killed-state path:
+
+1. **Data race**: `notificationService.ts` captured the launching notification's payload via
+   `Promise.all([getInitialNotification(...), consumeNotifeeInitialNotification()])` and stored
+   the result in a plain module variable (`pendingInitialNotification`). `app/_layout.tsx`
+   peeked that variable synchronously, exactly once, when the user became authenticated. If the
+   native promise hadn't resolved yet at that instant, the payload was silently dropped — nothing
+   re-checked it later.
+2. **Navigator race**: a prior fix (commit `6826e0d`, "Notification UI for the mobile (#90)")
+   addressed `router.replace("/(tabs)")` colliding with a deferred `router.push(target)` by adding
+   a flat `setTimeout(..., 300)`. That guessed delay was apparently enough for `/issueDetail` (a
+   top-level Drawer.Screen) but not reliably enough for `/chat`, which is nested two navigator
+   levels deeper (Drawer → Tabs → chat tab) and contends with `EventsProvider`/`HashtagProvider`
+   initial fetches on a cold start.
+
+### Fix
+- `utils/notificationService.ts`: `pendingInitialNotification` replaced with a Promise-based
+  `initialNotificationPromise` + `consumePendingNotification(): Promise<...>` — whoever awaits it
+  gets the correct value regardless of which async chain resolves first. Destination mapping
+  extracted into `resolveNotificationTarget()`, reused by `navigateFromNotification()`.
+- `app/_layout.tsx`: `useProtectedRoute()` split into two effects. The first stashes the pending
+  notification promise in a `useRef` when redirecting to `/(tabs)`. The second watches `segments`
+  (a real post-commit signal from the navigation container's `state` listener — not a guess) and
+  only drains/pushes the deferred target once `segments[0] === "(tabs)"` proves the replace has
+  actually committed. No `setTimeout` anywhere.
+
+### Steps
+- [x] `utils/notificationService.ts` — Promise-based pending-notification state; `resolveNotificationTarget()` helper
+- [x] `app/_layout.tsx` — split `useProtectedRoute()` into stash/drain effects keyed on `segments`
+- [ ] Verify on a real device: killed-state taps for `CHAT`, `ISSUE_DETAIL`, `BROADCAST` (repeat
+  `CHAT` 5-10x back-to-back since the bug was intermittent); foreground/background taps unchanged;
+  normal cold start has no added delay; logged-out cold start via notification tap still navigates
+  after sign-in
+
+---
+
 ## Tracking: what's already been fixed
 
 | Bug | Fix applied | Commit |
@@ -341,6 +383,7 @@ and appends it to the backend `/auth/google/token` call. More robust but require
 | Bug #8 — NPE on null expiry timestamps | ✅ Done | current branch |
 | Bug #9 — Google OAuth sessions have platform=null | ✅ Done | current branch |
 | Bug #10 — `getIssuesByHashtag` sends expired token, skips 401 retry | ✅ Done | notification-ui branch |
+| Bug #11 — Killed-state notification navigation silently dropped (race condition) | ✅ Code done, ⏳ device verify pending | notification-routing branch |
 
 ---
 
