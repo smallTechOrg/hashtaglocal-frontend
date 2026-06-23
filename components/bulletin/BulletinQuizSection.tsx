@@ -144,12 +144,12 @@ export default function BulletinQuizSection({
           </CustomText>
         </View>
         <CustomText style={styles.question}>{quiz.question}</CustomText>
-        {quiz.options.map((option, i) => {
-          const isAnswer = attempt.answer_option_index === i + 1;
-          const isSelected = attempt.selected_option_index === i + 1;
+        {shuffledOrder.map((origIdx) => {
+          const isAnswer = attempt.answer_option_index === origIdx + 1;
+          const isSelected = attempt.selected_option_index === origIdx + 1;
           return (
             <View
-              key={i}
+              key={origIdx}
               style={[
                 styles.option,
                 isAnswer && styles.optionCorrect,
@@ -160,7 +160,7 @@ export default function BulletinQuizSection({
                 style={[styles.optionText, isAnswer && styles.optionTextCorrect]}
                 numberOfLines={2}
               >
-                {option}
+                {quiz.options[origIdx]}
               </CustomText>
               {isAnswer && <MaterialIcons name="check" size={16} color={ACCENT} />}
               {isSelected && !isAnswer && <MaterialIcons name="close" size={16} color="#dc2626" />}
