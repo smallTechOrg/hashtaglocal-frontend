@@ -259,22 +259,9 @@ export default function MapScreen() {
   useEffect(() => {
     if (selectedIssue) {
       setImageVisible(false);
-
-      // Use setTimeout to ensure the bottom sheet is ready for interaction
-      const timer = setTimeout(() => {
-        try {
-          bottomSheetRef.current?.snapToIndex(0);
-        } catch (error) {
-          console.error("Error opening bottom sheet:", error);
-        }
-      }, 50);
-      return () => clearTimeout(timer);
+      bottomSheetRef.current?.snapToIndex(0);
     } else {
-      try {
-        bottomSheetRef.current?.close();
-      } catch (error) {
-        console.error("Error closing bottom sheet:", error);
-      }
+      bottomSheetRef.current?.close();
     }
   }, [selectedIssue]);
 
@@ -318,14 +305,13 @@ export default function MapScreen() {
   const handleEventMarkerPress = useCallback((event: Event) => {
     setSelectedIssue(null);
     setSelectedEvent(event);
-    setTimeout(() => {
-      try { bottomSheetRef.current?.snapToIndex(0); } catch {}
-    }, 50);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
     setSelectedEvent(null);
     setSelectedIssue(issue);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleCloseBottomSheet = useCallback(() => {
@@ -522,16 +508,31 @@ export default function MapScreen() {
     if (lastFitHashtagRef.current === hashtag) return;
     if (!mapRef.current) return;
 
+    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
+    const isHomeHashtag = homeHashtag && homeHashtag === hashtag;
+
+    // On the home hashtag, center on the user's GPS at walking zoom so nearby issues
+    // are visible while on foot — fitting all city-wide markers zooms out too far.
+    if (isHomeHashtag && userLocation) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
     const coords: { lat: number; lng: number }[] = [
       ...filteredIssues.map((i) => ({ lat: i.location.lat, lng: i.location.lng })),
       ...futureEvents.map((e) => ({ lat: e.location.lat, lng: e.location.lng })),
     ];
-
-    // Only fold in the user's GPS when viewing their own home hashtag.
-    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
-    if (userLocation && homeHashtag && homeHashtag === hashtag) {
-      coords.push({ lat: userLocation.latitude, lng: userLocation.longitude });
-    }
 
     if (coords.length === 0) {
       // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
@@ -655,8 +656,8 @@ export default function MapScreen() {
           />
         ))}
 
-        {/* Event Markers */}
-        {visibleEventMarkers.map((event) => (
+        {/* Event Markers (only shown in events-only mode) */}
+        {showEventsOnly && visibleEventMarkers.map((event) => (
           <Marker
             key={`event-${event.id}`}
             coordinate={{
