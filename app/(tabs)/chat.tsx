@@ -160,6 +160,21 @@ export default function ChatScreen() {
                   item.bulletin?.quiz != null &&
                   (!!item.bulletin.quiz.attempt || attemptedQuizIds.has(item.bulletin.quiz.id))
                 }
+                quizCorrect={
+                  item.kind === "BULLETIN" && item.bulletin?.quiz != null
+                    ? (attemptCache.current.get(item.bulletin.quiz.id)?.is_correct ??
+                        item.bulletin.quiz.attempt?.is_correct ??
+                        null)
+                    : null
+                }
+                quizTimedOut={
+                  item.kind === "BULLETIN" && item.bulletin?.quiz != null
+                    ? ((attemptCache.current.get(item.bulletin.quiz.id)?.selected_option_index === null &&
+                        attemptCache.current.has(item.bulletin.quiz.id)) ||
+                        (item.bulletin.quiz.attempt != null &&
+                          item.bulletin.quiz.attempt.selected_option_index === null))
+                    : false
+                }
               />
             )}
             contentContainerStyle={styles.listContent}
@@ -231,11 +246,15 @@ function ChatRow({
   showTag,
   onOpenBulletin,
   quizAttempted,
+  quizCorrect,
+  quizTimedOut,
 }: {
   post: FeedPost;
   showTag?: boolean;
   onOpenBulletin?: (post: FeedPost) => void;
   quizAttempted?: boolean;
+  quizCorrect?: boolean | null;
+  quizTimedOut?: boolean;
 }) {
   const isSystem = !post.author;
   const name = isSystem ? "#local" : post.author?.username ?? "member";
@@ -252,7 +271,7 @@ function ChatRow({
         <CustomText style={styles.msgTime}>{timeAgo(post.created_at)}</CustomText>
         {underReview && <CustomText style={styles.reviewBadge}>under review</CustomText>}
       </View>
-      <ChatBody post={post} onOpenBulletin={onOpenBulletin} quizAttempted={quizAttempted} />
+      <ChatBody post={post} onOpenBulletin={onOpenBulletin} quizAttempted={quizAttempted} quizCorrect={quizCorrect} quizTimedOut={quizTimedOut} />
     </View>
   );
 }
@@ -262,10 +281,14 @@ function ChatBody({
   post,
   onOpenBulletin,
   quizAttempted,
+  quizCorrect,
+  quizTimedOut,
 }: {
   post: FeedPost;
   onOpenBulletin?: (post: FeedPost) => void;
   quizAttempted?: boolean;
+  quizCorrect?: boolean | null;
+  quizTimedOut?: boolean;
 }) {
   switch (post.kind) {
     case "ISSUE_REF":
@@ -275,7 +298,7 @@ function ChatBody({
     case "MEDIA":
       return <ChatMediaCard post={post} />;
     case "BULLETIN":
-      return <ChatBulletinCard post={post} onOpen={onOpenBulletin ?? (() => {})} quizAttempted={quizAttempted} />;
+      return <ChatBulletinCard post={post} onOpen={onOpenBulletin ?? (() => {})} quizAttempted={quizAttempted} quizCorrect={quizCorrect} quizTimedOut={quizTimedOut} />;
     case "EVENT_REF":
       return (
         <View style={styles.eventRef}>
