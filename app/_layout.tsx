@@ -33,12 +33,12 @@ import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
-import { router, useRouter, useSegments } from "expo-router";
+import { router, useRootNavigationState, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, InteractionManager, Text, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -122,13 +122,34 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Temporary diagnostic: summarizes the nested navigation state tree (type/index/routeNames
+// per level) so we can see which navigator resets and to what, instead of just the flattened
+// segments. Remove once the map-tab bounce-back bug is root-caused.
+function summarizeNavState(state: any): any {
+  if (!state) return null;
+  return {
+    type: state.type,
+    index: state.index,
+    routeNames: state.routeNames,
+    routes: state.routes?.map((r: any) => ({
+      name: r.name,
+      key: r.key,
+      state: r.state ? summarizeNavState(r.state) : undefined,
+    })),
+  };
+}
+
 function useProtectedRoute() {
   const { user, isLoading } = useUser();
   const segments = useSegments();
   const router = useRouter();
-  // Stashes the killed-state notification promise until the tabs navigator is
-  // confirmed mounted (see the effect below) — never a setTimeout guess.
+  const rootNavState = useRootNavigationState();
   const pendingNotificationRef = useRef<Promise<Record<string, string> | null> | null>(null);
+  // Prevents router.replace("/(tabs)") from firing more than once per session —
+  // the auth effect can re-run multiple times with segments still [] while the
+  // navigator is initialising, and each run would queue another replace that
+  // eventually processes and bounces the user back from wherever they navigated.
+  const hasRedirectedToTabsRef = useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -137,37 +158,58 @@ function useProtectedRoute() {
     const inLoginScreen = segments[0] === "login";
     const isRootRoute = (segments as string[]).length === 0;
 
-    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen });
-
     if (!user && !inAuthGroup && !inLoginScreen) {
+      hasRedirectedToTabsRef.current = false; // reset so next login can redirect
       console.log("Redirecting to login - user not authenticated");
       router.replace("/login");
-    } else if (user && (inLoginScreen || isRootRoute)) {
+    } else if (user && (inLoginScreen || isRootRoute) && !hasRedirectedToTabsRef.current) {
+      hasRedirectedToTabsRef.current = true;
       console.log("Loading tabs for authenticated user");
       router.replace("/(tabs)");
-      if (!pendingNotificationRef.current) {
-        pendingNotificationRef.current = consumePendingNotification();
-      }
+    }
+
+    if (user && !pendingNotificationRef.current) {
+      pendingNotificationRef.current = consumePendingNotification();
+      console.log("[FCM] Stashed pending notification promise, segments:", segments);
     }
   }, [user, segments, isLoading, router]);
 
   // `segments` only reflects "(tabs)" once the navigation container has actually
-  // committed that route change (it's updated from the container's post-commit
-  // `state` listener) — so this is a real readiness signal, not a guess like the
-  // setTimeout this replaces. Only then is it safe to push the deferred target
-  // on top of the now-confirmed-mounted tabs stack.
+  // committed that route change — real readiness signal, not a setTimeout guess.
+  useEffect(() => {
+    console.log("[NAV] Segments:", JSON.stringify(segments));
+  }, [segments]);
+
+  useEffect(() => {
+    console.log("[NAV] State:", JSON.stringify(summarizeNavState(rootNavState)));
+  }, [rootNavState]);
+
   useEffect(() => {
     if (segments[0] !== "(tabs)") return;
     const pending = pendingNotificationRef.current;
-    if (!pending) return;
-    pendingNotificationRef.current = null;
+    if (!pending) {
+      console.log("[FCM] Drain effect fired (segments=tabs) but nothing was stashed");
+      return;
+    }
+    // Sentinel: truthy so the stash won't re-run and call consumePendingNotification again.
+    pendingNotificationRef.current = Promise.resolve(null);
 
     pending.then((data) => {
+      console.log("[FCM] Drain resolved data:", data);
       const target = resolveNotificationTarget(data ?? undefined);
-      if (target) {
-        router.push(target.params ? { pathname: target.pathname as any, params: target.params } : (target.pathname as any));
-        console.log("[FCM] Navigated from killed-state notification:", target.pathname);
+      if (!target) {
+        console.log("[FCM] No navigation target resolved");
+        return;
       }
+      // Wait for any in-flight Drawer/Tab animations triggered by router.replace("/(tabs)")
+      // to fully complete before pushing. Pushing mid-animation causes the final animated
+      // state commit to override the push and bounce back to the initial tab (map).
+      InteractionManager.runAfterInteractions(() => {
+        console.log("[FCM] Navigating to:", target.pathname);
+        router.push(target.params
+          ? { pathname: target.pathname as any, params: target.params }
+          : (target.pathname as any));
+      });
     });
   }, [segments, router]);
 }

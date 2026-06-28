@@ -7,7 +7,7 @@ import { useUser } from '@/utils/UserContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DrawerToggleButton } from '@react-navigation/drawer';
 import { Tabs } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export default function TabsLayout() {
   const { user } = useUser();
@@ -27,6 +27,11 @@ export default function TabsLayout() {
       );
     });
   }, [events, eventsLoading, hashtag, isRoot]);
+
+  // Temporary diagnostic: correlate hasEvents flips with the map-tab bounce-back bug.
+  useEffect(() => {
+    console.log("[TABS] hasEvents:", hasEvents, "hashtag:", hashtag, "isRoot:", isRoot, "eventsLoading:", eventsLoading);
+  }, [hasEvents, hashtag, isRoot, eventsLoading]);
 
   // Memoize options to prevent unnecessary re-renders
   const indexOptions = useMemo(() => ({
@@ -116,7 +121,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="events"
         options={{
-          href: hasEvents ? undefined : null,
+          tabBarButton: hasEvents ? undefined : () => null,
           title: 'Events',
           headerTitleStyle: {
             fontFamily: "Nunito-Regular",

@@ -207,10 +207,14 @@ export function setupNotificationTapHandlers(): () => void {
     getInitialNotification(getMsg()),
     consumeNotifeeInitialNotification(),
   ]).then(([fcmMessage, notifeeData]) => {
+    console.log('[FCM] getInitialNotification (FCM) raw data:', JSON.stringify(fcmMessage?.data ?? null));
+    console.log('[FCM] getInitialNotification (notifee) raw data:', JSON.stringify(notifeeData));
     const data = (fcmMessage?.data as Record<string, string> | undefined) ?? notifeeData;
     if (data) {
       console.log('[FCM] Tap (quit state), deferring navigation:', data);
       trackNotificationOpened(data.notificationLogId ?? 'unknown', data.type ?? 'unknown');
+    } else {
+      console.log('[FCM] No initial notification on this launch (not opened via notification tap)');
     }
     return data ?? null;
   });

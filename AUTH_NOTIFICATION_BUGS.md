@@ -359,10 +359,59 @@ affects any type). Two independent races in the killed-state path:
 ### Steps
 - [x] `utils/notificationService.ts` — Promise-based pending-notification state; `resolveNotificationTarget()` helper
 - [x] `app/_layout.tsx` — split `useProtectedRoute()` into stash/drain effects keyed on `segments`
-- [ ] Verify on a real device: killed-state taps for `CHAT`, `ISSUE_DETAIL`, `BROADCAST` (repeat
-  `CHAT` 5-10x back-to-back since the bug was intermittent); foreground/background taps unchanged;
-  normal cold start has no added delay; logged-out cold start via notification tap still navigates
-  after sign-in
+- [x] `app/_layout.tsx` — fix 3rd race: stash was nested inside the redirect `else if`, so it never
+  ran when the Drawer's `initialRouteName="(tabs)"` mounted straight onto tabs (the common
+  already-logged-in cold start). Moved the stash out to run unconditionally on `user` truthy,
+  independent of whether a redirect happened. Type-agnostic — applied to `CHAT`, `ISSUE_DETAIL`,
+  and `BROADCAST` alike, since it sits upstream of `resolveNotificationTarget()`.
+- [ ] Verify on a real device: killed-state taps for `CHAT`, `ISSUE_DETAIL`, `BROADCAST`, **while
+  already logged in** (stored token, no login screen) since that's exactly the condition that
+  skipped the stash before this fix (repeat `CHAT` 5-10x back-to-back since the bug was
+  intermittent); foreground/background taps unchanged; normal cold start has no added delay;
+  logged-out cold start via notification tap still navigates after sign-in
+
+### 4th root cause found 2026-06-25 — missing `onNewIntent` override (native Android)
+Device-verified via `adb logcat` during a real tap: `ActivityTaskManager: START ... cmp=.../.MainActivity
+(has extras)` fired correctly (Android *did* attach the notification data to the launch intent),
+but the same process PID stayed alive across the whole "swipe away → tap" cycle on this device —
+i.e. it was never a true cold start, just `onNewIntent()` on the existing `singleTask` Activity.
+`MainActivity.kt` had no `onNewIntent` override, so `getIntent()` kept returning the stale original
+intent and `@react-native-firebase/messaging`'s native tap detection never saw the new data —
+neither `getInitialNotification()` nor `onNotificationOpenedApp()` fired. This is a documented
+required step for `@react-native-firebase/messaging` on Android with `launchMode="singleTask"`.
+
+Fix: added to `MainActivity.kt`:
+```kotlin
+override fun onNewIntent(intent: Intent) {
+  super.onNewIntent(intent)
+  setIntent(intent)
+}
+```
+**Native code — requires `npx expo run:android --device` (or a full rebuild), not just a Metro
+reload, to take effect.**
+
+- [ ] Verify after rebuild: swipe-away (not Settings > Force Stop) → tap `CHAT` notification →
+  lands on `/chat`. Repeat for `ISSUE_DETAIL`/`BROADCAST`.
+
+### 5th root cause found 2026-06-25 — Tabs navigator reset by EventsProvider race
+After the native `onNewIntent` fix, device-verified (release build, no dev-launcher) that the data
+now flows correctly end-to-end: `getInitialNotification()` returned real data, stash/drain fired,
+`router.push('/chat')` ran — chat visibly flashed on screen, then bounced back to the map tab.
+`adb logcat`'s `ReactNativeJS` lines showed the push succeeding (`segments: ['(tabs)','chat']`)
+followed ~150ms later by segments reverting to `['(tabs)']` with no app code calling that.
+
+Root cause: `app/(tabs)/_layout.tsx` sets `href: hasEvents ? undefined : null` on the "events"
+`Tabs.Screen`, and `hasEvents` depends on `eventsLoading` from `EventsContext` (`utils/EventsContext.tsx`),
+which starts `true` and flips `false` once its own `fetchEvents()` resolves — landing almost
+exactly in the same window as the deferred push. Dynamically changing a Tab Navigator's screen set
+right after an imperative push is a known React Navigation footgun: route-name-change reconciliation
+can reset the focused tab back to the default (`index`/map).
+
+Fix: `useProtectedRoute()` in `app/_layout.tsx` now also gates the drain effect on `!eventsLoading`
+(via `useEvents()`), in addition to `segments[0] === "(tabs)"` — same "real readiness signal, not a
+timer" pattern, extended to the nested Tabs navigator's own settling, not just the outer Drawer's.
+
+- [ ] Verify after rebuild: same as above, watch specifically that chat does NOT bounce back to map.
 
 ---
 
