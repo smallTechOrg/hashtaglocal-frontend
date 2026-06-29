@@ -1,4 +1,5 @@
 import { Event } from "@/api/events";
+import { fetchLocalities } from "@/api/Feed";
 import { getIssuesByHashtag } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
@@ -114,6 +115,8 @@ export default function MapScreen() {
   const [showEventsOnly, setShowEventsOnly] = useState(false);
   const bottomSheetTraceRef = useRef<ImageTraceHandle | null>(null);
   const eventSheetTraceRef = useRef<ImageTraceHandle | null>(null);
+  // Locality polygon centroids — used as map fallback when a hashtag has no issues yet.
+  const localityCentersRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -226,6 +229,15 @@ export default function MapScreen() {
     },
     [setContextIssues],
   );
+
+  // Fetch locality polygon centroids once for map fallback navigation.
+  useEffect(() => {
+    fetchLocalities().then((list) => {
+      const map = new Map<string, { lat: number; lng: number }>();
+      list.forEach((l) => { if (l.center) map.set(l.hashtag, l.center); });
+      localityCentersRef.current = map;
+    });
+  }, []);
 
   // Reload whenever the selected hashtag changes.
   useEffect(() => {
@@ -508,6 +520,19 @@ export default function MapScreen() {
     if (lastFitHashtagRef.current === hashtag) return;
     if (!mapRef.current) return;
 
+    // For #india use a fixed region covering the full subcontinent including J&K.
+    // Marker-based bounding box clips the north because no markers exist in J&K.
+    if (isRoot) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        { latitude: 23, longitude: 80.5, latitudeDelta: 28, longitudeDelta: 26 },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
     const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
     const isHomeHashtag = homeHashtag && homeHashtag === hashtag;
 
@@ -535,10 +560,15 @@ export default function MapScreen() {
     ];
 
     if (coords.length === 0) {
-      // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
-      // genuinely empty hashtag. Do NOT mark this hashtag as fitted: leave the ref so that when the
-      // data lands the effect re-runs and fits then. (Marking it here was the bug — it blocked the
-      // real fit once the data arrived, which is why only #india, already loaded up-front, worked.)
+      // No markers yet — use the locality polygon centroid to navigate to the right city area.
+      // Don't mark as fitted so if issues arrive later the effect re-runs and fits to them properly.
+      const center = localityCentersRef.current.get(hashtag);
+      if (center) {
+        mapRef.current.animateToRegion(
+          { latitude: center.lat, longitude: center.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+          600,
+        );
+      }
       return;
     }
 
