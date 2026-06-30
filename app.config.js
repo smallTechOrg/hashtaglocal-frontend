@@ -1,4 +1,4 @@
-const { withDangerousMod } = require("@expo/config-plugins");
+const { withDangerousMod, withProjectBuildGradle } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
@@ -27,6 +27,32 @@ function withModularHeaders(config) {
       return config;
     },
   ]);
+}
+
+// Notifee ships its native `app.notifee:core` artifact as a bundled aar inside
+// its node_module instead of a public Maven repo. Notifee self-registers that
+// repo from its own subproject build file, but under Expo's --configure-on-demand
+// build that runs too late for :app to resolve it. Inject the repo into the root
+// build.gradle's allprojects block so it's always present.
+function withNotifeeRepo(config) {
+  return withProjectBuildGradle(config, (config) => {
+    if (config.modResults.language !== "groovy") {
+      return config;
+    }
+    if (
+      config.modResults.contents.includes(
+        "@notifee/react-native/android/libs",
+      )
+    ) {
+      return config;
+    }
+    config.modResults.contents = config.modResults.contents.replace(
+      /allprojects\s*\{\s*repositories\s*\{/,
+      (match) =>
+        `${match}\n      maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }`,
+    );
+    return config;
+  });
 }
 
 export default {
@@ -122,6 +148,7 @@ export default {
       "@react-native-firebase/perf",
       "@react-native-firebase/messaging",
       withModularHeaders,
+      withNotifeeRepo,
       "expo-router",
       [
         "expo-camera",
