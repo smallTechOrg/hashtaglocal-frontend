@@ -36,6 +36,7 @@ export default function ChatBulletinCard({
   const bulletin = post.bulletin;
   const w = bulletin?.weather;
   const dateLabel = formatDate(bulletin?.date);
+  const hasQuiz = !!(bulletin?.quiz);
   const quizDone = quizAttempted || !!(bulletin?.quiz?.attempt);
   const isCorrect = quizCorrect ?? bulletin?.quiz?.attempt?.is_correct ?? null;
   const isTimedOut = quizTimedOut ?? (bulletin?.quiz?.attempt?.selected_option_index === null && bulletin?.quiz?.attempt !== undefined) ?? false;
@@ -87,6 +88,11 @@ export default function ChatBulletinCard({
               <CustomText style={styles.doneText}>Quiz done</CustomText>
             </View>
           )
+        ) : hasQuiz ? (
+          <View style={[styles.doneBadge, styles.notAttemptedBadge]}>
+            <MaterialIcons name="radio-button-unchecked" size={12} color="#b45309" />
+            <CustomText style={[styles.doneText, styles.notAttemptedText]}>Not attempted</CustomText>
+          </View>
         ) : (
           <>
             <CustomText style={styles.tapHint}>Tap to open</CustomText>
@@ -133,4 +139,6 @@ const styles = StyleSheet.create({
   wrongText: { color: "#dc2626" },
   timedOutBadge: { backgroundColor: "#f5f5f5", borderColor: "#d1d5db" },
   timedOutText: { color: "#1c1c1e" },
+  notAttemptedBadge: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
+  notAttemptedText: { color: "#b45309" },
 });
