@@ -655,8 +655,8 @@ export default function MapScreen() {
           />
         ))}
 
-        {/* Event Markers */}
-        {visibleEventMarkers.map((event) => (
+        {/* Event Markers (only shown in events-only mode) */}
+        {showEventsOnly && visibleEventMarkers.map((event) => (
           <Marker
             key={`event-${event.id}`}
             coordinate={{
