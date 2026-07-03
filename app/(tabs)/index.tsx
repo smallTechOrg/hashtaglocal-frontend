@@ -390,10 +390,11 @@ export default function MapScreen() {
 
   // Only render markers that are in the current viewport
   const visibleMarkers = useMemo(() => {
-    return filteredIssues.filter(issue => 
+    return filteredIssues.filter(issue =>
       isMarkerInViewport(issue.location.lat, issue.location.lng)
     );
   }, [filteredIssues, isMarkerInViewport]);
+
 
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
@@ -673,7 +674,7 @@ export default function MapScreen() {
         onRegionChangeComplete={handleMapRegionChange}
       >
         {/* Viewport-based Issue Markers (hidden in events-only mode) */}
-        {!showEventsOnly && visibleMarkers.map((issue) => (
+        {!showEventsOnly && visibleMarkers.map((issue, index) => (
           <Marker
             key={`marker-${issue.id}`}
             coordinate={{
@@ -682,12 +683,14 @@ export default function MapScreen() {
             }}
             pinColor={getIssueColor(issue.type)}
             onPress={() => handleMarkerPress(issue)}
+            onSelect={() => handleMarkerPress(issue)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
 
         {/* Event Markers (only shown in events-only mode) */}
-        {showEventsOnly && visibleEventMarkers.map((event) => (
+        {showEventsOnly && visibleEventMarkers.map((event, index) => (
           <Marker
             key={`event-${event.id}`}
             coordinate={{
@@ -696,7 +699,9 @@ export default function MapScreen() {
             }}
             pinColor="#4f8ef7"
             onPress={() => handleEventMarkerPress(event)}
+            onSelect={() => handleEventMarkerPress(event)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
       </MapView>
@@ -729,6 +734,7 @@ export default function MapScreen() {
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
+        enableDynamicSizing={false}
         enablePanDownToClose={true}
         onClose={handleCloseBottomSheet}
         backgroundStyle={styles.bottomSheetBackground}
