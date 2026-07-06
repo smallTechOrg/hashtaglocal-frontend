@@ -18,12 +18,8 @@
       "environment": "production",
       "autoIncrement": true,
       "channel": "production",
-      "android": {
-        "googleServicesFile": "env:ANDROID_GOOGLE_SERVICES"
-      },
       "ios": {
-        "buildConfiguration": "Release",
-        "googleServicesFile": "env:IOS_GOOGLE_SERVICES"
+        "buildConfiguration": "Release"
       }
     }
   },
