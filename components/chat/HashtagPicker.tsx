@@ -6,7 +6,9 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -112,8 +114,14 @@ export default function HashtagPicker({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView style={styles.sheet} edges={["bottom"]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <View style={styles.backdropDim} pointerEvents="none" />
+        <View style={styles.sheetSpacer} />
+        <SafeAreaView style={styles.sheet} edges={["bottom"]}>
         <View style={styles.handle} />
         <View style={styles.header}>
           <CustomText style={styles.title}>Choose a hashtag</CustomText>
@@ -176,18 +184,17 @@ export default function HashtagPicker({
           }}
           ListEmptyComponent={<CustomText style={styles.empty}>No localities found.</CustomText>}
         />
-      </SafeAreaView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+  keyboardAvoid: { flex: 1 },
+  backdropDim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+  sheetSpacer: { flex: 1 },
   sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     maxHeight: "78%",
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,

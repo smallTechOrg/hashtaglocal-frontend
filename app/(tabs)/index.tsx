@@ -1,4 +1,5 @@
 import { Event } from "@/api/events";
+import { fetchLocalities } from "@/api/Feed";
 import { getIssuesByHashtag } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
@@ -114,6 +115,8 @@ export default function MapScreen() {
   const [showEventsOnly, setShowEventsOnly] = useState(false);
   const bottomSheetTraceRef = useRef<ImageTraceHandle | null>(null);
   const eventSheetTraceRef = useRef<ImageTraceHandle | null>(null);
+  // Locality polygon centroids — used as map fallback when a hashtag has no issues yet.
+  const localityCentersRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -227,6 +230,15 @@ export default function MapScreen() {
     [setContextIssues],
   );
 
+  // Fetch locality polygon centroids once for map fallback navigation.
+  useEffect(() => {
+    fetchLocalities().then((list) => {
+      const map = new Map<string, { lat: number; lng: number }>();
+      list.forEach((l) => { if (l.center) map.set(l.hashtag, l.center); });
+      localityCentersRef.current = map;
+    });
+  }, []);
+
   // Reload whenever the selected hashtag changes.
   useEffect(() => {
     loadIssuesForHashtag(hashtag, isRoot);
@@ -259,22 +271,9 @@ export default function MapScreen() {
   useEffect(() => {
     if (selectedIssue) {
       setImageVisible(false);
-
-      // Use setTimeout to ensure the bottom sheet is ready for interaction
-      const timer = setTimeout(() => {
-        try {
-          bottomSheetRef.current?.snapToIndex(0);
-        } catch (error) {
-          console.error("Error opening bottom sheet:", error);
-        }
-      }, 50);
-      return () => clearTimeout(timer);
+      bottomSheetRef.current?.snapToIndex(0);
     } else {
-      try {
-        bottomSheetRef.current?.close();
-      } catch (error) {
-        console.error("Error closing bottom sheet:", error);
-      }
+      bottomSheetRef.current?.close();
     }
   }, [selectedIssue]);
 
@@ -318,14 +317,13 @@ export default function MapScreen() {
   const handleEventMarkerPress = useCallback((event: Event) => {
     setSelectedIssue(null);
     setSelectedEvent(event);
-    setTimeout(() => {
-      try { bottomSheetRef.current?.snapToIndex(0); } catch {}
-    }, 50);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
     setSelectedEvent(null);
     setSelectedIssue(issue);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleCloseBottomSheet = useCallback(() => {
@@ -392,10 +390,11 @@ export default function MapScreen() {
 
   // Only render markers that are in the current viewport
   const visibleMarkers = useMemo(() => {
-    return filteredIssues.filter(issue => 
+    return filteredIssues.filter(issue =>
       isMarkerInViewport(issue.location.lat, issue.location.lng)
     );
   }, [filteredIssues, isMarkerInViewport]);
+
 
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
@@ -522,22 +521,55 @@ export default function MapScreen() {
     if (lastFitHashtagRef.current === hashtag) return;
     if (!mapRef.current) return;
 
+    // For #india use a fixed region covering the full subcontinent including J&K.
+    // Marker-based bounding box clips the north because no markers exist in J&K.
+    if (isRoot) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        { latitude: 23, longitude: 80.5, latitudeDelta: 28, longitudeDelta: 26 },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
+    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
+    const isHomeHashtag = homeHashtag && homeHashtag === hashtag;
+
+    // On the home hashtag, center on the user's GPS at walking zoom so nearby issues
+    // are visible while on foot — fitting all city-wide markers zooms out too far.
+    if (isHomeHashtag && userLocation) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
     const coords: { lat: number; lng: number }[] = [
       ...filteredIssues.map((i) => ({ lat: i.location.lat, lng: i.location.lng })),
       ...futureEvents.map((e) => ({ lat: e.location.lat, lng: e.location.lng })),
     ];
 
-    // Only fold in the user's GPS when viewing their own home hashtag.
-    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
-    if (userLocation && homeHashtag && homeHashtag === hashtag) {
-      coords.push({ lat: userLocation.latitude, lng: userLocation.longitude });
-    }
-
     if (coords.length === 0) {
-      // No markers yet — could be mid-reload (the new hashtag's issues haven't arrived) or a
-      // genuinely empty hashtag. Do NOT mark this hashtag as fitted: leave the ref so that when the
-      // data lands the effect re-runs and fits then. (Marking it here was the bug — it blocked the
-      // real fit once the data arrived, which is why only #india, already loaded up-front, worked.)
+      // No markers yet — use the locality polygon centroid to navigate to the right city area.
+      // Don't mark as fitted so if issues arrive later the effect re-runs and fits to them properly.
+      const center = localityCentersRef.current.get(hashtag);
+      if (center) {
+        mapRef.current.animateToRegion(
+          { latitude: center.lat, longitude: center.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+          600,
+        );
+      }
       return;
     }
 
@@ -642,7 +674,7 @@ export default function MapScreen() {
         onRegionChangeComplete={handleMapRegionChange}
       >
         {/* Viewport-based Issue Markers (hidden in events-only mode) */}
-        {!showEventsOnly && visibleMarkers.map((issue) => (
+        {!showEventsOnly && visibleMarkers.map((issue, index) => (
           <Marker
             key={`marker-${issue.id}`}
             coordinate={{
@@ -651,12 +683,14 @@ export default function MapScreen() {
             }}
             pinColor={getIssueColor(issue.type)}
             onPress={() => handleMarkerPress(issue)}
+            onSelect={() => handleMarkerPress(issue)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
 
         {/* Event Markers (only shown in events-only mode) */}
-        {showEventsOnly && visibleEventMarkers.map((event) => (
+        {showEventsOnly && visibleEventMarkers.map((event, index) => (
           <Marker
             key={`event-${event.id}`}
             coordinate={{
@@ -665,7 +699,9 @@ export default function MapScreen() {
             }}
             pinColor="#4f8ef7"
             onPress={() => handleEventMarkerPress(event)}
+            onSelect={() => handleEventMarkerPress(event)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
       </MapView>
@@ -698,6 +734,7 @@ export default function MapScreen() {
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
+        enableDynamicSizing={false}
         enablePanDownToClose={true}
         onClose={handleCloseBottomSheet}
         backgroundStyle={styles.bottomSheetBackground}

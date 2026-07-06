@@ -29,6 +29,15 @@ export async function fetchHashtagByCoords(lat: number, lng: number): Promise<st
 export interface LocalityOption {
   hashtag: string; // normalized without leading '#'
   name: string;
+  center?: { lat: number; lng: number }; // centroid of the boundary polygon
+}
+
+function polygonCentroid(coordinates: number[][][]): { lat: number; lng: number } | undefined {
+  const ring = coordinates?.[0];
+  if (!ring || ring.length === 0) return undefined;
+  let sumLng = 0, sumLat = 0;
+  for (const [lng, lat] of ring) { sumLng += lng; sumLat += lat; }
+  return { lat: sumLat / ring.length, lng: sumLng / ring.length };
 }
 
 /** Fetch the list of localities for the hashtag switcher. Public; returns [] on failure so the
@@ -40,12 +49,13 @@ export async function fetchLocalities(): Promise<LocalityOption[]> {
       skipAuth: true,
     });
     if (!res.ok) return [];
-    const rows = (await res.json()) as { hashtag?: string; name?: string }[];
+    const rows = (await res.json()) as { hashtag?: string; name?: string; geoBoundary?: { coordinates?: number[][][] } }[];
     return (Array.isArray(rows) ? rows : [])
       .filter((r) => r.hashtag)
       .map((r) => ({
         hashtag: r.hashtag!.replace(/^#/, "").toLowerCase(),
         name: r.name ?? r.hashtag!,
+        center: r.geoBoundary?.coordinates ? polygonCentroid(r.geoBoundary.coordinates) : undefined,
       }));
   } catch {
     return [];
