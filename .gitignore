@@ -20,6 +20,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase / Google Services (managed via EAS Secrets)
+google-services.json
+GoogleService-Info.plist
+
+
 # Metro
 .metro-health-check*
 
@@ -44,5 +49,10 @@ app-example
 /ios
 /android
 
+
+
 # linux file system
 *.swp
+
+# Claude Code local config
+.claude/

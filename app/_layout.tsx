@@ -1,9 +1,11 @@
 import { requestAccountDeletion } from "@/api/account";
 import KarmaBadge from "@/components/KarmaBadge";
+import NotificationBanner from "@/components/NotificationBanner";
 import "@/global.css";
 import { clearAnalyticsUser, trackLogout } from "@/utils/analytics";
 import { apiGet } from "@/utils/apiClient";
 import { EventsProvider } from "@/utils/EventsContext";
+import { HashtagProvider } from "@/utils/HashtagContext";
 import { IssuesProvider } from "@/utils/IssuesContext";
 import { KarmaProvider, useKarma } from "@/utils/KarmaContext";
 import { getFastLocationWithProgressiveWatch } from "@/utils/LocationService";
@@ -12,12 +14,24 @@ import { UserProvider, UserSummary, useUser } from "@/utils/UserContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getCrashlytics, recordError as recordCrashError } from "@react-native-firebase/crashlytics";
 import {
+  clearCachedFCMToken,
+  consumePendingNotification,
+  navigateFromNotification,
+  registerForegroundHandler,
+  removeDeviceToken,
+  requestNotificationPermission,
+  setupNotificationTapHandlers,
+  syncFCMToken,
+  watchTokenRefresh,
+} from "@/utils/notificationService";
+import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
   DrawerItemList,
 } from "@react-navigation/drawer";
 import { HeaderBackButton } from "@react-navigation/elements";
 import { useFonts } from "expo-font";
+import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { router, useRouter, useSegments } from "expo-router";
 import { Drawer } from "expo-router/drawer";
@@ -32,8 +46,18 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 SplashScreen.preventAutoHideAsync();
 
 function AuthLoader({ children }: { children: React.ReactNode }) {
-  const { setUser, setIsLoading } = useUser();
+  const { user, setUser, setIsLoading } = useUser();
   const { setKarma } = useKarma();
+
+  // Runs whenever user goes from null → logged-in, covers both stored token and fresh OAuth login
+  useEffect(() => {
+    if (!user) return;
+    async function onUserLoaded() {
+      const permitted = await requestNotificationPermission();
+      if (permitted) await syncFCMToken();
+    }
+    onUserLoaded();
+  }, [user]);
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -108,24 +132,23 @@ function useProtectedRoute() {
 
     const inAuthGroup = segments[0] === "auth";
     const inLoginScreen = segments[0] === "login";
-    const inTabsGroup = segments[0] === "(tabs)";
     const isRootRoute = (segments as string[]).length === 0;
 
-    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen, inTabsGroup });
+    // console.log("Navigation check:", { user: !!user, segments, inAuthGroup, inLoginScreen });
 
-    // Only protect routes, don't interfere with normal navigation
     if (!user && !inAuthGroup && !inLoginScreen) {
-      // User is not authenticated and trying to access protected route
       console.log("Redirecting to login - user not authenticated");
       router.replace("/login");
-    } else if (user && inLoginScreen) {
-      // User is authenticated and on login screen, redirect to tabs
-      console.log("Redirecting to tabs - user authenticated on login");
+    } else if (user && (inLoginScreen || isRootRoute)) {
+      console.log("Loading tabs for authenticated user");
       router.replace("/(tabs)");
-    } else if (user && isRootRoute) {
-      // User is authenticated at root with no segments, ensure tabs are loaded
-      console.log("Loading tabs for authenticated user at root");
-      router.replace("/(tabs)");
+      // Consume any notification that opened the app from a killed state.
+      // We wait for the tabs transition to finish before pushing, otherwise
+      // the replace() would race with push() and the push would be lost.
+      const pending = consumePendingNotification();
+      if (pending) {
+        setTimeout(() => navigateFromNotification(pending), 300);
+      }
     }
   }, [user, segments, isLoading, router]);
 }
@@ -213,9 +236,11 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleLogout = async () => {
+    await removeDeviceToken(); // must run before clearTokens so the request is authenticated
     trackLogout();
     clearAnalyticsUser();
     await clearTokens();
+    await clearCachedFCMToken();
     setUser(null);
     router.replace("/login");
   };
@@ -262,7 +287,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   };
 
   return (
-    <DrawerContentScrollView {...props}>
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props}>
       <View className="flex-row items-center p-1 border-b border-gray-200 pb-2 ">
         <Image
           source={
@@ -342,6 +368,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         </>
       )}
     </DrawerContentScrollView>
+      <View style={{ alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#f3f4f6" }}>
+        <Text style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito-Regular" }}>v{Constants.expoConfig?.version}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -363,8 +393,16 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-
-
+  useEffect(() => {
+    const unsubTapHandlers = setupNotificationTapHandlers();
+    const unsubForeground = registerForegroundHandler();
+    const unsubTokenRefresh = watchTokenRefresh();
+    return () => {
+      unsubTapHandlers();
+      unsubForeground();
+      unsubTokenRefresh();
+    };
+  }, []);
 
 
   // Handle all incoming deep links – including auth callbacks
@@ -404,13 +442,15 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <HashtagProvider>
       <KarmaProvider>
       <EventsProvider>
       <IssuesProvider>
         <AuthLoader>
           <NavigationContainer>
             <StatusBar style="dark" />
-            <Drawer
+            <NotificationBanner />
+      <Drawer
             initialRouteName="(tabs)"
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
@@ -519,6 +559,7 @@ export default function RootLayout() {
       </IssuesProvider>
       </EventsProvider>
       </KarmaProvider>
+      </HashtagProvider>
     </UserProvider>
   );
 }

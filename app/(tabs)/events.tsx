@@ -1,14 +1,15 @@
 import EventCard from "@/components/EventCard";
 import { useEvents } from "@/utils/EventsContext";
+import { useHashtag } from "@/utils/HashtagContext";
 import { calculateHaversineDistance } from "@/utils/LocationService";
-import { useUser } from "@/utils/UserContext";
 import { useMemo, useState, useEffect } from "react";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import * as Location from "expo-location";
 
 export default function EventsScreen() {
-  const { user } = useUser();
   const { events, loading } = useEvents();
+  // Scope to the globally-selected hashtag; #india (isRoot) shows all localities.
+  const { hashtag, isRoot } = useHashtag();
 
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -18,19 +19,17 @@ export default function EventsScreen() {
     }).catch(() => {});
   }, []);
 
-  const userHashtag = user?.hashtag?.toLowerCase();
-
   const filteredEvents = useMemo(() => {
     const now = Date.now();
     return events.filter((e) => {
       const startTime = new Date(e.start_time).getTime();
       if (isNaN(startTime) || startTime < now) return false;
-      if (!userHashtag) return true;
+      if (isRoot) return true;
       return e.location.locality.hashtags.some(
-        (tag) => tag.toLowerCase() === userHashtag
+        (tag) => tag.toLowerCase().replace(/^#/, "") === hashtag
       );
     });
-  }, [events, userHashtag]);
+  }, [events, hashtag, isRoot]);
 
   if (loading) {
     return (
@@ -61,19 +60,15 @@ export default function EventsScreen() {
           <Text className="text-[22px] text-gray-900" style={{ fontFamily: "Nunito-Bold" }}>
             Upcoming Events
           </Text>
-          {userHashtag && (
-            <Text className="text-sm text-gray-400" style={{ fontFamily: "Nunito-Regular" }}>
-              Showing events near {userHashtag}
-            </Text>
-          )}
+          <Text className="text-sm text-gray-400" style={{ fontFamily: "Nunito-Regular" }}>
+            {isRoot ? "Across all localities" : `Showing events in #${hashtag}`}
+          </Text>
         </View>
       }
       ListEmptyComponent={
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-[15px] text-gray-500 text-center" style={{ fontFamily: "Nunito-Regular" }}>
-            {userHashtag
-              ? `No events found near ${userHashtag}.`
-              : "No events found."}
+            {isRoot ? "No events found." : `No events found in #${hashtag}.`}
           </Text>
         </View>
       }

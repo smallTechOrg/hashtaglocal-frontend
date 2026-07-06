@@ -4,11 +4,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { getCrashlytics, log, recordError as recordCrashError } from '@react-native-firebase/crashlytics';
 import { Image } from 'expo-image';
 import React from 'react';
-import { Dimensions, ImageSourcePropType, Modal, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ImageSourcePropType, Modal, ScrollView, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PaginationDots from './PaginationDots';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FullScreenImageViewerProps {
   visible: boolean;
@@ -23,6 +21,7 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
   imageSources,
   initialIndex = 0
 }) => {
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const { top } = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -63,6 +62,8 @@ const FullScreenImageViewer: React.FC<FullScreenImageViewerProps> = ({
             right: 16,
             zIndex: 10,
             padding: 8,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            borderRadius: 20,
           }}
         >
           <MaterialIcons name="close" size={28} color="#fff" />

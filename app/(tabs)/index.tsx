@@ -1,5 +1,6 @@
 import { Event } from "@/api/events";
-import { getIssuesByLocation } from "@/api/IssueDetail";
+import { fetchLocalities } from "@/api/Feed";
+import { getIssuesByHashtag } from "@/api/IssueDetail";
 import CustomText from "@/components/CustomText";
 import {
   createIssueFilterPredicate,
@@ -11,6 +12,7 @@ import { apiGet } from "@/utils/apiClient";
 import { ensureUserIsNearIssue } from "@/utils/DistanceCheck";
 import { useEvents } from "@/utils/EventsContext";
 import { calculateDaysActive, formatEventDate, formatEventTime } from "@/utils/FormatDate";
+import { useHashtag } from "@/utils/HashtagContext";
 import { ImageTraceHandle, startImageTrace } from "@/utils/imagePerf";
 import { useIssues } from "@/utils/IssuesContext";
 import { useKarma } from "@/utils/KarmaContext";
@@ -93,6 +95,8 @@ export default function MapScreen() {
   const { setKarma } = useKarma();
   const { setIssues: setContextIssues } = useIssues();
   const { events } = useEvents();
+  // Global hashtag selector (header dropdown) — drives which issues/events show.
+  const { hashtag, isRoot } = useHashtag();
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
@@ -100,6 +104,9 @@ export default function MapScreen() {
   const [error, setError] = useState<LocationError | null>(null);
   const [issues, setIssues] = useState<IssueMarker[]>([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  // The hashtag the loaded issue set belongs to (set when a load completes). The map-fit effect
+  // gates on this so it fits the right data, never the previous hashtag's during a switch.
+  const [loadedHashtag, setLoadedHashtag] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<IssueMarker | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
@@ -108,6 +115,8 @@ export default function MapScreen() {
   const [showEventsOnly, setShowEventsOnly] = useState(false);
   const bottomSheetTraceRef = useRef<ImageTraceHandle | null>(null);
   const eventSheetTraceRef = useRef<ImageTraceHandle | null>(null);
+  // Locality polygon centroids — used as map fallback when a hashtag has no issues yet.
+  const localityCentersRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
 
   // ── Map filters (extensible: swap categories/predicate for other domains) ──
   const issueFilterPredicate = useMemo(
@@ -200,53 +209,71 @@ export default function MapScreen() {
     }
   }, [user?.username]);
 
+  // Load issues for the globally-selected hashtag (#india/root = all). Shared into the context so
+  // the Issues tab reflects the same selection. This is the source of truth for which issues show.
+  const loadIssuesForHashtag = useCallback(
+    async (tag: string, root: boolean) => {
+      try {
+        setIssuesLoading(true);
+        const issuesData = await getIssuesByHashtag(root ? undefined : tag);
+        setIssues(issuesData);
+        setContextIssues(issuesData);
+        // Mark which hashtag the current issue set belongs to — the map-fit effect waits for this
+        // so it never fits stale (previous-hashtag) data during a switch.
+        setLoadedHashtag(tag);
+      } catch (error) {
+        console.error("Failed to load issues for hashtag:", error);
+      } finally {
+        setIssuesLoading(false);
+      }
+    },
+    [setContextIssues],
+  );
+
+  // Fetch locality polygon centroids once for map fallback navigation.
+  useEffect(() => {
+    fetchLocalities().then((list) => {
+      const map = new Map<string, { lat: number; lng: number }>();
+      list.forEach((l) => { if (l.center) map.set(l.hashtag, l.center); });
+      localityCentersRef.current = map;
+    });
+  }, []);
+
+  // Reload whenever the selected hashtag changes.
+  useEffect(() => {
+    loadIssuesForHashtag(hashtag, isRoot);
+  }, [hashtag, isRoot, loadIssuesForHashtag]);
+
   useEffect(() => {
     // Subscribe to progressive updates and update map when accuracy improves.
     // Guard with userRef so that after logout/account-deletion the callback
     // does not keep firing authenticated API calls and causing a session-expired loop.
     const unsub = subscribeToBestLocation((loc) => {
+      // Location now only positions the map; issues are loaded by the selected hashtag.
       setUserLocation(loc);
-      if (userRef.current) {
-        loadNearbyIssues(loc.latitude, loc.longitude);
-      }
     });
 
     return () => unsub();
   }, []);
 
-  // Reload issues + refresh user summary when screen comes back into focus
+  // Refresh the issues (for the current hashtag) + user summary when the screen regains focus.
   useFocusEffect(
     useCallback(() => {
+      loadIssuesForHashtag(hashtag, isRoot);
       if (userLocation) {
         const { latitude, longitude } = userLocation;
-        Promise.all([
-          loadNearbyIssues(latitude, longitude),
-          refreshUserProfile(latitude, longitude),
-        ]);
+        refreshUserProfile(latitude, longitude);
       }
-    }, [userLocation])
+    }, [hashtag, isRoot, loadIssuesForHashtag, userLocation])
   );
 
   // Open/close bottom sheet when issue is selected/deselected
   useEffect(() => {
     if (selectedIssue) {
       setImageVisible(false);
-
-      // Use setTimeout to ensure the bottom sheet is ready for interaction
-      const timer = setTimeout(() => {
-        try {
-          bottomSheetRef.current?.snapToIndex(0);
-        } catch (error) {
-          console.error("Error opening bottom sheet:", error);
-        }
-      }, 50);
-      return () => clearTimeout(timer);
+      bottomSheetRef.current?.snapToIndex(0);
     } else {
-      try {
-        bottomSheetRef.current?.close();
-      } catch (error) {
-        console.error("Error closing bottom sheet:", error);
-      }
+      bottomSheetRef.current?.close();
     }
   }, [selectedIssue]);
 
@@ -262,8 +289,7 @@ export default function MapScreen() {
     if (result.success) {
       setUserLocation(result.location);
       setLoadingState("success");
-      // Load issues for this location
-      loadNearbyIssues(result.location.latitude, result.location.longitude);
+      // Issues are loaded by the selected hashtag (see loadIssuesForHashtag effect), not by location.
     } else {
       setError(result.error);
       setLoadingState("error");
@@ -288,32 +314,16 @@ export default function MapScreen() {
     }
   };
 
-  const loadNearbyIssues = async (lat: number, lng: number) => {
-    try {
-      setIssuesLoading(true);
-      const issuesData = await getIssuesByLocation(lat, lng);
-      console.log("Issues loaded:", issuesData.length);
-      setIssues(issuesData);
-      // Also save to context for other tabs to use
-      setContextIssues(issuesData);
-    } catch (error) {
-      console.error("Failed to load nearby issues:", error);
-    } finally {
-      setIssuesLoading(false);
-    }
-  };
-
   const handleEventMarkerPress = useCallback((event: Event) => {
     setSelectedIssue(null);
     setSelectedEvent(event);
-    setTimeout(() => {
-      try { bottomSheetRef.current?.snapToIndex(0); } catch {}
-    }, 50);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleMarkerPress = useCallback((issue: IssueMarker) => {
     setSelectedEvent(null);
     setSelectedIssue(issue);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleCloseBottomSheet = useCallback(() => {
@@ -380,24 +390,24 @@ export default function MapScreen() {
 
   // Only render markers that are in the current viewport
   const visibleMarkers = useMemo(() => {
-    return filteredIssues.filter(issue => 
+    return filteredIssues.filter(issue =>
       isMarkerInViewport(issue.location.lat, issue.location.lng)
     );
   }, [filteredIssues, isMarkerInViewport]);
 
+
   // All future events filtered to user's hashtag
   const futureEvents = useMemo(() => {
     const now = Date.now();
-    const userHashtag = user?.hashtag?.toLowerCase();
     return events.filter((event) => {
       const startTime = new Date(event.start_time).getTime();
       if (isNaN(startTime) || startTime < now) return false;
-      if (!userHashtag) return true;
+      if (isRoot) return true; // #india = all localities
       return event.location.locality.hashtags.some(
-        (tag) => tag.toLowerCase() === userHashtag
+        (tag) => tag.toLowerCase().replace(/^#/, "") === hashtag
       );
     });
-  }, [events, user?.hashtag]);
+  }, [events, hashtag, isRoot]);
 
   // Future events visible in the current viewport
   const visibleEventMarkers = useMemo(() => {
@@ -458,21 +468,11 @@ export default function MapScreen() {
     });
   }, [futureEvents, userLocation]);
 
-  // Auto-zoom map to fit filtered markers when a filter is active
+  // Auto-zoom map to fit filtered markers when a sub-filter (category/status/mine) is active.
+  // When no filter is active the default view is owned by the hashtag-fit effect above — we must
+  // NOT snap back to GPS here, or switching hashtags would keep recentering on the user's location.
   useEffect(() => {
     if (filterActiveCount === 0) {
-      // No filter active → zoom back to user locality
-      if (mapRef.current && userLocation) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          },
-          500,
-        );
-      }
       return;
     }
 
@@ -508,6 +508,95 @@ export default function MapScreen() {
     // Close any open issue card
     setSelectedIssue(null);
   }, [filterActiveCount, filteredIssues, userLocation]);
+
+  // Fit the map to the selected hashtag's data when the hashtag changes. The map should follow the
+  // hashtag, not stay glued to GPS: #india fits all markers across India; a locality (#pune) fits
+  // that locality's markers. The user's current location is only included in the box when the
+  // selected hashtag is their OWN home hashtag (so "current location" only matters there).
+  const lastFitHashtagRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Only fit once the loaded issue set actually belongs to the current hashtag — otherwise we'd
+    // fit the previous hashtag's (stale) markers mid-switch and then block the real fit.
+    if (loadedHashtag !== hashtag) return;
+    if (lastFitHashtagRef.current === hashtag) return;
+    if (!mapRef.current) return;
+
+    // For #india use a fixed region covering the full subcontinent including J&K.
+    // Marker-based bounding box clips the north because no markers exist in J&K.
+    if (isRoot) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        { latitude: 23, longitude: 80.5, latitudeDelta: 28, longitudeDelta: 26 },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
+    const homeHashtag = user?.hashtag?.toLowerCase().replace(/^#/, "");
+    const isHomeHashtag = homeHashtag && homeHashtag === hashtag;
+
+    // On the home hashtag, center on the user's GPS at walking zoom so nearby issues
+    // are visible while on foot — fitting all city-wide markers zooms out too far.
+    if (isHomeHashtag && userLocation) {
+      lastFitHashtagRef.current = hashtag;
+      mapRef.current.animateToRegion(
+        {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        600,
+      );
+      setSelectedIssue(null);
+      setSelectedEvent(null);
+      return;
+    }
+
+    const coords: { lat: number; lng: number }[] = [
+      ...filteredIssues.map((i) => ({ lat: i.location.lat, lng: i.location.lng })),
+      ...futureEvents.map((e) => ({ lat: e.location.lat, lng: e.location.lng })),
+    ];
+
+    if (coords.length === 0) {
+      // No markers yet — use the locality polygon centroid to navigate to the right city area.
+      // Don't mark as fitted so if issues arrive later the effect re-runs and fits to them properly.
+      const center = localityCentersRef.current.get(hashtag);
+      if (center) {
+        mapRef.current.animateToRegion(
+          { latitude: center.lat, longitude: center.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+          600,
+        );
+      }
+      return;
+    }
+
+    let minLat = coords[0].lat, maxLat = coords[0].lat;
+    let minLng = coords[0].lng, maxLng = coords[0].lng;
+    coords.forEach((c) => {
+      minLat = Math.min(minLat, c.lat);
+      maxLat = Math.max(maxLat, c.lat);
+      minLng = Math.min(minLng, c.lng);
+      maxLng = Math.max(maxLng, c.lng);
+    });
+
+    lastFitHashtagRef.current = hashtag;
+    mapRef.current.animateToRegion(
+      {
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLng + maxLng) / 2,
+        // Pad the bounds; floor avoids over-zooming when all markers share a point.
+        latitudeDelta: Math.max((maxLat - minLat) * 1.4, 0.02),
+        longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.02),
+      },
+      600,
+    );
+    setSelectedIssue(null);
+    setSelectedEvent(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hashtag, loadedHashtag, filteredIssues, futureEvents, user?.hashtag]);
 
   // Memoize initial region to prevent re-renders
   const initialRegion = useMemo(() => ({
@@ -585,7 +674,7 @@ export default function MapScreen() {
         onRegionChangeComplete={handleMapRegionChange}
       >
         {/* Viewport-based Issue Markers (hidden in events-only mode) */}
-        {!showEventsOnly && visibleMarkers.map((issue) => (
+        {!showEventsOnly && visibleMarkers.map((issue, index) => (
           <Marker
             key={`marker-${issue.id}`}
             coordinate={{
@@ -594,12 +683,14 @@ export default function MapScreen() {
             }}
             pinColor={getIssueColor(issue.type)}
             onPress={() => handleMarkerPress(issue)}
+            onSelect={() => handleMarkerPress(issue)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
 
-        {/* Event Markers */}
-        {visibleEventMarkers.map((event) => (
+        {/* Event Markers (only shown in events-only mode) */}
+        {showEventsOnly && visibleEventMarkers.map((event, index) => (
           <Marker
             key={`event-${event.id}`}
             coordinate={{
@@ -608,7 +699,9 @@ export default function MapScreen() {
             }}
             pinColor="#4f8ef7"
             onPress={() => handleEventMarkerPress(event)}
+            onSelect={() => handleEventMarkerPress(event)}
             tracksViewChanges={false}
+            zIndex={index + 1}
           />
         ))}
       </MapView>
@@ -641,6 +734,7 @@ export default function MapScreen() {
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
+        enableDynamicSizing={false}
         enablePanDownToClose={true}
         onClose={handleCloseBottomSheet}
         backgroundStyle={styles.bottomSheetBackground}

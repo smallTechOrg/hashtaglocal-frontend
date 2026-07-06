@@ -34,7 +34,7 @@ export default {
     name: "#local",
     slug: "hashtaglocal",
     owner: "smalltech",
-    version: "1.0.0",
+    version: "1.0.8",
     orientation: "portrait",
     icon: "./assets/app-icon.png",
     scheme: "hashtaglocal",
@@ -48,7 +48,8 @@ export default {
     },
     ios: {
       supportsTablet: true,
-      googleServicesFile: "./GoogleService-Info.plist",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICE_INFO_PLIST ?? "./GoogleService-Info.plist",
       bundleIdentifier: "com.smalltech.hashtaglocal",
       buildNumber: "2",
       usesAppleSignIn: true,
@@ -61,6 +62,13 @@ export default {
         "applinks:hashtaglocal.app",
         "applinks:www.hashtaglocal.app",
       ],
+      entitlements: {
+        "aps-environment": process.env.EAS_BUILD_PROFILE === "production" ? "production" : "development",
+      },
+    },
+    notification: {
+      icon: "./assets/notification-icon.png",
+      color: "#256D1B",
     },
     android: {
       adaptiveIcon: {
@@ -69,9 +77,14 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      googleServicesFile: "./google-services.json",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       package: "com.smalltech.hashtaglocal",
-      versionCode: 2,
+      permissions: [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+      ],
+      versionCode: 5,
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
@@ -107,6 +120,7 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/perf",
+      "@react-native-firebase/messaging",
       withModularHeaders,
       "expo-router",
       [

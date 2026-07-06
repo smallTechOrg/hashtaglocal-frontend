@@ -30,6 +30,9 @@ export async function trackAuthEvent(method: "google", isNewUser: boolean) {
 export const trackLogout = () =>
   track("logout");
 
+export const trackAuthFailed = (resultType: string, redirectUri: string) =>
+  track("google_auth_failed", { result_type: resultType, redirect_uri: redirectUri });
+
 // ─── Report Funnel ──────────────────────────────────────────────────────────
 
 /** Fired when the user lands on the Report tab (guidelines screen). */
@@ -90,3 +93,21 @@ export const trackIssueVerified = (issueId: number) =>
 
 export const trackIssueResolved = (issueId: number) =>
   track("issue_resolved", { issue_id: String(issueId) });
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export const trackNotificationOpened = (notificationLogId: string, type: string) =>
+  track("notification_opened", { notification_log_id: notificationLogId, type });
+// ─── Bulletin Funnel ─────────────────────────────────────────────────────────
+
+/** Fired when a bulletin chat card is tapped to open the overlay. */
+export const trackBulletinOpened = (bulletinId: number) =>
+  track("bulletin_opened", { bulletin_id: String(bulletinId) });
+
+/** Fired when the user taps "Start Quiz" inside the bulletin overlay. */
+export const trackBulletinQuizStarted = (quizId: number) =>
+  track("bulletin_quiz_started", { quiz_id: String(quizId) });
+
+/** Fired when a quiz attempt is submitted (answer selected or timer expired). */
+export const trackBulletinQuizAttempted = (quizId: number, result: "correct" | "wrong" | "timed_out") =>
+  track("bulletin_quiz_attempted", { quiz_id: String(quizId), result });
