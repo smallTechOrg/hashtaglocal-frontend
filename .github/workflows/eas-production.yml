@@ -1,0 +1,64 @@
+name: EAS Production Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to build"
+        required: true
+        default: "android"
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+      submit:
+        description: "Submit to store after build"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npx expo lint
+      - name: Test
+        run: npx jest --ci
+
+  production-build:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Build production
+        run: |
+          if [ "${{ inputs.platform }}" = "all" ]; then
+            eas build --platform all --profile production --non-interactive
+          else
+            eas build --platform ${{ inputs.platform }} --profile production --non-interactive
+          fi
+      - name: Submit to store
+        if: ${{ inputs.submit }}
+        run: |
+          if [ "${{ inputs.platform }}" = "all" ]; then
+            eas submit --platform all --non-interactive
+          else
+            eas submit --platform ${{ inputs.platform }} --non-interactive
+          fi
